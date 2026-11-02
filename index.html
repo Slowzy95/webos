@@ -162,6 +162,7 @@
     .tab:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
     .tab.active { background: rgba(255,255,255,.1); color: #f1f5f9; border-color: rgba(255,255,255,.12); }
     .tab span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tab-fav { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
     .tab-close { color: #64748b; font-size: 10px; padding: 2px; border-radius: 4px; flex-shrink: 0; }
     .tab-close:hover { color: #ef4444; background: rgba(239,68,68,.15); }
     .tab-add { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 12px; flex-shrink: 0; margin-bottom: 2px; }
@@ -328,19 +329,36 @@ const CLOAK_PRESETS = [
   { name: 'Moodle',          title: 'Tableau de bord',           icon: 'https://moodle.org/favicon.ico' }
 ];
 
+/* Applique un favicon de façon robuste (plusieurs balises + secours) */
+function setFavicon(href) {
+  try {
+    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(l => l.remove());
+    const add = (rel) => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); };
+    add('icon'); add('shortcut icon'); add('apple-touch-icon');
+    const fav = document.getElementById('favicon');
+    if (fav) { fav.remove(); } // l'ancienne balise data-URI est remplacée
+  } catch (e) {}
+}
+
 function applyCloak(title, icon, save = true) {
   if (title) document.title = title;
-  if (icon) document.getElementById('favicon').href = icon;
+  if (icon) {
+    setFavicon(icon);
+    /* Secours : si l'image ne se charge pas (URL morte, http bloqué...), on prend le vrai favicon du domaine */
+    const im = new Image();
+    im.onerror = () => { try { setFavicon(brandImg(new URL(icon).hostname)); } catch (e) {} };
+    im.src = icon;
+    if (save) LS.set('cloak_icon', icon);
+  }
   if (save) {
     if (title) LS.set('cloak_title', title);
-    if (icon) LS.set('cloak_icon', icon);
     toast('Camouflage appliqué et sauvegardé', 'fa-mask', 'text-amber-400');
   }
 }
 (function restoreCloak() {
   const t = LS.get('cloak_title', null), i = LS.get('cloak_icon', null);
   if (t) document.title = t;
-  if (i) document.getElementById('favicon').href = i;
+  if (i) { setFavicon(i); const im = new Image(); im.onerror = () => { try { setFavicon(brandImg(new URL(i).hostname)); } catch (e) {} }; im.src = i; }
 })();
 
 /* ============================================================
@@ -1019,9 +1037,7 @@ function renderTaskbar() {
     const b = document.createElement('div');
     b.className = 'tb-icon' + (w ? ' open' : '') + (focusedApp === id && w && !w.minimized ? ' active' : '');
     b.title = app.title;
-    b.innerHTML = app.svg
-      ? `<span class="tb-glyph">${app.svg}</span><div class="run-dot"></div>`
-      : `<i class="fa-solid ${app.icon}"></i><div class="run-dot"></div>`;
+    b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><div class="run-dot"></div>`;
     b.addEventListener('click', () => {
       if (!w) openApp(id);
       else if (w.minimized) toggleMinimize(id);
@@ -1059,10 +1075,13 @@ document.addEventListener('keydown', (e) => {
 ============================================================ */
 const BROWSER_HOME = 'https://fr.wikipedia.org/wiki/Accueil';
 // Sites confirmés comme affichables directement dans un cadre
-const FRAMEABLE = ['wikipedia.org', 'wiktionary.org', 'bing.com', 'google.com', 'openstreetmap.org', 'krunker.io', 'archive.org', 'gutenberg.org', 'britannica.com', 'phet.colorado.edu', 'googlesource.com'];
+const FRAMEABLE = ['wikipedia.org', 'wiktionary.org', 'bing.com', 'google.com', 'openstreetmap.org', 'krunker.io', 'archive.org', 'gutenberg.org', 'britannica.com', 'phet.colorado.edu', 'googlesource.com', '1v1.lol', 'anime-sama.com', 'slither.io', 'bloxd.io', 'territorial.io', 'agar.io', 'threejs.org'];
+// Vrai proxy Ultraviolet (type service worker, comme les gros proxys) — hébergé sur ton GitHub, sans pub
+const WISP_PROXY = 'https://slowzy95.github.io/proxy/?url=';
 const PROXIES = [
   { make: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), headers: {} },
   { make: u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), headers: {} },
+  { make: u => 'https://api.cors.lol/?url=' + encodeURIComponent(u), headers: {} },
   { make: u => 'https://r.jina.ai/' + u, headers: { 'X-Return-Format': 'html' } }
 ];
 let browserAPI = null;
@@ -1118,6 +1137,7 @@ function renderBrowser() {
         <span class="chip" data-search="bing"><i class="fa-brands fa-bing"></i> Bing</span>
         <span class="chip" data-url="https://fr.wikipedia.org/wiki/Accueil"><i class="fa-brands fa-wikipedia-w"></i> Wikipédia</span>
         <span class="chip" data-url="https://www.youtube.com"><i class="fa-brands fa-youtube"></i> YouTube</span>
+        <span class="chip" data-url="https://franime.fr"><i class="fa-solid fa-tv"></i> FrAnime</span>
         <span class="chip" data-url="https://poki.com"><i class="fa-solid fa-gamepad"></i> Poki</span>
         <span class="chip" data-url="https://play.geforcenow.com"><i class="fa-solid fa-cloud"></i> GeForce NOW</span>
       </div>
@@ -1147,7 +1167,7 @@ function renderBrowser() {
       </div>
       <div class="flex-none px-3 py-1 flex items-center justify-between bg-white/3 border-t border-white/8 text-[10.5px]">
         <span id="br-status" class="text-slate-500">Mode : Auto</span>
-        <span class="text-slate-600 hidden sm:inline">Google, Bing et Wikipédia s'ouvrent en direct — le reste passe par le proxy</span>
+        <span class="text-slate-600 hidden sm:inline">Les sites compatibles s'ouvrent en direct — les sites bloqués (Poki, CrazyGames, Franime...) passent par le proxy intégré</span>
       </div>
     </div>`;
 }
@@ -1210,11 +1230,16 @@ function initBrowser(body) {
   }
   function renderTabs() {
     if (!tabsBarEl) return;
-    tabsBarEl.innerHTML = tabs.map(t => `
+    tabsBarEl.innerHTML = tabs.map(t => {
+      let fav = '';
+      try { fav = brandImg(new URL(t.url).hostname, 32); } catch (e) {}
+      return `
       <div class="tab ${t.id === activeTabId ? 'active' : ''}" data-tab="${t.id}" title="${escHtml(t.title)}">
+        ${fav ? `<img class="tab-fav" src="${fav}" alt="" onerror="this.style.display='none'">` : ''}
         <span class="truncate">${escHtml(t.title)}</span>
         <button data-close="${t.id}" class="tab-close"><i class="fa-solid fa-xmark"></i></button>
-      </div>`).join('') + '<button class="tab-add" id="br-tab-add" title="Nouvel onglet"><i class="fa-solid fa-plus"></i></button>';
+      </div>`;
+    }).join('') + '<button class="tab-add" id="br-tab-add" title="Nouvel onglet"><i class="fa-solid fa-plus"></i></button>';
     tabsBarEl.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', (e) => { if (!e.target.closest('[data-close]')) setActiveTab(b.dataset.tab); }));
     tabsBarEl.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); closeTab(b.dataset.close); }));
     const addBtn = tabsBarEl.querySelector('#br-tab-add');
@@ -1436,15 +1461,24 @@ function initBrowser(body) {
     }
     showYT(false);
     const t0 = Date.now();
-    const useProxy = mode === 'proxy' || (mode === 'auto' && !isFrameable(u));
-    if (useProxy) proxyLoad(u, t0, fallback);
-    else {
-      navSeq++;
-      frame.removeAttribute('srcdoc');
-      frame.src = smartDirect(u);
-      frame.onload = () => setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct');
-      setStatus('Chargement direct...');
-    }
+    /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...) */
+    if (mode === 'auto' && !isFrameable(u)) { wispLoad(u); return; }
+    if (mode === 'proxy') { proxyLoad(u, t0, fallback); return; }
+    navSeq++;
+    frame.removeAttribute('srcdoc');
+    frame.src = smartDirect(u);
+    frame.onload = () => setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct');
+    setStatus('Chargement direct...');
+  }
+
+  /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
+  function wispLoad(u) {
+    frame.onload = null;
+    navSeq++;
+    frame.removeAttribute('srcdoc');
+    frame.src = WISP_PROXY + encodeURIComponent(u);
+    setStatus('Chargé via le proxy intégré (Ultraviolet)...');
+    try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {}
   }
 
   async function proxyLoad(u, t0, fallback) {
@@ -1552,7 +1586,7 @@ function initBrowser(body) {
   });
   body.querySelector('#br-mode').addEventListener('click', () => {
     mode = mode === 'auto' ? 'direct' : mode === 'direct' ? 'proxy' : 'auto';
-    toast('Chargement : ' + (mode === 'auto' ? 'Auto (direct si possible, sinon proxy)' : mode === 'direct' ? 'Direct (cadre uniquement)' : 'Proxy (pour les sites bloqués)'), 'fa-bolt', 'text-sky-400');
+    toast('Chargement : ' + (mode === 'auto' ? 'Auto — direct si possible, sinon proxy intégré (Ultraviolet)' : mode === 'direct' ? 'Direct (cadre uniquement, sans proxy)' : 'Proxy HTML (lecteur simple — préférez Auto pour les sites bloqués)'), 'fa-bolt', 'text-sky-400');
     updateNav();
   });
   body.querySelectorAll('.chip[data-search]').forEach(c => c.addEventListener('click', () => {
@@ -1731,14 +1765,19 @@ function renderGames() {
 }
 
 const GAME_PLATFORMS = [
-  { name: 'Poki', desc: 'Des milliers de jeux HTML5', url: 'https://poki.com', icon: 'fa-gamepad', color: '#818cf8' },
-  { name: 'CrazyGames', desc: 'Jeux gratuits variés', url: 'https://www.crazygames.com', icon: 'fa-fire', color: '#fb923c' },
-  { name: 'Krunker.io', desc: 'FPS multijoueur rapide', url: 'https://krunker.io', icon: 'fa-crosshairs', color: '#fbbf24' },
-  { name: 'itch.io', desc: 'Jeux indés et créatifs', url: 'https://itch.io', icon: 'fa-leaf', color: '#4ade80' },
-  { name: '1v1.LOL', desc: 'Construction et combat', url: 'https://1v1.lol', icon: 'fa-hammer', color: '#38bdf8' },
-  { name: 'Y8 Games', desc: 'Catalogue géant de jeux', url: 'https://www.y8.com', icon: 'fa-globe', color: '#f87171' },
-  { name: 'Miniclip', desc: 'Jeux d\u2019arcade et sport', url: 'https://www.miniclip.com', icon: 'fa-bolt', color: '#2dd4bf' },
-  { name: 'GeForce NOW', desc: 'Jeux PC en streaming (compte requis)', url: 'https://play.geforcenow.com', icon: 'fa-cloud', color: '#76b900' }
+  { name: 'Poki', desc: 'Des milliers de jeux HTML5', url: 'https://poki.com', domain: 'poki.com', icon: 'fa-gamepad', color: '#818cf8' },
+  { name: 'CrazyGames', desc: 'Jeux gratuits variés', url: 'https://www.crazygames.com', domain: 'crazygames.com', icon: 'fa-fire', color: '#fb923c' },
+  { name: '1v1.LOL', desc: 'Construction et combat', url: 'https://1v1.lol', domain: '1v1.lol', icon: 'fa-hammer', color: '#38bdf8' },
+  { name: 'Krunker.io', desc: 'FPS multijoueur rapide', url: 'https://krunker.io', domain: 'krunker.io', icon: 'fa-crosshairs', color: '#fbbf24' },
+  { name: 'Bloxd.io', desc: 'Monde type Minecraft (mini-jeux)', url: 'https://bloxd.io', domain: 'bloxd.io', icon: 'fa-cubes', color: '#4ade80' },
+  { name: 'Slither.io', desc: 'Serpent géant multijoueur', url: 'https://slither.io', domain: 'slither.io', icon: 'fa-worm', color: '#2dd4bf' },
+  { name: 'Territorial.io', desc: 'Conquête stratégique en ligne', url: 'https://territorial.io', domain: 'territorial.io', icon: 'fa-earth-europe', color: '#f87171' },
+  { name: 'Agar.io', desc: 'Boules mange-boules en ligne', url: 'https://agar.io', domain: 'agar.io', icon: 'fa-circle', color: '#a3e635' },
+  { name: 'Slow Roads', desc: 'Conduite infinie relaxante', url: 'https://slowroads.io', domain: 'slowroads.io', icon: 'fa-road', color: '#fdba74' },
+  { name: 'itch.io', desc: 'Jeux indés et créatifs', url: 'https://itch.io', domain: 'itch.io', icon: 'fa-leaf', color: '#4ade80' },
+  { name: 'Y8 Games', desc: 'Catalogue géant de jeux', url: 'https://www.y8.com', domain: 'y8.com', icon: 'fa-globe', color: '#f87171' },
+  { name: 'Miniclip', desc: 'Jeux d\u2019arcade et sport', url: 'https://www.miniclip.com', domain: 'miniclip.com', icon: 'fa-bolt', color: '#2dd4bf' },
+  { name: 'GeForce NOW', desc: 'Jeux PC en streaming (compte requis)', url: 'https://play.geforcenow.com', domain: 'geforcenow.com', icon: 'fa-cloud', color: '#76b900' }
 ];
 
 function gameShell(title) {
@@ -1762,7 +1801,7 @@ function initGames(body, rec) {
   const plat = body.querySelector('#gh-platforms');
   if (plat) plat.innerHTML = GAME_PLATFORMS.map(p => `
     <div class="glass-card p-4 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none" style="background:${p.color}33;color:${p.color}"><i class="fa-solid ${p.icon}"></i></div>
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${p.color}26">${p.domain ? `<img src="${brandImg(p.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('${`<i class=\\'fa-solid ${p.icon}\\' style=\\'color:${p.color}\\'></i>`}')">` : `<i class="fa-solid ${p.icon}" style="color:${p.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${p.name}</div><div class="text-[11px] text-slate-400 truncate">${p.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${p.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${p.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
@@ -2165,36 +2204,38 @@ function renderMedia() {
 }
 
 const MEDIA_LINKS = [
-  { name: 'YouTube', desc: 'Vidéos et musique', url: 'https://www.youtube.com', icon: 'fa-youtube', brand: true, color: '#ff0000' },
-  { name: 'Twitch', desc: 'Lives et streams', url: 'https://www.twitch.tv', icon: 'fa-twitch', brand: true, color: '#a970ff' },
-  { name: 'Spotify', desc: 'Musique en streaming', url: 'https://open.spotify.com', icon: 'fa-spotify', brand: true, color: '#1db954' },
-  { name: 'Deezer', desc: 'Musique et radio', url: 'https://www.deezer.com', icon: 'fa-music', color: '#a238ff' },
-  { name: 'Crunchyroll', desc: 'Animes officiels', url: 'https://www.crunchyroll.com/fr', icon: 'fa-tv', color: '#f47521' },
-  { name: 'Anime-Sama', desc: 'Catalogue d\u2019animes', url: 'https://anime-sama.com', icon: 'fa-ninja', color: '#38bdf8' },
-  { name: 'AnimeFire', desc: 'Animes en VF/VOSTFR', url: 'https://animefire.net', icon: 'fa-fire', color: '#f97316' },
-  { name: 'AniList', desc: 'Découvrir & suivre des animes', url: 'https://anilist.co', icon: 'fa-book-skull', color: '#02a9ff' },
-  { name: 'Netflix', desc: 'Films et séries', url: 'https://www.netflix.com', icon: 'fa-n', brand: true, color: '#e50914' },
-  { name: 'Prime Video', desc: 'Vidéo à la demande', url: 'https://www.primevideo.com', icon: 'fa-video', color: '#00a8e1' },
-  { name: 'Disney+', desc: 'Classiques et originals', url: 'https://www.disneyplus.com', icon: 'fa-star', color: '#113ccf' },
-  { name: 'SoundCloud', desc: 'Musique indépendante', url: 'https://soundcloud.com', icon: 'fa-soundcloud', brand: true, color: '#ff5500' },
-  { name: 'TikTok', desc: 'Vidéos courtes', url: 'https://www.tiktok.com', icon: 'fa-tiktok', brand: true, color: '#fe2c55' },
-  { name: 'Snapchat', desc: 'Photos éphémères', url: 'https://www.snapchat.com', icon: 'fa-snapchat', brand: true, color: '#fffc00' },
-  { name: 'Discord', desc: 'Communautés et chat', url: 'https://discord.com', icon: 'fa-discord', brand: true, color: '#5865f2' }
+  { name: 'YouTube', desc: 'Vidéos et musique', url: 'https://www.youtube.com', domain: 'youtube.com', icon: 'fa-youtube', brand: true, color: '#ff0000' },
+  { name: 'FrAnime', desc: 'Animes en VF/VOSTFR gratuits', url: 'https://franime.fr', domain: 'franime.fr', icon: 'fa-tv', color: '#818cf8' },
+  { name: 'Twitch', desc: 'Lives et streams', url: 'https://www.twitch.tv', domain: 'twitch.tv', icon: 'fa-twitch', brand: true, color: '#a970ff' },
+  { name: 'Spotify', desc: 'Musique en streaming', url: 'https://open.spotify.com', domain: 'spotify.com', icon: 'fa-spotify', brand: true, color: '#1db954' },
+  { name: 'Deezer', desc: 'Musique et radio', url: 'https://www.deezer.com', domain: 'deezer.com', icon: 'fa-music', color: '#a238ff' },
+  { name: 'Crunchyroll', desc: 'Animes officiels', url: 'https://www.crunchyroll.com/fr', domain: 'crunchyroll.com', icon: 'fa-tv', color: '#f47521' },
+  { name: 'Anime-Sama', desc: 'Catalogue d\u2019animes', url: 'https://anime-sama.com', domain: 'anime-sama.com', icon: 'fa-ninja', color: '#38bdf8' },
+  { name: 'AnimeFire', desc: 'Animes en VF/VOSTFR', url: 'https://animefire.net', domain: 'animefire.net', icon: 'fa-fire', color: '#f97316' },
+  { name: 'AniList', desc: 'Découvrir & suivre des animes', url: 'https://anilist.co', domain: 'anilist.co', icon: 'fa-book-skull', color: '#02a9ff' },
+  { name: 'Netflix', desc: 'Films et séries (compte requis)', url: 'https://www.netflix.com', domain: 'netflix.com', icon: 'fa-n', brand: true, color: '#e50914' },
+  { name: 'Prime Video', desc: 'Vidéo à la demande', url: 'https://www.primevideo.com', domain: 'primevideo.com', icon: 'fa-video', color: '#00a8e1' },
+  { name: 'Disney+', desc: 'Classiques et originals', url: 'https://www.disneyplus.com', domain: 'disneyplus.com', icon: 'fa-star', color: '#113ccf' },
+  { name: 'SoundCloud', desc: 'Musique indépendante', url: 'https://soundcloud.com', domain: 'soundcloud.com', icon: 'fa-soundcloud', brand: true, color: '#ff5500' },
+  { name: 'TikTok', desc: 'Vidéos courtes', url: 'https://www.tiktok.com', domain: 'tiktok.com', icon: 'fa-tiktok', brand: true, color: '#fe2c55' },
+  { name: 'Snapchat', desc: 'Photos éphémères', url: 'https://www.snapchat.com', domain: 'snapchat.com', icon: 'fa-snapchat', brand: true, color: '#fffc00' },
+  { name: 'Discord', desc: 'Communautés et chat', url: 'https://discord.com', domain: 'discord.com', icon: 'fa-discord', brand: true, color: '#5865f2' }
 ];
 const FREE_STREAMING = [
-  { name: 'France.tv', desc: 'Replay TV gratuit', url: 'https://www.france.tv', icon: 'fa-tv', color: '#1878c4' },
-  { name: 'Arte', desc: 'Culture et docs gratuits', url: 'https://www.arte.tv/fr', icon: 'fa-palette', color: '#e2001a' },
-  { name: 'Pluto TV', desc: 'Chaînes TV gratuites', url: 'https://pluto.tv', icon: 'fa-satellite-dish', color: '#ffe000' },
-  { name: 'Tubi', desc: 'Films gratuits avec pubs', url: 'https://tubitv.com', icon: 'fa-film', color: '#fa6d00' },
-  { name: 'Plex', desc: 'Films et séries gratuits', url: 'https://watch.plex.tv', icon: 'fa-clapperboard', color: '#e5a00d' },
-  { name: 'Crunchyroll', desc: 'Animes gratuits (avec pubs)', url: 'https://www.crunchyroll.com/fr', icon: 'fa-tv', color: '#f47521' }
+  { name: 'FrAnime', desc: 'Animes VF/VOSTFR gratuits', url: 'https://franime.fr', domain: 'franime.fr', icon: 'fa-tv', color: '#818cf8' },
+  { name: 'France.tv', desc: 'Replay TV gratuit', url: 'https://www.france.tv', domain: 'france.tv', icon: 'fa-tv', color: '#1878c4' },
+  { name: 'Arte', desc: 'Culture et docs gratuits', url: 'https://www.arte.tv/fr', domain: 'arte.tv', icon: 'fa-palette', color: '#e2001a' },
+  { name: 'Pluto TV', desc: 'Chaînes TV gratuites', url: 'https://pluto.tv', domain: 'pluto.tv', icon: 'fa-satellite-dish', color: '#ffe000' },
+  { name: 'Tubi', desc: 'Films gratuits avec pubs', url: 'https://tubitv.com', domain: 'tubitv.com', icon: 'fa-film', color: '#fa6d00' },
+  { name: 'Plex', desc: 'Films et séries gratuits', url: 'https://watch.plex.tv', domain: 'plex.tv', icon: 'fa-clapperboard', color: '#e5a00d' },
+  { name: 'Crunchyroll', desc: 'Animes gratuits (avec pubs)', url: 'https://www.crunchyroll.com/fr', domain: 'crunchyroll.com', icon: 'fa-tv', color: '#f47521' }
 ];
 
 function initMedia(body) {
   const freeGrid = body.querySelector('#mh-free-grid');
   freeGrid.innerHTML = FREE_STREAMING.map(m => `
     <div class="glass-card p-4 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none" style="background:${m.color}26;color:${m.color}"><i class="fa-solid ${m.icon}"></i></div>
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${m.color}26">${m.domain ? `<img src="${brandImg(m.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('<i class=\\'fa-solid ${m.icon}\\' style=\\'color:${m.color}\\'></i>')">` : `<i class="fa-solid ${m.icon}" style="color:${m.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${m.name}</div><div class="text-[11px] text-slate-400 truncate">${m.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${m.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${m.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
@@ -2203,7 +2244,7 @@ function initMedia(body) {
   const grid = body.querySelector('#mh-grid');
   grid.innerHTML = MEDIA_LINKS.map(m => `
     <div class="glass-card p-4 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none" style="background:${m.color}26;color:${m.color}"><i class="${m.brand ? 'fa-brands' : 'fa-solid'} ${m.icon}"></i></div>
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${m.color}26">${m.domain ? `<img src="${brandImg(m.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('<i class=\\'${m.brand ? 'fa-brands' : 'fa-solid'} ${m.icon}\\' style=\\'color:${m.color}\\'></i>')">` : `<i class="${m.brand ? 'fa-brands' : 'fa-solid'} ${m.icon}" style="color:${m.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${m.name}</div><div class="text-[11px] text-slate-400 truncate">${m.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${m.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${m.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
@@ -2294,7 +2335,8 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v5.0</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v7 — Proxy intégré</div>
+        <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent désormais via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
     </div>`;
@@ -2409,13 +2451,17 @@ function initSettings(body) {
   const appListEl = body.querySelector('#st-app-list');
   const renderAppList = () => {
     if (!CUSTOM_APPS.length) { appListEl.innerHTML = '<div class="text-[11px] text-slate-500 italic">Aucune application personnalisée pour le moment.</div>'; return; }
-    appListEl.innerHTML = CUSTOM_APPS.map(a => `
+    appListEl.innerHTML = CUSTOM_APPS.map(a => {
+      let fav = '';
+      try { fav = brandImg(new URL(a.url).hostname); } catch (e) {}
+      return `
       <div class="flex items-center gap-2 glass-card !rounded-lg px-3 py-2">
-        <span class="text-lg">${escHtml(a.emoji)}</span>
+        ${fav ? `<img src="${fav}" alt="" class="w-5 h-5 object-contain" onerror="this.replaceWith('${`<span class=\\'text-lg\\'>${escHtml(a.emoji)}</span>`}')">` : `<span class="text-lg">${escHtml(a.emoji)}</span>`}
         <div class="flex-1 min-w-0"><div class="text-[12px] font-semibold truncate">${escHtml(a.title)}</div><div class="text-[10.5px] text-slate-500 truncate">${escHtml(a.url)}</div></div>
         <button class="btn btn-ghost !py-1 !px-2.5" data-appopen="${a.id}" title="Ouvrir"><i class="fa-solid fa-play text-[10px]"></i></button>
         <button class="btn btn-ghost !py-1 !px-2.5 hover:!bg-red-500/20" data-appdel="${a.id}" title="Supprimer"><i class="fa-solid fa-trash text-[10px] text-red-400"></i></button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     appListEl.querySelectorAll('[data-appdel]').forEach(b => b.addEventListener('click', () => {
       CUSTOM_APPS = CUSTOM_APPS.filter(x => String(x.id) !== b.dataset.appdel);
       LS.setJSON('customapps', CUSTOM_APPS);
@@ -2451,18 +2497,28 @@ function initSettings(body) {
 
 const EDGE_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block"><defs><linearGradient id="egA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#45d6ff"/><stop offset="1" stop-color="#1467d2"/></linearGradient><linearGradient id="egB" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0b3d91"/><stop offset="1" stop-color="#1fa7e8"/></linearGradient></defs><circle cx="24" cy="24" r="21" fill="url(#egA)"/><path d="M6 29c2.5 8.5 10.5 13.5 19 12 8-1.5 13-8.5 12-16 4.5 2.5 6.5 7.5 5.5 12-2 6.5-9.5 10.5-18 10.5C15 48 7 42 4.5 33.5 3.5 30 4 27 6 24.5c-.5 1.5-.5 3 0 4.5z" fill="url(#egB)"/><path d="M37 25c-1.5-8-8-12.5-15-11.5 6 1 9.5 5 10.5 10 1 5.5-2.5 10-8.5 12.5 7-.5 11.5-5 13-11z" fill="#fff" opacity=".93"/></svg>`;
 
-/* Renvoie le HTML d'une icône d'app (SVG custom ou Font Awesome) */
+/* Renvoie le HTML d'une icône d'app (SVG custom, image de logo ou Font Awesome) */
 function appGlyph(app) {
   if (app.svg) return app.svg;
+  if (app.img) return `<img src="${app.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:10px" onerror="this.outerHTML='<i class=\\'fa-solid ${app.icon}\\'></i>'">`;
   return `<i class="fa-solid ${app.icon}"></i>`;
 }
 
+/* Logo ChatGPT (OpenAI), Xbox, YouTube et services : vraies images de logos */
+function brandImg(domain, sz = 128) { return `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}`; }
+
+/* Icône Paramètres style Windows 11 (engrenage Fluent) */
+const GEAR_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block"><g fill="none" stroke="#8ab4f8" stroke-width="4.6" stroke-linecap="round"><circle cx="24" cy="24" r="10.5"/></g><g fill="#8ab4f8">${[0,45,90,135,180,225,270,315].map(a => `<rect x="21.6" y="2.4" width="4.8" height="9" rx="2.4" transform="rotate(${a} 24 24)"/>`).join('')}</g><circle cx="24" cy="24" r="4.6" fill="#0b1120"/></svg>`;
+
+/* Corbeille style Windows 11 */
+const TRASH_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block"><defs><linearGradient id="trg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe6ff" stop-opacity=".85"/><stop offset="1" stop-color="#7fb3e8" stop-opacity=".55"/></linearGradient></defs><path d="M14 14 L34 14 L31.5 42 Q31.4 44 29 44 L19 44 Q16.6 44 16.5 42 Z" fill="url(#trg)" stroke="#a9d1f5" stroke-width="1.2"/><rect x="11" y="9.5" width="26" height="4.5" rx="2.2" fill="#bcd9f7"/><rect x="20" y="6" width="8" height="3.5" rx="1.7" fill="#bcd9f7"/><path d="M20 21 L24 17.5 L28 21 L26.4 21 L26.4 24.5 L21.6 24.5 L21.6 21 Z" fill="#3d8fd6"/><path d="M17.8 30 L22 27.6 L22 30.8 L20.6 30.8 L19 34.6 L24 37.4 L29 34.6 L27.4 30.8 L26 30.8 L26 27.6 L30.2 30 L28.4 39.4 L19.6 39.4 Z" fill="#3d8fd6" opacity=".85"/></svg>`;
+
 const APPS = {
   browser:  { title: 'Navigateur',      icon: 'fa-globe',       color: 'from-sky-500 to-blue-600',      w: 960, h: 640, render: renderBrowser,  init: initBrowser, svg: EDGE_SVG },
-  ai:       { title: 'Assistant IA',    icon: 'fa-robot',        color: 'from-emerald-500 to-green-600', w: 680, h: 560, render: renderAI,       init: initAI },
-  games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames },
-  media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia },
-  settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings }
+  ai:       { title: 'Assistant IA',    icon: 'fa-robot',        color: 'from-emerald-500 to-green-600', w: 680, h: 560, render: renderAI,       init: initAI, img: 'https://www.google.com/s2/favicons?domain=openai.com&sz=128' },
+  games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames, img: 'https://www.google.com/s2/favicons?domain=xbox.com&sz=128' },
+  media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia, img: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128' },
+  settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings, svg: GEAR_SVG }
 };
 
 const iconOrder = ['browser', 'ai', 'games', 'media', 'settings'];
@@ -2518,18 +2574,24 @@ function addDeskIcon(id, iconHtml, label, onClick) {
   di.appendChild(b);
   return b;
 }
+/* HTML d'icône d'application : SVG, image de logo réel ou Font Awesome */
+function appIconHtml(app) {
+  if (app.svg) return `<div class="ic-svg">${app.svg}</div>`;
+  if (app.img) return `<div class="ic bg-gradient-to-br ${app.color}">${appGlyph(app)}</div>`;
+  return `<div class="ic bg-gradient-to-br ${app.color}"><i class="fa-solid ${app.icon}"></i></div>`;
+}
 iconOrder.forEach(id => {
   const app = APPS[id];
-  addDeskIcon(id,
-    app.svg ? `<div class="ic-svg">${app.svg}</div>` : `<div class="ic bg-gradient-to-br ${app.color}"><i class="fa-solid ${app.icon}"></i></div>`,
-    app.title, () => openApp(id));
+  addDeskIcon(id, appIconHtml(app), app.title, () => openApp(id));
 });
 /* Applications personnalisées (ajoutées via Paramètres) */
 function renderCustomIcons() {
   di.querySelectorAll('.desk-icon[data-custom]').forEach(x => x.remove());
   CUSTOM_APPS.forEach(a => {
+    let fav = '';
+    try { fav = brandImg(new URL(a.url).hostname); } catch (e) {}
     addDeskIcon('custom_' + a.id,
-      `<div class="ic" style="background:linear-gradient(135deg,#312e81,#7c3aed)"><span style="font-size:24px">${escHtml(a.emoji)}</span></div>`,
+      `<div class="ic" style="background:linear-gradient(135deg,#312e81,#7c3aed)">${fav ? `<img src="${fav}" alt="" style="width:60%;height:60%;object-fit:contain" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${escHtml(a.emoji)}',style:'font-size:24px'}))">` : `<span style="font-size:24px">${escHtml(a.emoji)}</span>`}</div>`,
       escHtml(a.title), () => { openApp('browser'); browserAPI.navigate(a.url); });
     const el = di.lastChild; el.dataset.custom = a.id;
   });
@@ -2541,7 +2603,7 @@ addDeskIcon('addapp',
   'Ajouter', () => { openApp('settings'); toast('Ajoutez vos apps dans « Mes applications »', 'fa-plus', 'text-sky-400'); });
 // Corbeille (décorative, façon Windows)
 addDeskIcon('trash',
-  `<div class="ic" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)"><i class="fa-regular fa-trash-can text-slate-300"></i></div>`,
+  `<div class="ic-svg">${TRASH_SVG}</div>`,
   'Corbeille', () => toast('La corbeille est vide', 'fa-trash-can', 'text-slate-400'));
 
 const smApps = document.getElementById('sm-apps');
@@ -2550,9 +2612,7 @@ iconOrder.forEach(id => {
   const t = document.createElement('div');
   t.className = 'sm-tile';
   t.dataset.name = (app.title + ' ' + (SEARCH_ALIASES[id] || '')).toLowerCase();
-  t.innerHTML = app.svg
-    ? `<div class="ic-svg">${app.svg}</div><span class="lbl">${app.title}</span>`
-    : `<div class="ic bg-gradient-to-br ${app.color}"><i class="fa-solid ${app.icon}"></i></div><span class="lbl">${app.title}</span>`;
+  t.innerHTML = appIconHtml(app) + `<span class="lbl">${app.title}</span>`;
   t.addEventListener('click', () => { toggleStartMenu(false); openApp(id); });
   smApps.appendChild(t);
 });
