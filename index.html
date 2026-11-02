@@ -461,9 +461,7 @@ const LS = {
 const DEFAULT_KEYS = {
   google:   '',
   openrouter: '',
-  openai:   '',
-  groq:     '',
-  anthropic:''
+  groq:     ''
 };
 let apiKeys = LS.getJSON('keys', null);
 if (!apiKeys) { apiKeys = { ...DEFAULT_KEYS }; LS.setJSON('keys', apiKeys); }
@@ -2345,17 +2343,9 @@ function initBrowser(body) {
 ============================================================ */
 const AI_PROVIDERS = {
   pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
-  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
-  groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (llama-4 = vision d\u2019images)' },
-  cerebras: { label: 'Cerebras (ultra-rapide)', cat: 'free', models: ['llama-3.3-70b', 'llama-4-scout-17b', 'llama-4-maverick-17b', 'gpt-oss-120b'], endpoint: 'https://api.cerebras.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.cerebras.ai — ~14 400 requêtes/jour' },
-  mistral: { label: 'Mistral (français 🇫🇷)', cat: 'free', models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'magistral-small-latest'], endpoint: 'https://api.mistral.ai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.mistral.ai — 1 requête/seconde, illimité' },
-  sambanova: { label: 'SambaNova (très rapide)', cat: 'free', models: ['Meta-Llama-4-Scout-17B-16E-Instruct', 'Meta-Llama-4-Maverick-17B-128E-Instruct', 'Llama-3.3-70B-Instruct'], endpoint: 'https://api.sambanova.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.sambanova.ai — quota journalier' },
-  github: { label: 'GitHub Models (⚠️ bloqué navigateur)', cat: 'free', models: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini', 'meta/Llama-4-Scout-17B-16E-Instruct', 'mistralai/mistral-small-2503'], endpoint: 'https://models.github.ai/inference/chat/completions', vision: true, free: 'Token gratuit sur github.com/settings/tokens — MAIS GitHub bloque les appels navigateur (CORS) : à éviter' },
-  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling:free', 'thinkingmachines/inkling-small:free', 'recursive/flint-v1.0:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour' },
-  cohere: { label: 'Cohere (essai gratuit)', cat: 'free', models: ['command-a-03-2025', 'command-r-plus-08-2024', 'command-r7b-12-2024'], endpoint: 'https://api.cohere.ai/compatibility/v1/chat/completions', vision: false, free: 'Clé d\u2019essai gratuite sur dashboard.cohere.com — ~1000 requêtes/mois' },
-  huggingface: { label: 'Hugging Face (crédits/PRO)', cat: 'free', models: ['deepseek-ai/DeepSeek-V3-0324', 'meta-llama/Llama-4-Scout-17B-16E-Instruct', 'Qwen/Qwen2.5-72B-Instruct'], endpoint: 'https://router.huggingface.co/v1/chat/completions', vision: false, free: 'Token sur huggingface.co — nécessite des crédits (payant ou PRO) actuellement' },
-  openai: { label: 'OpenAI', cat: 'paid', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'], endpoint: 'https://api.openai.com/v1/chat/completions', vision: true },
-  anthropic: { label: 'Anthropic (Claude)', cat: 'paid', models: ['claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'], vision: true }
+  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
+  groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (compteur remis à zéro chaque jour, llama-4 = vision)' },
+  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling:free', 'thinkingmachines/inkling-small:free', 'recursive/flint-v1.0:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
 };
 let aiHistory = [];
 let aiProvider = LS.get('ai_provider', 'pollinations');
@@ -2376,7 +2366,7 @@ function aiBumpCount(p) {
   o.n++;
   LS.setJSON(aiQuotaKey(p), o);
 }
-const AI_DAILY_LIMITS = { pollinations: 0, google: 250, openrouter: 50, groq: 14400, cerebras: 14400, mistral: 0, sambanova: 500, github: 50, cohere: 0, huggingface: 0, openai: 0, anthropic: 0 };
+const AI_DAILY_LIMITS = { pollinations: 0, google: 250, groq: 14400, openrouter: 50 };
 
 function renderAI() {
   return `
@@ -2387,7 +2377,10 @@ function renderAI() {
             { g: '⚡ Sans clé — 100% gratuit', cat: 'nokey' },
             { g: '🎁 Gratuit avec clé', cat: 'free' },
             { g: '💳 Payant', cat: 'paid' }
-          ].map(gr => `<optgroup label="${gr.g}">${Object.entries(AI_PROVIDERS).filter(([, p]) => (p.cat || 'free') === gr.cat).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('')}</optgroup>`).join('')}
+          ].map(gr => {
+            const opts = Object.entries(AI_PROVIDERS).filter(([, p]) => (p.cat || 'free') === gr.cat).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('');
+            return opts ? `<optgroup label="${gr.g}">${opts}</optgroup>` : '';
+          }).join('')}
         </select>
         <select id="ai-model" class="field !w-auto !py-1.5"></select>
         <span id="ai-quota" class="text-[10.5px] text-slate-500 flex items-center gap-1" title="Requêtes utilisées aujourd'hui (approximatif)"><i class="fa-solid fa-gauge-high"></i></span>
@@ -2574,18 +2567,6 @@ function initAI(body, rec) {
         if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
         const msg = data.choices?.[0]?.message;
         reply = (typeof msg?.content === 'string' ? msg.content : (msg?.content || []).map(c => c.text || '').join('\n')) || '(réponse vide)';
-      } else if (aiProvider === 'anthropic') {
-        const lastUser = aiHistory[aiHistory.length - 1];
-        const content = [{ type: 'text', text: lastUser.content }];
-        if (image) content.unshift({ type: 'image', source: { type: 'base64', media_type: image.mime, data: image.data } });
-        const res = await fetch(AI_PROVIDERS.anthropic.endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeys.anthropic, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model, max_tokens: 1024, system: 'Tu es un assistant personnel utile et concis. Réponds dans la langue de l\u2019utilisateur.', messages: [{ role: 'user', content }] })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
-        reply = (data.content || []).map(b => b.text || '').join('\n');
       } else {
         /* OpenAI / Groq : format OpenAI (vision via content array) */
         const messages = [{ role: 'system', content: 'Tu es un assistant personnel utile et concis. Réponds dans la langue de l\u2019utilisateur.' }];
@@ -2626,9 +2607,7 @@ function initAI(body, rec) {
     } catch (err) {
       let msg = String(err.message || err);
       if (/FREE_LIMIT/i.test(msg)) msg = 'Limite gratuite atteinte (1 message toutes les 45 s) — patientez un instant puis relancez.';
-      if (/Failed to fetch/i.test(msg)) msg = (aiProvider === 'github')
-        ? 'GitHub Models bloque les appels depuis un navigateur (CORS) — utilisez Pollinations, Gemini, Groq ou OpenRouter à la place.'
-        : 'Connexion impossible (réseau ou CORS) — vérifiez votre connexion internet.';
+      if (/Failed to fetch/i.test(msg)) msg = 'Connexion impossible (réseau ou CORS) — vérifiez votre connexion internet.';
       if (/high demand/i.test(msg)) msg = 'Ce modèle est saturé pour le moment — essayez un autre modèle de la liste (ex : gemini-3.5-flash).';
       if (/image|vision|multimodal|modalit/i.test(msg) && aiImage) msg = 'Ce modèle ne voit pas les images — l\u2019app basculera automatiquement sur un modèle vision (llama-4) au prochain envoi d\u2019image.';
       if (/429|RESOURCE_EXHAUSTED/i.test(msg) && aiProvider === 'google') msg = 'Quota Gemini épuisé pour aujourd\u2019hui (remise à zéro à minuit) — utilisez Pollinations ou Groq en attendant.';
@@ -2650,14 +2629,9 @@ function initAI(body, rec) {
   modelSel.addEventListener('change', () => LS.set('ai_model_' + aiProvider, modelSel.value));
   /* Détection automatique du fournisseur selon le format de la clé collée */
   const KEY_PATTERNS = [
-    [/^github_pat_|^ghp_/, 'github'],
-    [/^hf_/, 'huggingface'],
-    [/^sk-or-v1-/, 'openrouter'],
     [/^(AIza|AQ\.)/, 'google'],
     [/^gsk_/, 'groq'],
-    [/^sk-ant-/, 'anthropic'],
-    [/^csk-/, 'cerebras'],
-    [/^sk-/, 'openai']
+    [/^sk-or-v1-/, 'openrouter']
   ];
   const detectKeyProvider = (key) => {
     const k = (key || '').trim();
@@ -3337,7 +3311,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v12 — Thèmes complets + vision auto</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v13 — IA épurées : Gemini, Groq, OpenRouter, Pollinations</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -3570,9 +3544,7 @@ function initSettings(body) {
     ['pollinations', 'Pollinations — aucune clé nécessaire (gratuit)'],
     ['google', 'Google Gemini (clé gratuite — aistudio.google.com)'],
     ['groq', 'Groq (clé gratuite — console.groq.com)'],
-    ['openrouter', 'OpenRouter (clé gratuite — openrouter.ai)'],
-    ['openai', 'OpenAI (payant)'],
-    ['anthropic', 'Anthropic (payant)']
+    ['openrouter', 'OpenRouter (clé gratuite — openrouter.ai)']
   ];
   keysEl.innerHTML = KEY_PROVIDERS.map(([k, label]) => k === 'pollinations'
     ? `<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/20 text-[11.5px]"><i class="fa-solid fa-circle-check text-emerald-400"></i> ${label} — déjà prêt à l\u2019emploi</div>`
