@@ -2342,10 +2342,10 @@ function initBrowser(body) {
    APP : ASSISTANT IA MULTI-PROVIDER
 ============================================================ */
 const AI_PROVIDERS = {
-  pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
-  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
+  pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai-fast', 'openai'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (GPT-OSS 20B, 1 réponse/45 s, relance auto)' },
+  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-4-argon'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
   groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (compteur remis à zéro chaque jour, llama-4 = vision)' },
-  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'xingchen-agi/xing4.0-29b-a4b:free'], vision: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
+  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'cohere/north-mini-code:free', 'dots-studio/dots-3-note-preview:free'], vision: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
 };
 let aiHistory = [];
 let aiProvider = LS.get('ai_provider', 'pollinations');
@@ -2467,7 +2467,7 @@ function initAI(body, rec) {
   if (aiHistory.length) {
     aiHistory.slice(-40).forEach(h => addMsg(h.role === 'user' ? 'user' : 'ai', mdToHtml(h.content)));
   } else {
-    addMsg('ai', 'Bonjour. Je suis votre assistant IA. <b>Pollinations est 100% gratuit et fonctionne sans aucune clé</b> — sélectionnez-le dans la liste. Google Gemini, Groq et OpenRouter sont gratuits aussi (clé à créer sur leur site). Vous pouvez m\'envoyer des images avec le bouton 📷 : je les verrai et les décrirai. Posez-moi une question.');
+    addMsg('ai', 'Bonjour. Je suis votre assistant IA. <b>Pollinations est 100% gratuit et fonctionne sans aucune clé</b> — sélectionnez-le dans la liste. Pour Gemini, Groq ou OpenRouter : <b>collez votre clé une seule fois dans le champ « Clé »</b>, elle s\'enregistre automatiquement dans votre navigateur. Vous pouvez m\'envoyer des images avec le bouton 📷 : je les verrai et les décrirai. Posez-moi une question.');
   }
 
   /* Jointure d'image */
@@ -2501,7 +2501,7 @@ function initAI(body, rec) {
        bascule automatiquement sur un modèle vision du même fournisseur */
     const VISION_MODELS = {
       groq: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct'],
-      google: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
+      google: ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-4-argon']
     };
     if (aiImage && VISION_MODELS[aiProvider] && !VISION_MODELS[aiProvider].includes(model)) {
       model = VISION_MODELS[aiProvider][0];
@@ -3301,7 +3301,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v13 — IA épurées : Gemini, Groq, OpenRouter, Pollinations</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v14 — IA retestées une par une : 7 modèles Gemini, 6 modèles OpenRouter gratuits, Groq, Pollinations sans clé</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
