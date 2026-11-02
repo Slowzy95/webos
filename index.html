@@ -2307,18 +2307,18 @@ function initBrowser(body) {
    APP : ASSISTANT IA MULTI-PROVIDER
 ============================================================ */
 const AI_PROVIDERS = {
-  pollinations: { label: 'Pollinations — IA gratuite SANS clé ⚡', models: ['openai', 'openai-fast', 'openai-large', 'mistral', 'qwen-coder'], endpoint: 'https://text.pollinations.ai/openai', vision: true, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit, vision d\'images incluse' },
-  google: { label: 'Google Gemini (gratuit)', models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'], vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
-  groq: { label: 'Groq (gratuit, très rapide)', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour' },
-  cerebras: { label: 'Cerebras (gratuit, ultra-rapide)', models: ['llama-3.3-70b', 'llama-4-scout-17b', 'llama-4-maverick-17b', 'gpt-oss-120b'], endpoint: 'https://api.cerebras.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.cerebras.ai — ~14 400 requêtes/jour' },
-  mistral: { label: 'Mistral (gratuit, français 🇫🇷)', models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'magistral-small-latest'], endpoint: 'https://api.mistral.ai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.mistral.ai — 1 requête/seconde, illimité' },
-  sambanova: { label: 'SambaNova (gratuit, très rapide)', models: ['Meta-Llama-4-Scout-17B-16E-Instruct', 'Meta-Llama-4-Maverick-17B-128E-Instruct', 'Llama-3.3-70B-Instruct'], endpoint: 'https://api.sambanova.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.sambanova.ai — quota journalier' },
-  github: { label: 'GitHub Models (gratuit avec compte GitHub)', models: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini', 'meta/Llama-4-Scout-17B-16E-Instruct', 'mistralai/mistral-small-2503'], endpoint: 'https://models.github.ai/inference/chat/completions', vision: true, free: 'Token gratuit sur github.com/settings/tokens — ~50 requêtes/jour' },
-  cohere: { label: 'Cohere (clé d\u2019essai gratuite)', models: ['command-a-03-2025', 'command-r-plus-08-2024', 'command-r7b-12-2024'], endpoint: 'https://api.cohere.ai/compatibility/v1/chat/completions', vision: false, free: 'Clé d\u2019essai gratuite sur dashboard.cohere.com — ~1000 requêtes/mois' },
-  huggingface: { label: 'Hugging Face (gratuit)', models: ['deepseek-ai/DeepSeek-V3-0324', 'meta-llama/Llama-4-Scout-17B-16E-Instruct', 'Qwen/Qwen2.5-72B-Instruct'], endpoint: 'https://router.huggingface.co/v1/chat/completions', vision: false, free: 'Token gratuit sur huggingface.co/settings/tokens — ~1000 crédits/mois' },
-  openrouter: { label: 'OpenRouter (modèles gratuits)', models: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-4-scout:free', 'qwen/qwen2.5-vl-72b-instruct:free', 'deepseek/deepseek-r1:free', 'mistralai/mistral-small-3.1-24b-instruct:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour' },
-  openai: { label: 'OpenAI (payant)', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'], endpoint: 'https://api.openai.com/v1/chat/completions', vision: true },
-  anthropic: { label: 'Anthropic (payant)', models: ['claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'], vision: true }
+  pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
+  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
+  groq: { label: 'Groq (très rapide)', cat: 'free', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour' },
+  cerebras: { label: 'Cerebras (ultra-rapide)', cat: 'free', models: ['llama-3.3-70b', 'llama-4-scout-17b', 'llama-4-maverick-17b', 'gpt-oss-120b'], endpoint: 'https://api.cerebras.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.cerebras.ai — ~14 400 requêtes/jour' },
+  mistral: { label: 'Mistral (français 🇫🇷)', cat: 'free', models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'magistral-small-latest'], endpoint: 'https://api.mistral.ai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.mistral.ai — 1 requête/seconde, illimité' },
+  sambanova: { label: 'SambaNova (très rapide)', cat: 'free', models: ['Meta-Llama-4-Scout-17B-16E-Instruct', 'Meta-Llama-4-Maverick-17B-128E-Instruct', 'Llama-3.3-70B-Instruct'], endpoint: 'https://api.sambanova.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.sambanova.ai — quota journalier' },
+  github: { label: 'GitHub Models (⚠️ bloqué navigateur)', cat: 'free', models: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini', 'meta/Llama-4-Scout-17B-16E-Instruct', 'mistralai/mistral-small-2503'], endpoint: 'https://models.github.ai/inference/chat/completions', vision: true, free: 'Token gratuit sur github.com/settings/tokens — MAIS GitHub bloque les appels navigateur (CORS) : à éviter' },
+  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling:free', 'thinkingmachines/inkling-small:free', 'recursive/flint-v1.0:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour' },
+  cohere: { label: 'Cohere (essai gratuit)', cat: 'free', models: ['command-a-03-2025', 'command-r-plus-08-2024', 'command-r7b-12-2024'], endpoint: 'https://api.cohere.ai/compatibility/v1/chat/completions', vision: false, free: 'Clé d\u2019essai gratuite sur dashboard.cohere.com — ~1000 requêtes/mois' },
+  huggingface: { label: 'Hugging Face (crédits/PRO)', cat: 'free', models: ['deepseek-ai/DeepSeek-V3-0324', 'meta-llama/Llama-4-Scout-17B-16E-Instruct', 'Qwen/Qwen2.5-72B-Instruct'], endpoint: 'https://router.huggingface.co/v1/chat/completions', vision: false, free: 'Token sur huggingface.co — nécessite des crédits (payant ou PRO) actuellement' },
+  openai: { label: 'OpenAI', cat: 'paid', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'], endpoint: 'https://api.openai.com/v1/chat/completions', vision: true },
+  anthropic: { label: 'Anthropic (Claude)', cat: 'paid', models: ['claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'], vision: true }
 };
 let aiHistory = [];
 let aiProvider = LS.get('ai_provider', 'pollinations');
@@ -2346,7 +2346,11 @@ function renderAI() {
     <div class="flex flex-col h-full">
       <div class="flex-none px-3 py-2.5 border-b border-white/8 bg-white/3 flex items-center gap-2 flex-wrap">
         <select id="ai-provider" class="field !w-auto !py-1.5">
-          ${Object.entries(AI_PROVIDERS).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('')}
+          ${[
+            { g: '⚡ Sans clé — 100% gratuit', cat: 'nokey' },
+            { g: '🎁 Gratuit avec clé', cat: 'free' },
+            { g: '💳 Payant', cat: 'paid' }
+          ].map(gr => `<optgroup label="${gr.g}">${Object.entries(AI_PROVIDERS).filter(([, p]) => (p.cat || 'free') === gr.cat).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('')}</optgroup>`).join('')}
         </select>
         <select id="ai-model" class="field !w-auto !py-1.5"></select>
         <span id="ai-quota" class="text-[10.5px] text-slate-500 flex items-center gap-1" title="Requêtes utilisées aujourd'hui (approximatif)"><i class="fa-solid fa-gauge-high"></i></span>
@@ -2573,6 +2577,11 @@ function initAI(body, rec) {
     } catch (err) {
       let msg = String(err.message || err);
       if (/FREE_LIMIT/i.test(msg)) msg = 'Limite gratuite atteinte (1 message toutes les 45 s) — patientez un instant puis relancez.';
+      if (/Failed to fetch/i.test(msg)) msg = (aiProvider === 'github')
+        ? 'GitHub Models bloque les appels depuis un navigateur (CORS) — utilisez Pollinations, Gemini, Groq ou OpenRouter à la place.'
+        : 'Connexion impossible (réseau ou CORS) — vérifiez votre connexion internet.';
+      if (/high demand/i.test(msg)) msg = 'Ce modèle est saturé pour le moment — essayez un autre modèle de la liste (ex : gemini-3.5-flash).';
+      if (/429|rate limit|quota/i.test(msg) && aiProvider === 'openrouter') msg = 'Quota gratuit OpenRouter épuisé pour aujourd\'hui (remise à zéro demain) — ou changez de modèle gratuit.';
       typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
     }
@@ -2588,20 +2597,47 @@ function initAI(body, rec) {
   });
   providerSel.addEventListener('change', () => { aiProvider = providerSel.value; LS.set('ai_provider', aiProvider); refreshProviderUI(); });
   modelSel.addEventListener('change', () => LS.set('ai_model_' + aiProvider, modelSel.value));
+  /* Détection automatique du fournisseur selon le format de la clé collée */
+  const KEY_PATTERNS = [
+    [/^github_pat_|^ghp_/, 'github'],
+    [/^hf_/, 'huggingface'],
+    [/^sk-or-v1-/, 'openrouter'],
+    [/^(AIza|AQ\.)/, 'google'],
+    [/^gsk_/, 'groq'],
+    [/^sk-ant-/, 'anthropic'],
+    [/^csk-/, 'cerebras'],
+    [/^sk-/, 'openai']
+  ];
+  const detectKeyProvider = (key) => {
+    const k = (key || '').trim();
+    if (!k) return null;
+    for (const [re, p] of KEY_PATTERNS) if (re.test(k)) return p;
+    return null;
+  };
+  const saveKeySmart = (showToast) => {
+    const key = keyInput.value.trim();
+    const detected = detectKeyProvider(key);
+    if (detected && detected !== aiProvider && AI_PROVIDERS[detected]) {
+      apiKeys[detected] = key;
+      LS.setJSON('keys', apiKeys);
+      aiProvider = detected;
+      LS.set('ai_provider', aiProvider);
+      providerSel.value = aiProvider;
+      refreshProviderUI();
+      if (showToast) toast('Clé ' + AI_PROVIDERS[detected].label + ' reconnue et enregistrée automatiquement', 'fa-wand-magic-sparkles', 'text-emerald-400');
+    } else {
+      apiKeys[aiProvider] = key;
+      LS.setJSON('keys', apiKeys);
+      if (showToast) toast('Clé API ' + AI_PROVIDERS[aiProvider].label + ' sauvegardée localement');
+    }
+  };
   /* Enregistrement AUTOMATIQUE de la clé dès la frappe (plus besoin de cliquer sur « Clé ») */
   let keySaveTimer = null;
   keyInput.addEventListener('input', () => {
     clearTimeout(keySaveTimer);
-    keySaveTimer = setTimeout(() => {
-      apiKeys[aiProvider] = keyInput.value.trim();
-      LS.setJSON('keys', apiKeys);
-    }, 400);
+    keySaveTimer = setTimeout(() => saveKeySmart(false), 500);
   });
-  body.querySelector('#ai-savekey').addEventListener('click', () => {
-    apiKeys[aiProvider] = keyInput.value.trim();
-    LS.setJSON('keys', apiKeys);
-    toast('Clé API ' + AI_PROVIDERS[aiProvider].label + ' sauvegardée localement');
-  });
+  body.querySelector('#ai-savekey').addEventListener('click', () => saveKeySmart(true));
   body.querySelector('#ai-eye').addEventListener('click', () => {
     keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
     body.querySelector('#ai-eye i').className = keyInput.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
@@ -3250,7 +3286,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v10 — Skins profonds + 10 IA gratuites</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v11 — Catégories IA + clés auto-détectées</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
