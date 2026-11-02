@@ -1514,6 +1514,8 @@ function initBrowser(body) {
      les requêtes POST que les proxys CORS publics refusent).
   ============================================================ */
   const YT_MAX = 1000;
+  /* Clé API publique YouTube (stable, utilisée par le client web) */
+  const YT_API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
   let ytScroll = null; /* { endpoint, token, count, key } */
   let ytLoading = false;
   const ytSeen = new Set();
@@ -1657,12 +1659,25 @@ function initBrowser(body) {
       return t;
     })());
     try { html = await Promise.any(attempts); } catch (e) { html = null; }
-    if (!html) {
-      /* Repli : récupérer la page via le Service Worker du proxy (comme la pagination) */
+    if (!html && isSearch) {
+      /* Repli : recherche via l'API youtubei (POST) à travers le Service Worker
+         du proxy — le JSON retourné contient les mêmes champs que la page HTML. */
       try {
-        const rep = await ytProxyFetch(u, { signal: AbortSignal.timeout(20000) });
-        const t = await rep.text();
-        if (rep.ok && t.length > 10000) html = t;
+        const qu = new URL(u);
+        const body = {
+          context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr', gl: 'FR' } },
+          query: qu.searchParams.get('search_query') || ''
+        };
+        const sp = qu.searchParams.get('sp');
+        if (sp) body.params = sp;
+        const rep = await ytProxyFetch('https://www.youtube.com/youtubei/v1/search?key=' + YT_API_KEY + '&prettyPrint=false', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body), signal: AbortSignal.timeout(20000)
+        });
+        if (rep.ok) {
+          const data = await rep.json();
+          html = JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
+        }
       } catch (e) {}
     }
     if (!html) {
