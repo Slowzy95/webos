@@ -2345,7 +2345,7 @@ const AI_PROVIDERS = {
   pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
   google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
   groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (compteur remis à zéro chaque jour, llama-4 = vision)' },
-  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling:free', 'thinkingmachines/inkling-small:free', 'recursive/flint-v1.0:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
+  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'liquid/lfm-2.5-2.6b:free', 'recursive/flint-v1.0:free', 'xingchen-agi/xing4.0-29b-a4b:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
 };
 let aiHistory = [];
 let aiProvider = LS.get('ai_provider', 'pollinations');
@@ -2453,9 +2453,11 @@ function initAI(body, rec) {
     if (p.dynamic && !p._fetched) {
       p._fetched = true;
       fetch('https://openrouter.ai/api/v1/models').then(r => r.json()).then(d => {
-        const free = (d.data || []).filter(m => (m.pricing?.prompt === '0' || m.id.endsWith(':free')));
+        /* modèles gratuits, sans ceux réservés aux agents (thinkingmachines), NVIDIA en priorité */
+        const free = (d.data || []).filter(m => (m.pricing?.prompt === '0' || m.id.endsWith(':free')) && !m.id.startsWith('thinkingmachines/'));
         if (free.length) {
-          p.models = free.slice(0, 60).map(m => m.id);
+          free.sort((a, b) => (b.id.includes('nemotron') ? 1 : 0) - (a.id.includes('nemotron') ? 1 : 0));
+          p.models = free.slice(0, 40).map(m => m.id);
           const cur = modelSel.value;
           modelSel.innerHTML = p.models.map(m => `<option value="${m}">${m}</option>`).join('');
           modelSel.value = p.models.includes(cur) ? cur : p.models[0];
@@ -2561,7 +2563,8 @@ function initAI(body, rec) {
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKeys.openrouter },
-          body: JSON.stringify({ model, messages })
+          /* liste de secours (max 3) : si un modèle gratuit est saturé, OpenRouter bascule tout seul sur le suivant */
+          body: JSON.stringify({ model, models: [model, ...AI_PROVIDERS.openrouter.models.filter(m => m !== model)].slice(0, 3), messages })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
@@ -2611,7 +2614,7 @@ function initAI(body, rec) {
       if (/high demand/i.test(msg)) msg = 'Ce modèle est saturé pour le moment — essayez un autre modèle de la liste (ex : gemini-3.5-flash).';
       if (/image|vision|multimodal|modalit/i.test(msg) && aiImage) msg = 'Ce modèle ne voit pas les images — l\u2019app basculera automatiquement sur un modèle vision (llama-4) au prochain envoi d\u2019image.';
       if (/429|RESOURCE_EXHAUSTED/i.test(msg) && aiProvider === 'google') msg = 'Quota Gemini épuisé pour aujourd\u2019hui (remise à zéro à minuit) — utilisez Pollinations ou Groq en attendant.';
-      if (/429|rate limit|quota/i.test(msg) && aiProvider === 'openrouter') msg = 'Quota gratuit OpenRouter épuisé pour aujourd\'hui (remise à zéro demain) — ou changez de modèle gratuit.';
+      if (/Provider returned error/i.test(msg) && aiProvider === 'openrouter') msg = 'Les modèles gratuits OpenRouter sont tous saturés en ce moment — réessayez dans quelques minutes, ou utilisez Gemini / Groq.';
       typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
     }
