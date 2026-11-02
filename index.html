@@ -318,7 +318,9 @@ let apiKeys = LS.getJSON('keys', null);
 if (!apiKeys) { apiKeys = { ...DEFAULT_KEYS }; LS.setJSON('keys', apiKeys); }
 else apiKeys = { ...DEFAULT_KEYS, ...apiKeys }; /* ajoute les nouveaux fournisseurs aux anciennes sauvegardes */
 
-let panicUrl = LS.get('panic_url', 'https://fr.wikipedia.org/wiki/Accueil');
+let panicUrl = LS.get('panic_url', 'https://www.google.com/');
+/* Migration : l'ancien défaut (Wikipédia) devient Google — page de recherche avec barre de texte */
+if (panicUrl === 'https://fr.wikipedia.org/wiki/Accueil') { panicUrl = 'https://www.google.com/'; LS.set('panic_url', panicUrl); }
 let panicKey = LS.get('panic_key', 'Escape');
 
 /* Applications personnalisées ajoutées par l'utilisateur */
@@ -712,9 +714,49 @@ const WALLPAPERS = [
   { id: 'day-peach',  name: 'Pêche douce',      cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#fecdd3 0%,#fed7aa 60%,#fef3c7 100%)', preview: 'linear-gradient(135deg,#fecdd3,#fed7aa)' },
   { id: 'day-lavande',name: 'Lavande',          cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#ddd6fe 0%,#bfdbfe 100%)', preview: 'linear-gradient(135deg,#ddd6fe,#bfdbfe)' },
   { id: 'day-azure',  name: 'Azur matinal',     cat: 'Clair', type: 'css', css: 'linear-gradient(160deg,#0ea5e9 0%,#38bdf8 45%,#f0f9ff 100%)', preview: 'linear-gradient(160deg,#0ea5e9,#f0f9ff)' },
-  { id: 'day-candy',  name: 'Bonbon (animé)',   cat: 'Clair', type: 'css', css: 'linear-gradient(270deg,#fce7f3,#e0e7ff,#d1fae5,#fef9c3,#fce7f3)', anim: true, preview: 'linear-gradient(135deg,#e0e7ff,#d1fae5)' }
+  { id: 'day-candy',  name: 'Bonbon (animé)',   cat: 'Clair', type: 'css', css: 'linear-gradient(270deg,#fce7f3,#e0e7ff,#d1fae5,#fef9c3,#fce7f3)', anim: true, preview: 'linear-gradient(135deg,#e0e7ff,#d1fae5)' },
+  { id: 'day-ocean',  name: 'Océan clair',      cat: 'Clair', type: 'css', css: 'linear-gradient(180deg,#0ea5e9 0%,#7dd3fc 45%,#ccfbf1 100%)', preview: 'linear-gradient(180deg,#0ea5e9,#ccfbf1)' },
+  { id: 'day-citron', name: 'Citron doux',      cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#fef9c3 0%,#d9f99d 60%,#bbf7d0 100%)', preview: 'linear-gradient(135deg,#fef9c3,#bbf7d0)' },
+  { id: 'day-rose',   name: 'Rose poudré',      cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#fecdd3 0%,#fbcfe8 55%,#e9d5ff 100%)', preview: 'linear-gradient(135deg,#fecdd3,#e9d5ff)' },
+  { id: 'day-foret',  name: 'Forêt lumineuse',  cat: 'Clair', type: 'css', css: 'linear-gradient(180deg,#d9f99d 0%,#a7f3d0 55%,#86efac 100%)', preview: 'linear-gradient(180deg,#d9f99d,#86efac)' },
+  { id: 'day-perle',  name: 'Perle nacrée',     cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#f8fafc 0%,#e2e8f0 50%,#f1f5f9 100%)', preview: 'linear-gradient(135deg,#f8fafc,#e2e8f0)' },
+  { id: 'day-turquoise', name: 'Turquoise',    cat: 'Clair', type: 'css', css: 'linear-gradient(135deg,#a5f3fc 0%,#99f6e4 100%)', preview: 'linear-gradient(135deg,#a5f3fc,#99f6e4)' },
+  { id: 'day-coucher',name: 'Coucher pastel',   cat: 'Clair', type: 'css', css: 'linear-gradient(180deg,#fde68a 0%,#fda4af 100%)', preview: 'linear-gradient(180deg,#fde68a,#fda4af)' },
+  { id: 'day-arc',    name: 'Arc-en-ciel doux (animé)', cat: 'Clair', type: 'css', css: 'linear-gradient(270deg,#fbcfe8,#fed7aa,#fef3c7,#d1fae5,#bfdbfe,#fbcfe8)', anim: true, preview: 'linear-gradient(135deg,#fed7aa,#d1fae5)' },
+  { id: 'day-blueprint', name: 'Bleu papier',   cat: 'Clair', type: 'css', css: 'linear-gradient(160deg,#dbeafe 0%,#e0f2fe 60%,#f0f9ff 100%)', preview: 'linear-gradient(160deg,#dbeafe,#f0f9ff)' }
 ];
 const WALL_CATS = [...new Set(WALLPAPERS.map(w => w.cat))];
+/* ---- Fonds d'écran partagés par la communauté (catégorie « Membres ») ----
+   Stockage partagé gratuit sans compte : tout le monde peut publier un fond,
+   il apparaît immédiatement pour tous les visiteurs dans la catégorie Membres. */
+const SHARED_WALLS_API = 'https://api.restful-api.dev/objects/ff808181a09d98f701a19e29ebde1433';
+let MEMBER_WALLS = LS.getJSON('memberwalls', []);
+function memberWallsFetch() {
+  return fetch(SHARED_WALLS_API).then(r => r.json()).then(o => {
+    const walls = (o && o.data && Array.isArray(o.data.walls)) ? o.data.walls : [];
+    MEMBER_WALLS = walls.slice(0, 60);
+    LS.setJSON('memberwalls', MEMBER_WALLS);
+    return MEMBER_WALLS;
+  }).catch(() => MEMBER_WALLS);
+}
+async function memberWallPublish(name, url) {
+  const cur = await memberWallsFetch();
+  const list = cur.filter(w => w.url !== url);
+  list.unshift({ name: name || 'Fond d\u2019un membre', url, by: 'Membre', ts: Date.now() });
+  const trimmed = list.slice(0, 60);
+  const rep = await fetch(SHARED_WALLS_API, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'webos-walls', data: { walls: trimmed } })
+  });
+  if (!rep.ok) throw new Error('publication impossible');
+  MEMBER_WALLS = trimmed;
+  LS.setJSON('memberwalls', trimmed);
+  return trimmed;
+}
+function applyMemberWall(url) {
+  applyWallpaper({ id: 'member:' + url, type: 'image', url });
+  toast('Fond d\u2019écran des membres appliqué', 'fa-users', 'text-pink-400');
+}
 // Préchargement des images pour un changement instantané
 WALLPAPERS.filter(w => w.type === 'image').forEach(w => { const im = new Image(); im.src = w.url; });
 
@@ -726,6 +768,12 @@ const _arrow = (c, glow) => `<svg xmlns="http://www.w3.org/2000/svg" width="28" 
 const _pointer = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="10" fill="${c}" stroke="#0b1120" stroke-width="2"/><circle cx="15" cy="15" r="3.5" fill="#0b1120"/></svg>`;
 const _heart = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M15 25 C8 19 4 15 4 10.5 C4 7 6.5 5 9.2 5 C11.4 5 13.6 6.3 15 8.3 C16.4 6.3 18.6 5 20.8 5 C23.5 5 26 7 26 10.5 C26 15 22 19 15 25 Z" fill="${c}" stroke="#0b1120" stroke-width="1.8"/></svg>`;
 const _text = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26"><path d="M6 2v22M10 5H2M10 21H2" stroke="${c}" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`;
+/* Curseurs animé supplémentaires : épée, étoile magique, fleur sakura, griffe, tourbillon */
+const _star = (c) => { const pts = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 5.5 : 13; pts.push((15 + r * Math.cos(a)).toFixed(1) + ',' + (15 + r * Math.sin(a)).toFixed(1)); } return `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><polygon points="${pts.join(' ')}" fill="${c}" stroke="#0b1120" stroke-width="1.6" stroke-linejoin="round"/></svg>`; };
+const _sword = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 3 L21 10 L10 21 Z" fill="${c}" stroke="#0b1120" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 22 L18 16" stroke="#fbbf24" stroke-width="3.4" stroke-linecap="round"/><path d="M14 25 L21 18 L26 23 L19 30 Z" fill="#7c2d12" stroke="#0b1120" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+const _flower = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><g fill="${c}" stroke="#0b1120" stroke-width="1.2"><circle cx="15" cy="6" r="5"/><circle cx="23.5" cy="12" r="5"/><circle cx="20" cy="22.5" r="5"/><circle cx="10" cy="22.5" r="5"/><circle cx="6.5" cy="12" r="5"/></g><circle cx="15" cy="14.5" r="4" fill="#fbbf24" stroke="#0b1120" stroke-width="1.2"/></svg>`;
+const _paw = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><g fill="${c}" stroke="#0b1120" stroke-width="1.2"><ellipse cx="15" cy="19" rx="8" ry="6.5"/><ellipse cx="5.5" cy="10" rx="3.4" ry="4.4"/><ellipse cx="15" cy="6.5" rx="3.4" ry="4.6"/><ellipse cx="24.5" cy="10" rx="3.4" ry="4.4"/></g></svg>`;
+const _swirl = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="11.5" fill="none" stroke="${c}" stroke-width="3.2"/><path d="M15 15 a5.5 5.5 0 1 0 5.5 -5.5" stroke="${c}" stroke-width="3.2" fill="none" stroke-linecap="round"/></svg>`;
 const CURSOR_THEMES = {
   default:  { name: 'Classique (Windows)', icon: 'fa-arrow-pointer' },
   neon:     { name: 'Néon cyan',   icon: 'fa-bolt',            arrow: _arrow('#38bdf8', '#38bdf8'), pointer: _pointer('#38bdf8'), text: _text('#38bdf8') },
@@ -733,7 +781,12 @@ const CURSOR_THEMES = {
   katana:   { name: 'Katana rouge', icon: 'fa-khanda',          arrow: _arrow('#f87171', '#ef4444'), pointer: _pointer('#f87171'), text: _text('#f87171') },
   gamer:    { name: 'Gamer vert',   icon: 'fa-gamepad',         arrow: _arrow('#4ade80', '#22c55e'), pointer: _pointer('#4ade80'), text: _text('#4ade80') },
   gold:     { name: 'Or royal',     icon: 'fa-crown',           arrow: _arrow('#fbbf24', '#f59e0b'), pointer: _pointer('#fbbf24'), text: _text('#fbbf24') },
-  violet:   { name: 'Violet animé', icon: 'fa-wand-magic-sparkles', arrow: _arrow('#c084fc', '#a855f7'), pointer: _heart('#c084fc'), text: _text('#c084fc') }
+  violet:   { name: 'Violet animé', icon: 'fa-wand-magic-sparkles', arrow: _arrow('#c084fc', '#a855f7'), pointer: _heart('#c084fc'), text: _text('#c084fc') },
+  epee:     { name: 'Épée d\u2019animé ⚔', icon: 'fa-khanda',  arrow: _sword('#e2e8f0'), pointer: _sword('#7dd3fc'), text: _text('#7dd3fc') },
+  etoile:   { name: 'Étoile magique ✦', icon: 'fa-star',       arrow: _star('#fbbf24'), pointer: _star('#c084fc'), text: _text('#fbbf24') },
+  fleur:    { name: 'Fleur sakura 🌸', icon: 'fa-spa',          arrow: _flower('#f9a8d4'), pointer: _flower('#fda4af'), text: _text('#f9a8d4') },
+  griffe:   { name: 'Griffe de chat 🐾', icon: 'fa-paw',        arrow: _paw('#fdba74'), pointer: _paw('#f87171'), text: _text('#fdba74') },
+  tourbillon: { name: 'Tourbillon 🌀', icon: 'fa-hurricane',    arrow: _swirl('#38bdf8'), pointer: _swirl('#a78bfa'), text: _text('#38bdf8') }
 };
 function setCursorTheme(themeId) {
   let st = document.getElementById('cursor-style');
@@ -851,6 +904,11 @@ function applyWallpaper(w) {
 }
 
 function setWallpaperById(id) {
+  /* Fonds partagé par un membre : id = « member:<url> » */
+  if (typeof id === 'string' && id.startsWith('member:')) {
+    applyWallpaper({ id, type: 'image', url: id.slice(7) });
+    return;
+  }
   const w = WALLPAPERS.find(x => x.id === id) || WALLPAPERS[0];
   applyWallpaper(w);
 }
@@ -1003,10 +1061,17 @@ function openApp(appId) {
   windows.set(appId, rec);
   focusedApp = appId;
 
-  el.querySelector('[data-act="min"]').addEventListener('click', () => toggleMinimize(appId));
-  el.querySelector('[data-act="max"]').addEventListener('click', () => toggleMaximize(appId));
-  el.querySelector('[data-act="reload"]').addEventListener('click', () => reloadApp(appId));
-  el.querySelector('[data-act="close"]').addEventListener('click', () => closeApp(appId));
+  /* Boutons de fenêtre : réaction INSTANTANÉE au pointerdown (même en pleine frappe ou en jeu) */
+  const bindWinBtn = (act, fn) => {
+    const b = el.querySelector(`[data-act="${act}"]`);
+    if (!b) return;
+    const h = (e) => { if (e.button !== 0 && e.type === 'pointerdown') return; e.preventDefault(); e.stopPropagation(); fn(); };
+    b.addEventListener('pointerdown', h);
+  };
+  bindWinBtn('min', () => toggleMinimize(appId));
+  bindWinBtn('max', () => toggleMaximize(appId));
+  bindWinBtn('reload', () => reloadApp(appId));
+  bindWinBtn('close', () => closeApp(appId));
   el.addEventListener('pointerdown', () => focusWindow(appId));
   el.querySelector('.win-header').addEventListener('dblclick', (e) => { if (!e.target.closest('button')) toggleMaximize(appId); });
 
@@ -1100,34 +1165,50 @@ function makeDraggable(el, appId) {
     const move = (ev) => {
       el.style.left = Math.max(-rect.width + 90, Math.min(ev.clientX - dx, desk.width - 90)) + 'px';
       el.style.top = Math.max(0, Math.min(ev.clientY - dy, desk.height - 42)) + 'px';
-      /* Détection du bord : gauche = moitié gauche, droite = moitié droite, haut = plein écran */
+      /* Détection du bord : gauche/droite = moitié, haut = plein écran, coins = quart d'écran (comme Windows) */
       const E = 14;
+      const nearL = ev.clientX <= E, nearR = ev.clientX >= desk.width - E;
+      const nearT = ev.clientY <= E, nearB = ev.clientY >= desk.height - E;
       snapZone = null;
-      if (ev.clientY <= E) snapZone = 'max';
-      else if (ev.clientX <= E) snapZone = 'left';
-      else if (ev.clientX >= desk.width - E) snapZone = 'right';
-      if (snapZone) {
-        snapPreview.style.display = 'block';
-        if (snapZone === 'max') snapPreview.style.cssText = 'display:block;position:fixed;z-index:9000;left:6px;top:6px;width:' + (desk.width - 12) + 'px;height:' + (desk.height - 12) + 'px;border-radius:10px;background:rgba(56,189,248,.16);border:1.5px solid rgba(56,189,248,.7);pointer-events:none';
-        else if (snapZone === 'left') snapPreview.style.cssText = 'display:block;position:fixed;z-index:9000;left:6px;top:6px;width:' + (desk.width / 2 - 9) + 'px;height:' + (desk.height - 12) + 'px;border-radius:10px;background:rgba(56,189,248,.16);border:1.5px solid rgba(56,189,248,.7);pointer-events:none';
-        else snapPreview.style.cssText = 'display:block;position:fixed;z-index:9000;left:' + (desk.width / 2 + 3) + 'px;top:6px;width:' + (desk.width / 2 - 9) + 'px;height:' + (desk.height - 12) + 'px;border-radius:10px;background:rgba(56,189,248,.16);border:1.5px solid rgba(56,189,248,.7);pointer-events:none';
-      } else snapPreview.style.display = 'none';
+      if (nearT && nearL) snapZone = 'tl';
+      else if (nearT && nearR) snapZone = 'tr';
+      else if (nearB && nearL) snapZone = 'bl';
+      else if (nearB && nearR) snapZone = 'br';
+      else if (nearT) snapZone = 'max';
+      else if (nearL) snapZone = 'left';
+      else if (nearR) snapZone = 'right';
+      const showZone = (x, y, w2, h2) => { snapPreview.style.cssText = `display:block;position:fixed;z-index:9000;left:${x}px;top:${y}px;width:${w2}px;height:${h2}px;border-radius:10px;background:rgba(56,189,248,.16);border:1.5px solid rgba(56,189,248,.7);pointer-events:none`; };
+      if (snapZone === 'max') showZone(6, 6, desk.width - 12, desk.height - 12);
+      else if (snapZone === 'left') showZone(6, 6, desk.width / 2 - 9, desk.height - 12);
+      else if (snapZone === 'right') showZone(desk.width / 2 + 3, 6, desk.width / 2 - 9, desk.height - 12);
+      else if (snapZone === 'tl') showZone(6, 6, desk.width / 2 - 9, desk.height / 2 - 9);
+      else if (snapZone === 'tr') showZone(desk.width / 2 + 3, 6, desk.width / 2 - 9, desk.height / 2 - 9);
+      else if (snapZone === 'bl') showZone(6, desk.height / 2 + 3, desk.width / 2 - 9, desk.height / 2 - 9);
+      else if (snapZone === 'br') showZone(desk.width / 2 + 3, desk.height / 2 + 3, desk.width / 2 - 9, desk.height / 2 - 9);
+      else snapPreview.style.display = 'none';
     };
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       snapPreview.style.display = 'none';
       /* Application de l'aimantation au relâchement (comme Windows) */
-      if (snapZone) {
+          if (snapZone) {
         const w = windows.get(appId);
         if (w) {
           w.prevRect = { l: el.style.left, t: el.style.top, w: el.style.width, h: el.style.height };
           if (snapZone === 'max') { if (!w.maximized) toggleMaximize(appId); }
           else {
-            el.style.left = (snapZone === 'left' ? 0 : desk.width / 2) + 'px';
-            el.style.top = '0px';
-            el.style.width = (desk.width / 2) + 'px';
-            el.style.height = desk.height + 'px';
+            /* Moitiés et quarts d'écran (comme Windows) */
+            const R = {
+              left: [0, 0, desk.width / 2, desk.height],
+              right: [desk.width / 2, 0, desk.width / 2, desk.height],
+              tl: [0, 0, desk.width / 2, desk.height / 2],
+              tr: [desk.width / 2, 0, desk.width / 2, desk.height / 2],
+              bl: [0, desk.height / 2, desk.width / 2, desk.height / 2],
+              br: [desk.width / 2, desk.height / 2, desk.width / 2, desk.height / 2]
+            }[snapZone];
+            el.style.left = R[0] + 'px'; el.style.top = R[1] + 'px';
+            el.style.width = R[2] + 'px'; el.style.height = R[3] + 'px';
           }
         }
       }
@@ -1168,9 +1249,12 @@ function renderTaskbar() {
     b.className = 'tb-icon' + (w ? ' open' : '') + (focusedApp === id && w && !w.minimized ? ' active' : '');
     b.title = app.title;
     b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><div class="run-dot"></div>`;
-    b.addEventListener('click', () => {
-      if (!w) openApp(id);
-      else if (w.minimized) toggleMinimize(id);
+    b.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const w2 = windows.get(id);
+      if (!w2) openApp(id);
+      else if (w2.minimized) toggleMinimize(id);
       else if (focusedApp === id) toggleMinimize(id);
       else focusWindow(id);
     });
@@ -1987,15 +2071,16 @@ function initBrowser(body) {
    APP : ASSISTANT IA MULTI-PROVIDER
 ============================================================ */
 const AI_PROVIDERS = {
+  pollinations: { label: 'Pollinations — IA gratuite SANS clé ⚡', models: ['openai', 'openai-fast', 'openai-large', 'mistral', 'qwen-coder'], endpoint: 'https://text.pollinations.ai/openai', vision: true, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit, vision d\'images incluse' },
   google: { label: 'Google Gemini (gratuit)', models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'], vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
+  groq: { label: 'Groq (gratuit, très rapide)', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — modèles puissants' },
   openrouter: { label: 'OpenRouter (modèles gratuits)', models: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-4-scout:free', 'qwen/qwen2.5-vl-72b-instruct:free', 'deepseek/deepseek-r1:free', 'mistralai/mistral-small-3.1-24b-instruct:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour' },
-  groq: { label: 'Groq (gratuit)', models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'allam-2-7b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', free: 'Clé gratuite sur console.groq.com — très rapide' },
   openai: { label: 'OpenAI (payant)', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'], endpoint: 'https://api.openai.com/v1/chat/completions', vision: true },
   anthropic: { label: 'Anthropic (payant)', models: ['claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'], vision: true }
 };
 let aiHistory = [];
-let aiProvider = LS.get('ai_provider', 'google');
-if (!AI_PROVIDERS[aiProvider]) aiProvider = 'google';
+let aiProvider = LS.get('ai_provider', 'pollinations');
+if (!AI_PROVIDERS[aiProvider]) aiProvider = 'pollinations';
 let aiImage = null; /* image jointe : { mime, data } */
 
 /* Compteur de quota quotidien (approximatif) */
@@ -2012,7 +2097,7 @@ function aiBumpCount(p) {
   o.n++;
   LS.setJSON(aiQuotaKey(p), o);
 }
-const AI_DAILY_LIMITS = { google: 250, openrouter: 50, groq: 14400, openai: 0, anthropic: 0 };
+const AI_DAILY_LIMITS = { pollinations: 0, google: 250, openrouter: 50, groq: 14400, openai: 0, anthropic: 0 };
 
 function renderAI() {
   return `
@@ -2112,7 +2197,13 @@ function initAI(body, rec) {
     msgBox.scrollTop = msgBox.scrollHeight;
     return div;
   };
-  if (aiHistory.length === 0) addMsg('ai', 'Bonjour. Je suis votre assistant IA. <b>Google Gemini et OpenRouter sont gratuits</b> (clé à créer sur aistudio.google.com ou openrouter.ai). Vous pouvez aussi m\'envoyer des images avec le bouton 📷 : je les verrai et les décrirai. Posez-moi une question.');
+  /* Restaure la conversation sauvegardée (sauvegarde automatique continue) */
+  if (!aiHistory.length) aiHistory = LS.getJSON('aihist', []);
+  if (aiHistory.length) {
+    aiHistory.slice(-40).forEach(h => addMsg(h.role === 'user' ? 'user' : 'ai', mdToHtml(h.content)));
+  } else {
+    addMsg('ai', 'Bonjour. Je suis votre assistant IA. <b>Pollinations est 100% gratuit et fonctionne sans aucune clé</b> — sélectionnez-le dans la liste. Google Gemini, Groq et OpenRouter sont gratuits aussi (clé à créer sur leur site). Vous pouvez m\'envoyer des images avec le bouton 📷 : je les verrai et les décrirai. Posez-moi une question.');
+  }
 
   /* Jointure d'image */
   const setImage = (dataUrl) => {
@@ -2138,8 +2229,8 @@ function initAI(body, rec) {
   const send = async () => {
     const text = input.value.trim();
     if (!text && !aiImage) return;
-    if (!apiKeys[aiProvider]) { toast('Aucune clé API pour ce fournisseur', 'fa-triangle-exclamation', 'text-amber-400'); return; }
     const p = AI_PROVIDERS[aiProvider];
+    if (!p.nokey && !apiKeys[aiProvider]) { toast('Aucune clé API pour ce fournisseur', 'fa-triangle-exclamation', 'text-amber-400'); return; }
     const model = modelSel.value;
     const image = aiImage;
     if (image && !p.vision) { toast('Ce modèle ne voit pas les images — utilisez Google Gemini ou OpenRouter', 'fa-triangle-exclamation', 'text-amber-400'); return; }
@@ -2211,11 +2302,22 @@ function initAI(body, rec) {
             ] });
           } else messages.push({ role: h.role, content: h.content });
         });
-        const res = await fetch(AI_PROVIDERS[aiProvider].endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKeys[aiProvider] },
-          body: JSON.stringify({ model, messages })
-        });
+        const hdrs = { 'Content-Type': 'application/json' };
+        if (apiKeys[aiProvider]) hdrs.Authorization = 'Bearer ' + apiKeys[aiProvider];
+        /* Pollinations (gratuit) : limite d'1 message / 45 s par IP — nouvelle tentative automatique */
+        const postChat = async () => {
+          const res = await fetch(AI_PROVIDERS[aiProvider].endpoint, { method: 'POST', headers: hdrs, body: JSON.stringify({ model, messages }) });
+          if (res.status === 402 && aiProvider === 'pollinations') {
+            const d = await res.json().catch(() => null);
+            if (d && d.error && d.error.code === 'FREE_LIMIT') {
+              typing.innerHTML = '<span class="typing"><span></span><span></span><span></span></span><span class="text-[10.5px] text-slate-500 ml-2">limite gratuite : nouvelle tentative dans 12 s...</span>';
+              await new Promise(r => setTimeout(r, 12000));
+              return fetch(AI_PROVIDERS[aiProvider].endpoint, { method: 'POST', headers: hdrs, body: JSON.stringify({ model, messages }) });
+            }
+          }
+          return res;
+        };
+        const res = await postChat();
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
         const msg = data.choices?.[0]?.message;
@@ -2225,8 +2327,11 @@ function initAI(body, rec) {
       typing.innerHTML = mdToHtml(reply);
       aiBumpCount(aiProvider);
       updateQuota();
+      LS.setJSON('aihist', aiHistory.slice(-60)); /* sauvegarde automatique de la conversation */
     } catch (err) {
-      typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(err.message)}</span>`;
+      let msg = String(err.message || err);
+      if (/FREE_LIMIT/i.test(msg)) msg = 'Limite gratuite atteinte (1 message toutes les 45 s) — patientez un instant puis relancez.';
+      typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
     }
     msgBox.scrollTop = msgBox.scrollHeight;
@@ -2241,6 +2346,15 @@ function initAI(body, rec) {
   });
   providerSel.addEventListener('change', () => { aiProvider = providerSel.value; LS.set('ai_provider', aiProvider); refreshProviderUI(); });
   modelSel.addEventListener('change', () => LS.set('ai_model_' + aiProvider, modelSel.value));
+  /* Enregistrement AUTOMATIQUE de la clé dès la frappe (plus besoin de cliquer sur « Clé ») */
+  let keySaveTimer = null;
+  keyInput.addEventListener('input', () => {
+    clearTimeout(keySaveTimer);
+    keySaveTimer = setTimeout(() => {
+      apiKeys[aiProvider] = keyInput.value.trim();
+      LS.setJSON('keys', apiKeys);
+    }, 400);
+  });
   body.querySelector('#ai-savekey').addEventListener('click', () => {
     apiKeys[aiProvider] = keyInput.value.trim();
     LS.setJSON('keys', apiKeys);
@@ -2251,7 +2365,7 @@ function initAI(body, rec) {
     body.querySelector('#ai-eye i').className = keyInput.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
   });
   body.querySelector('#ai-clear').addEventListener('click', () => {
-    aiHistory = []; msgBox.innerHTML = '';
+    aiHistory = []; msgBox.innerHTML = ''; LS.setJSON('aihist', []);
     addMsg('ai', 'Nouvelle conversation. Que puis-je faire pour vous ?');
   });
 }
@@ -2830,6 +2944,7 @@ function renderSettings() {
         <div class="flex gap-2">
           <input id="st-wall-url" class="field flex-1" placeholder="URL d'image personnalisée (https://...)" />
           <button class="btn btn-blue" id="st-wall-apply">Appliquer</button>
+          <button class="btn btn-violet" id="st-wall-share" title="Partager ce fond avec tous les membres"><i class="fa-solid fa-share-nodes"></i> Publier</button>
         </div>
         <button class="btn btn-ghost w-full mt-2" id="st-wall-random"><i class="fa-solid fa-shuffle"></i> Fond d'écran aléatoire</button>
         <label class="flex items-center gap-2.5 mt-3 cursor-pointer select-none">
@@ -2842,6 +2957,22 @@ function renderSettings() {
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-arrow-pointer mr-2 text-violet-400"></i>Curseur de souris</h3>
         <p class="text-slate-400 text-[11px] mb-3">Flèches stylées style animé, néon et gamer — s'applique partout instantanément.</p>
         <div class="flex flex-wrap gap-2 mb-3" id="st-cursors"></div>
+      </section>
+
+      <section class="pt-4 border-t border-white/8">
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-key mr-2 text-emerald-400"></i>Clés API (IA)</h3>
+        <p class="text-slate-400 text-[11px] mb-3">Enregistrement automatique dès la frappe. Les clés restent dans le stockage local de votre navigateur — jamais envoyées ailleurs que chez le fournisseur choisi. <b>Pollinations fonctionne sans aucune clé</b> (100% gratuit).</p>
+        <div class="space-y-2" id="st-keys"></div>
+      </section>
+
+      <section class="pt-4 border-t border-white/8">
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-floppy-disk mr-2 text-sky-400"></i>Sauvegarde & restauration</h3>
+        <p class="text-slate-400 text-[11px] mb-3">Tout est sauvegardé automatiquement en continu (préférences, clés, apps, conversation IA, position des icônes). Exportez un fichier de secours pour changer d'ordinateur ou restaurer après un effacement.</p>
+        <div class="flex gap-2">
+          <button class="btn btn-blue flex-1" id="st-export"><i class="fa-solid fa-download"></i> Exporter ma sauvegarde</button>
+          <button class="btn btn-green flex-1" id="st-import-btn"><i class="fa-solid fa-upload"></i> Importer</button>
+          <input type="file" id="st-import" accept="application/json" class="hidden" />
+        </div>
       </section>
 
       <section class="pt-4 border-t border-white/8">
@@ -2867,8 +2998,8 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v7 — Proxy intégré</div>
-        <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent désormais via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy.</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v8 — Proxy intégré + IA gratuite</div>
+        <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
     </div>`;
@@ -2903,10 +3034,20 @@ function initSettings(body) {
   const current = LS.get('wall', 'bloom');
   let activeCat = 'Tous';
   const renderCats = () => {
-    catsEl.innerHTML = ['Tous', ...WALL_CATS].map(c => `<button data-cat="${c}" class="chip ${c === activeCat ? '!bg-sky-500 !text-white' : ''}">${c}</button>`).join('');
+    catsEl.innerHTML = ['Tous', ...WALL_CATS, 'Membres'].map(c => `<button data-cat="${c}" class="chip ${c === activeCat ? '!bg-sky-500 !text-white' : ''}">${c === 'Membres' ? '<i class="fa-solid fa-users text-[10px] mr-1"></i>' : ''}${c}</button>`).join('');
     catsEl.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => { activeCat = b.dataset.cat; renderWalls(); renderCats(); }));
   };
   const renderWalls = () => {
+    /* Catégorie Membres : fonds publiés par la communauté, visibles par tous */
+    if (activeCat === 'Membres') {
+      wallsEl.innerHTML = MEMBER_WALLS.length ? MEMBER_WALLS.map(w => `
+        <button data-memberwall="${escHtml(w.url)}" class="rounded-xl overflow-hidden border-2 transition-all text-left border-white/10 hover:border-white/30">
+          <img src="${escHtml(w.url)}" class="w-full h-16 object-cover bg-slate-800" loading="lazy" alt="" onerror="this.style.display='none'">
+          <div class="px-2 py-1.5 text-[10.5px] font-medium truncate"><i class="fa-solid fa-user text-[9px] text-slate-500 mr-1"></i>${escHtml(w.name || 'Fond de membre')}</div>
+        </button>`).join('') : '<div class="col-span-3 text-[11px] text-slate-500 italic py-4">Aucun fond partagé pour le moment — publiez le premier avec le bouton « Publier ».</div>';
+      wallsEl.querySelectorAll('[data-memberwall]').forEach(b => b.addEventListener('click', () => applyMemberWall(b.dataset.memberwall)));
+      return;
+    }
     const list = activeCat === 'Tous' ? WALLPAPERS : WALLPAPERS.filter(w => w.cat === activeCat);
     wallsEl.innerHTML = list.map(w => `
       <button data-wall="${w.id}" class="rounded-xl overflow-hidden border-2 transition-all text-left ${w.id === current ? 'border-sky-400' : 'border-white/10 hover:border-white/30'}">
@@ -2923,6 +3064,8 @@ function initSettings(body) {
   };
   renderCats();
   renderWalls();
+  /* Récupère les fonds partagés par la communauté (mise à jour de la catégorie Membres) */
+  memberWallsFetch().then(() => { if (activeCat === 'Membres') renderWalls(); }).catch(() => {});
   const mcToggle = body.querySelector('#st-mc');
   mcToggle.checked = document.body.classList.contains('mc');
   mcToggle.addEventListener('change', () => {
@@ -3049,6 +3192,82 @@ function initSettings(body) {
     toast('Fond d\u2019écran personnalisé appliqué');
   });
   body.querySelector('#st-wall-random').addEventListener('click', randomWallpaper);
+  /* Publier un fond pour toute la communauté (catégorie Membres) */
+  body.querySelector('#st-wall-share').addEventListener('click', async () => {
+    const u = body.querySelector('#st-wall-url').value.trim();
+    if (!/^https?:\/\//i.test(u)) { toast('Renseignez d\u2019abord une URL d\u2019image valide', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    const btn = body.querySelector('#st-wall-share');
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publication...';
+    try {
+      const name = prompt('Quel nom pour ce fond d\u2019écran ? (visible par tous)', 'Fond de la communauté');
+      if (name === null) return;
+      await memberWallPublish(name, u);
+      toast('Fond publié pour tous les membres', 'fa-share-nodes', 'text-violet-400');
+      if (activeCat === 'Membres') renderWalls();
+    } catch (e) {
+      toast('Publication impossible pour le moment', 'fa-triangle-exclamation', 'text-amber-400');
+    } finally {
+      btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Publier';
+    }
+  });
+
+  /* ---- Clés API : saisie groupée avec enregistrement automatique ---- */
+  const keysEl = body.querySelector('#st-keys');
+  const KEY_PROVIDERS = [
+    ['pollinations', 'Pollinations — aucune clé nécessaire (gratuit)'],
+    ['google', 'Google Gemini (clé gratuite — aistudio.google.com)'],
+    ['groq', 'Groq (clé gratuite — console.groq.com)'],
+    ['openrouter', 'OpenRouter (clé gratuite — openrouter.ai)'],
+    ['openai', 'OpenAI (payant)'],
+    ['anthropic', 'Anthropic (payant)']
+  ];
+  keysEl.innerHTML = KEY_PROVIDERS.map(([k, label]) => k === 'pollinations'
+    ? `<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/20 text-[11.5px]"><i class="fa-solid fa-circle-check text-emerald-400"></i> ${label} — déjà prêt à l\u2019emploi</div>`
+    : `<div class="flex items-center gap-2"><span class="w-24 flex-none text-[11px] text-slate-400 truncate">${escHtml(label.split(' (')[0])}</span><input type="password" data-keyinput="${k}" class="field flex-1 !py-1.5" placeholder="${escHtml(label)}" value="${escHtml(apiKeys[k] || '')}"></div>`).join('');
+  keysEl.querySelectorAll('[data-keyinput]').forEach(inp => {
+    let t = null;
+    inp.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => { apiKeys[inp.dataset.keyinput] = inp.value.trim(); LS.setJSON('keys', apiKeys); }, 350);
+    });
+  });
+
+  /* ---- Sauvegarde : export / import de tout le système ---- */
+  body.querySelector('#st-export').addEventListener('click', () => {
+    const dump = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('webos_')) dump[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify({ app: 'webos', version: 8, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'webos-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Sauvegarde exportée', 'fa-floppy-disk', 'text-sky-400');
+  });
+  body.querySelector('#st-import-btn').addEventListener('click', () => body.querySelector('#st-import').click());
+  body.querySelector('#st-import').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const o = JSON.parse(rd.result);
+        const dump = o.data || o;
+        let n = 0;
+        Object.entries(dump).forEach(([k, v]) => { if (k.startsWith('webos_')) { localStorage.setItem(k, v); n++; } });
+        if (!n) throw new Error('rien à importer');
+        toast(n + ' éléments importés — rechargement...', 'fa-upload', 'text-emerald-400');
+        setTimeout(() => location.reload(), 900);
+      } catch (err) {
+        toast('Fichier de sauvegarde invalide', 'fa-triangle-exclamation', 'text-amber-400');
+      }
+    };
+    rd.readAsText(f);
+    e.target.value = '';
+  });
 }
 
 const EDGE_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block"><defs><linearGradient id="egA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#45d6ff"/><stop offset="1" stop-color="#1467d2"/></linearGradient><linearGradient id="egB" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0b3d91"/><stop offset="1" stop-color="#1fa7e8"/></linearGradient></defs><circle cx="24" cy="24" r="21" fill="url(#egA)"/><path d="M6 29c2.5 8.5 10.5 13.5 19 12 8-1.5 13-8.5 12-16 4.5 2.5 6.5 7.5 5.5 12-2 6.5-9.5 10.5-18 10.5C15 48 7 42 4.5 33.5 3.5 30 4 27 6 24.5c-.5 1.5-.5 3 0 4.5z" fill="url(#egB)"/><path d="M37 25c-1.5-8-8-12.5-15-11.5 6 1 9.5 5 10.5 10 1 5.5-2.5 10-8.5 12.5 7-.5 11.5-5 13-11z" fill="#fff" opacity=".93"/></svg>`;
@@ -3090,6 +3309,30 @@ const getIconPos = () => LS.getJSON('iconpos', {});
 /* Grille : les icônes se collent aux cases (comme un vrai bureau) */
 const GRID_X = 104, GRID_Y = 112;
 const snapV = (v, g) => Math.max(0, Math.round(v / g) * g);
+/* Anti-superposition : deux icônes ne peuvent jamais occuper la même case */
+function occupiedCells(excludeId) {
+  const taken = new Set();
+  const pr = di.getBoundingClientRect();
+  di.querySelectorAll('.desk-icon').forEach(ic => {
+    if (ic.dataset.iconId === excludeId) return;
+    const r = ic.getBoundingClientRect();
+    const cx = Math.round((r.left - pr.left) / GRID_X), cy = Math.round((r.top - pr.top) / GRID_Y);
+    if (cx >= 0 && cy >= 0) taken.add(cx + ',' + cy);
+  });
+  return taken;
+}
+function nearestFreeCell(cx, cy, taken) {
+  if (!taken.has(cx + ',' + cy)) return { x: cx, y: cy };
+  for (let ring = 1; ring < 50; ring++) {
+    for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0) continue;
+      if (!taken.has(nx + ',' + ny)) return { x: nx, y: ny };
+    }
+  }
+  return { x: cx, y: cy };
+}
 function clearSelection() { di.querySelectorAll('.desk-icon.selected').forEach(ic => ic.classList.remove('selected')); }
 function selectAllIcons() { di.querySelectorAll('.desk-icon').forEach(ic => ic.classList.add('selected')); }
 function makeDeskDraggable(b, id) {
@@ -3124,15 +3367,19 @@ function makeDeskDraggable(b, id) {
       if (moved) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
         const pos = getIconPos();
-        /* Aimantation à la grille pour l'icône et son groupe */
-        pos[id] = { x: snapV(parseFloat(b.style.left) || 0, GRID_X), y: snapV(parseFloat(b.style.top) || 0, GRID_Y) };
-        b.style.left = pos[id].x + 'px'; b.style.top = pos[id].y + 'px';
+        /* Aimantation à la grille + ANTI-SUPERPOSITION : chaque icône trouve la case libre la plus proche */
+        const taken = occupiedCells(id);
+        let cell = nearestFreeCell(snapV(parseFloat(b.style.left) || 0, GRID_X), snapV(parseFloat(b.style.top) || 0, GRID_Y), taken);
+        taken.add(cell.x + ',' + cell.y);
+        pos[id] = cell;
+        b.style.left = cell.x + 'px'; b.style.top = cell.y + 'px';
         group.forEach(s => {
           const id2 = s.el.dataset.iconId;
           if (!id2) return;
-          const gx = snapV(parseFloat(s.el.style.left) || 0, GRID_X), gy = snapV(parseFloat(s.el.style.top) || 0, GRID_Y);
-          pos[id2] = { x: gx, y: gy };
-          s.el.style.left = gx + 'px'; s.el.style.top = gy + 'px';
+          const c2 = nearestFreeCell(snapV(parseFloat(s.el.style.left) || 0, GRID_X), snapV(parseFloat(s.el.style.top) || 0, GRID_Y), taken);
+          taken.add(c2.x + ',' + c2.y);
+          pos[id2] = c2;
+          s.el.style.left = c2.x + 'px'; s.el.style.top = c2.y + 'px';
         });
         LS.setJSON('iconpos', pos);
       }
