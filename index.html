@@ -65,6 +65,12 @@
     .desk-icon { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 92px; padding: 10px 4px 8px; border-radius: 8px; cursor: pointer; transition: transform .16s cubic-bezier(.2,.9,.3,1.4), background .12s; border: 1px solid transparent; touch-action: none; user-select: none; -webkit-user-select: none; }
     .desk-icon:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.09); transform: translateY(-4px); }
     .desk-icon:active { transform: scale(.93); }
+    .desk-icon.selected { background: rgba(96,165,250,.22); border-color: rgba(96,165,250,.7); box-shadow: 0 0 0 1px rgba(96,165,250,.5); }
+    .chip-on { background: rgba(96,165,250,.25) !important; color: #bfdbfe !important; border-color: rgba(96,165,250,.6) !important; }
+    .ctx-menu { position: fixed; z-index: 99999; background: rgba(15,23,42,.97); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 6px; min-width: 210px; box-shadow: 0 12px 40px rgba(0,0,0,.6); backdrop-filter: blur(12px); }
+    .ctx-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; font-size: 12.5px; color: #e2e8f0; cursor: pointer; }
+    .ctx-item:hover { background: rgba(96,165,250,.18); }
+    .ctx-item i { width: 16px; text-align: center; color: #7dd3fc; }
     .desk-icon .ic { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 21px; color: white; position: relative; overflow: hidden; box-shadow: 0 8px 22px rgba(0,0,0,.5); }
     .desk-icon .ic::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.28), transparent 42%); pointer-events: none; }
     .desk-icon .lbl { font-size: 11.5px; font-weight: 500; color: #f1f5f9; text-shadow: 0 1px 5px rgba(0,0,0,.9); text-align: center; }
@@ -867,9 +873,16 @@ document.getElementById('tb-clock').addEventListener('click', () => {
   cal += '</div>';
   trayPopup.innerHTML = `
     <div class="tray-popup-title"><i class="fa-regular fa-calendar mr-1.5 text-sky-400"></i>${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}</div>
-    <div style="font-size:22px;font-weight:700;color:#f1f5f9;margin-bottom:4px">${now.toLocaleTimeString('fr-FR')}</div>
+    <div id="tray-live-clock" style="font-size:22px;font-weight:700;color:#f1f5f9;margin-bottom:4px">${now.toLocaleTimeString('fr-FR')}</div>
     ${cal}`;
   trayPopup.classList.remove('hidden');
+  /* Horloge en temps réel : les secondes tournent tant que le calendrier est ouvert */
+  if (window._trayTick) clearInterval(window._trayTick);
+  window._trayTick = setInterval(() => {
+    const el = document.getElementById('tray-live-clock');
+    if (!el || trayPopup.classList.contains('hidden')) { clearInterval(window._trayTick); window._trayTick = null; return; }
+    el.textContent = new Date().toLocaleTimeString('fr-FR');
+  }, 1000);
 });
 
 setWallpaperById(LS.get('wall', 'bloom'));
@@ -1155,6 +1168,13 @@ function renderBrowser() {
             <button id="yt-hist" class="btn btn-ghost !py-1.5 !px-3" title="Historique des vidéos regardées"><i class="fa-solid fa-clock-rotate-left"></i></button>
             <button id="yt-exit" class="btn btn-ghost !py-1.5 !px-3" title="Quitter le mode YouTube"><i class="fa-solid fa-xmark"></i></button>
           </div>
+          <div id="yt-filters" class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/8 bg-white/3 flex-none overflow-x-auto">
+            <span class="text-[10.5px] text-slate-500 flex-none">Trier :</span>
+            <span class="chip" data-ytfilter="">Pertinence</span>
+            <span class="chip" data-ytfilter="CAI%3D"><i class="fa-solid fa-clock"></i> Plus récentes</span>
+            <span class="chip" data-ytfilter="CAM%3D"><i class="fa-solid fa-eye"></i> Plus vues</span>
+            <span class="chip" data-ytfilter="CAE%3D"><i class="fa-solid fa-star"></i> Mieux notées</span>
+          </div>
           <div id="yt-results" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 content-start"></div>
           <div id="yt-player-wrap" class="hidden absolute left-0 right-0 bottom-0 top-[54px] bg-[#020617]/97 z-10 flex-col items-center justify-center p-4 gap-4 overflow-y-auto">
             <iframe id="yt-player" class="w-full max-w-3xl aspect-video rounded-xl bg-black" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -1360,6 +1380,16 @@ function initBrowser(body) {
     ytBindCards(ytResults);
   }
 
+  /* Filtres de tri YouTube (pertinence / récents / vues / notés) */
+  let ytFilter = '';
+  body.querySelectorAll('[data-ytfilter]').forEach(c => c.addEventListener('click', () => {
+    body.querySelectorAll('[data-ytfilter]').forEach(x => x.classList.remove('chip-on'));
+    c.classList.add('chip-on');
+    ytFilter = c.dataset.ytfilter || '';
+    const q = ytQ.value.trim();
+    if (q) ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(q));
+  }));
+
   /* Recherche / chargement d'une page YouTube (recherche, chaîne, playlist...) */
   async function ytSearch(u) {
     u = (u || '').trim();
@@ -1368,6 +1398,7 @@ function initBrowser(body) {
     showYT(true);
     ytShowResults();
     const isSearch = u.includes('results?search_query=');
+    if (isSearch && ytFilter && !u.includes('&sp=')) u += '&sp=' + ytFilter;
     const label = isSearch ? 'Recherche des vidéos YouTube...' : 'Chargement de la page...';
     const t0 = Date.now();
     ytResults.innerHTML = `<div class="col-span-full flex flex-col items-center gap-3 py-10"><div class="spinner"></div><div class="text-[12px] text-slate-400">${label}</div></div>`;
@@ -1391,7 +1422,7 @@ function initBrowser(body) {
     const re = /"videoId":"([A-Za-z0-9_-]{11})"[\s\S]{0,3000}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g;
     const vids = [];
     let m;
-    while ((m = re.exec(html)) && vids.length < 24) {
+    while ((m = re.exec(html)) && vids.length < 40) {
       const id = m[1];
       if (vids.some(v => v.id === id)) continue;
       const title = m[2].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\n/g, ' ');
@@ -1422,7 +1453,12 @@ function initBrowser(body) {
         ${chs.map(c => `<button class="chip" data-chpage="${escHtml(c.url)}"><i class="fa-solid fa-circle-user text-[11px]"></i> ${escHtml(c.name)} <span class="text-slate-500">→ toutes les vidéos</span></button>`).join('')}
       </div>` : '';
     ytResults.innerHTML = chHtml + vids.map(v => ytCard(v)).join('');
-    ytResults.querySelectorAll('[data-chpage]').forEach(b => b.addEventListener('click', () => { const name = b.textContent.replace('→ toutes les vidéos', '').trim(); ytQ.value = name; ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(name)); }));
+    ytResults.querySelectorAll('[data-chpage]').forEach(b => b.addEventListener('click', () => {
+      /* Ouvre la vraie page « Vidéos » de la chaîne (toutes ses vidéos, plus récentes d'abord) */
+      let cu = (b.dataset.chpage || '').replace(/\/+$/, '');
+      if (cu && !/\/videos$/.test(cu)) cu += '/videos';
+      if (cu) { ytQ.value = ''; ytSearch(cu); }
+    }));
     ytBindCards(ytResults);
   }
 
@@ -1476,7 +1512,8 @@ function initBrowser(body) {
     frame.onload = null;
     navSeq++;
     frame.removeAttribute('srcdoc');
-    frame.src = WISP_PROXY + encodeURIComponent(u);
+    /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran */
+    frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1';
     setStatus('Chargé via le proxy intégré (Ultraviolet)...');
     try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {}
   }
@@ -2531,20 +2568,36 @@ const SEARCH_ALIASES = {
 };
 const di = document.getElementById('desk-icons');
 const getIconPos = () => LS.getJSON('iconpos', {});
+/* Grille : les icônes se collent aux cases (comme un vrai bureau) */
+const GRID_X = 104, GRID_Y = 112;
+const snapV = (v, g) => Math.max(0, Math.round(v / g) * g);
+function clearSelection() { di.querySelectorAll('.desk-icon.selected').forEach(ic => ic.classList.remove('selected')); }
+function selectAllIcons() { di.querySelectorAll('.desk-icon').forEach(ic => ic.classList.add('selected')); }
 function makeDeskDraggable(b, id) {
   b.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    /* Sélection multiple : Ctrl+clic ajoute/retire sans ouvrir l'app */
+    if (e.ctrlKey || e.metaKey) { b.classList.toggle('selected'); return; }
+    if (!b.classList.contains('selected')) clearSelection();
     let moved = false, sx = e.clientX, sy = e.clientY;
     const pr = di.getBoundingClientRect();
     const r = b.getBoundingClientRect();
     const ox = r.left - pr.left, oy = r.top - pr.top;
+    /* Groupe : toutes les icônes sélectionnées se déplacent ensemble */
+    const group = [...di.querySelectorAll('.desk-icon.selected')].filter(el => el !== b)
+      .map(el => { const er = el.getBoundingClientRect(); return { el, x: er.left - pr.left, y: er.top - pr.top }; });
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 8) return;
-      if (!moved) { b.style.position = 'absolute'; b.style.zIndex = 40; di.appendChild(b); moved = true; }
+      if (!moved) {
+        b.style.position = 'absolute'; b.style.zIndex = 40; di.appendChild(b);
+        group.forEach(s => { s.el.style.position = 'absolute'; s.el.style.zIndex = 39; di.appendChild(s.el); });
+        moved = true;
+      }
       b.style.left = Math.max(0, ox + dx) + 'px';
       b.style.top = Math.max(0, oy + dy) + 'px';
+      group.forEach(s => { s.el.style.left = Math.max(0, s.x + dx) + 'px'; s.el.style.top = Math.max(0, s.y + dy) + 'px'; });
     };
     const up = () => {
       document.removeEventListener('pointermove', move);
@@ -2552,13 +2605,65 @@ function makeDeskDraggable(b, id) {
       if (moved) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
         const pos = getIconPos();
-        pos[id] = { x: parseFloat(b.style.left), y: parseFloat(b.style.top) };
+        /* Aimantation à la grille pour l'icône et son groupe */
+        pos[id] = { x: snapV(parseFloat(b.style.left) || 0, GRID_X), y: snapV(parseFloat(b.style.top) || 0, GRID_Y) };
+        b.style.left = pos[id].x + 'px'; b.style.top = pos[id].y + 'px';
+        group.forEach(s => {
+          const id2 = s.el.dataset.iconId;
+          if (!id2) return;
+          const gx = snapV(parseFloat(s.el.style.left) || 0, GRID_X), gy = snapV(parseFloat(s.el.style.top) || 0, GRID_Y);
+          pos[id2] = { x: gx, y: gy };
+          s.el.style.left = gx + 'px'; s.el.style.top = gy + 'px';
+        });
         LS.setJSON('iconpos', pos);
       }
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
   });
+}
+/* Sélection au lasso (comme un vrai ordinateur) */
+let lassoBox = null, lassoStart = null, lassoMoved = false;
+di.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  if (e.target.closest('.desk-icon') || e.target.closest('button, input, .window, #taskbar')) return;
+  clearSelection();
+  lassoStart = { x: e.clientX, y: e.clientY }; lassoMoved = false;
+  lassoBox = document.createElement('div');
+  document.body.appendChild(lassoBox);
+  const move = (ev) => {
+    if (!lassoBox || !lassoStart) return;
+    lassoMoved = lassoMoved || Math.hypot(ev.clientX - lassoStart.x, ev.clientY - lassoStart.y) > 5;
+    const x = Math.min(lassoStart.x, ev.clientX), y = Math.min(lassoStart.y, ev.clientY);
+    const w = Math.abs(ev.clientX - lassoStart.x), h = Math.abs(ev.clientY - lassoStart.y);
+    lassoBox.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:9999;pointer-events:none;background:rgba(96,165,250,.14);border:1px solid rgba(96,165,250,.75);border-radius:4px`;
+    di.querySelectorAll('.desk-icon').forEach(ic => {
+      const ir = ic.getBoundingClientRect();
+      const hit = !(ir.right < x || ir.left > x + w || ir.bottom < y || ir.top > y + h);
+      ic.classList.toggle('selected', hit);
+    });
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    if (lassoBox) { lassoBox.remove(); lassoBox = null; }
+    lassoStart = null;
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+});
+/* Ctrl+A = tout sélectionner, Échap = désélectionner */
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); selectAllIcons(); }
+  if (e.key === 'Escape') clearSelection();
+});
+/* Réorganisation des icônes du bureau (menu contextuel) */
+function sortIcons() {
+  LS.setJSON('iconpos', {});
+  di.querySelectorAll('.desk-icon').forEach(ic => { ic.style.position = ''; ic.style.left = ''; ic.style.top = ''; ic.classList.remove('selected'); });
+  toast('Icônes réorganisées', 'fa-table-cells', 'text-sky-400');
 }
 function applyIconPos(b, id) {
   const p = getIconPos()[id];
@@ -2567,6 +2672,7 @@ function applyIconPos(b, id) {
 function addDeskIcon(id, iconHtml, label, onClick) {
   const b = document.createElement('div');
   b.className = 'desk-icon';
+  b.dataset.iconId = id;
   b.innerHTML = iconHtml + `<span class="lbl">${label}</span>`;
   b.addEventListener('click', () => { if (b._dragged) return; onClick(); });
   makeDeskDraggable(b, id);
@@ -2645,6 +2751,9 @@ document.getElementById('desktop').addEventListener('contextmenu', (e) => {
   if (e.target.closest('.window') || e.target.closest('#taskbar')) return;
   e.preventDefault();
   ctxMenu.innerHTML = `
+    <div class="ctx-item" data-act="refresh"><i class="fa-solid fa-rotate-right w-4 text-center text-sky-400"></i> Actualiser</div>
+    <div class="ctx-item" data-act="sorticons"><i class="fa-solid fa-table-cells w-4 text-center text-emerald-400"></i> Réorganiser les icônes</div>
+    <div class="ctx-item" data-act="selall"><i class="fa-solid fa-object-group w-4 text-center text-blue-400"></i> Tout sélectionner (Ctrl+A)</div>
     <div class="ctx-item" data-act="settings"><i class="fa-solid fa-gear w-4 text-center text-slate-400"></i> Paramètres</div>
     <div class="ctx-item" data-act="cloak"><i class="fa-solid fa-mask w-4 text-center text-amber-400"></i> Camouflage (Google Drive)</div>
     <div class="ctx-item" data-act="wall"><i class="fa-solid fa-shuffle w-4 text-center text-pink-400"></i> Fond d'écran aléatoire</div>
@@ -2653,10 +2762,13 @@ document.getElementById('desktop').addEventListener('contextmenu', (e) => {
     <div class="ctx-item danger" data-act="panic"><i class="fa-solid fa-shield-halved w-4 text-center text-red-400"></i> Lien de secours</div>`;
   ctxMenu.style.display = 'block';
   ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 250) + 'px';
-  ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 260) + 'px';
+  ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 380) + 'px';
   ctxMenu.querySelectorAll('.ctx-item').forEach(it => it.addEventListener('click', () => {
     hideCtx();
     const a = it.dataset.act;
+    if (a === 'refresh') location.reload();
+    if (a === 'sorticons') sortIcons();
+    if (a === 'selall') selectAllIcons();
     if (a === 'settings') openApp('settings');
     if (a === 'cloak') { const p = CLOAK_PRESETS[0]; applyCloak(p.title, p.icon); }
     if (a === 'wall') randomWallpaper();
