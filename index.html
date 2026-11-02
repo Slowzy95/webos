@@ -1638,6 +1638,33 @@ function initBrowser(body) {
     if (ytResults.scrollTop + ytResults.clientHeight > ytResults.scrollHeight - 350) ytLoadMore();
   });
 
+  /* Extrait les vidéos et chaînes d'une page de résultats YouTube (HTML ou JSON youtubei) */
+  function ytExtract(html) {
+    const re = /"videoId":"([A-Za-z0-9_-]{11})"[\s\S]{0,3000}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g;
+    const vids = [];
+    let m;
+    while ((m = re.exec(html)) && vids.length < 40) {
+      const id = m[1];
+      if (vids.some(v => v.id === id)) continue;
+      const title = m[2].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\n/g, ' ');
+      const slice = html.slice(Math.max(0, m.index - 200), m.index + 4500);
+      let ch = '', chUrl = '';
+      const cm = slice.match(/"ownerText":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"\[\s\S\]{0,600}?"canonicalBaseUrl":"((?:[^"\\]|\\.)*)"/);
+      if (cm) { ch = cm[1]; chUrl = 'https://www.youtube.com' + cm[2]; }
+      else {
+        const cm2 = slice.match(/"ownerText":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/);
+        if (cm2) ch = cm2[1];
+      }
+      vids.push({ id, title, ch, chUrl });
+    }
+    /* Extraction des chaînes depuis les données vidéos (ownerText) */
+    const chs = [];
+    vids.forEach(v => {
+      if (v.ch && v.chUrl && !chs.some(c => c.name === v.ch)) chs.push({ name: v.ch, url: v.chUrl });
+    });
+    return { vids, chs };
+  }
+
   /* Recherche / chargement d'une page YouTube (recherche, chaîne, playlist...) */
   async function ytSearch(u) {
     u = (u || '').trim();
@@ -1689,29 +1716,32 @@ function initBrowser(body) {
       return;
     }
     /* Extraction des vidéos + chaînes (ownerText / canonicalBaseUrl) */
-    const re = /"videoId":"([A-Za-z0-9_-]{11})"[\s\S]{0,3000}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g;
-    const vids = [];
-    let m;
-    while ((m = re.exec(html)) && vids.length < 40) {
-      const id = m[1];
-      if (vids.some(v => v.id === id)) continue;
-      const title = m[2].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\n/g, ' ');
-      const slice = html.slice(Math.max(0, m.index - 200), m.index + 4500);
-      let ch = '', chUrl = '';
-      const cm = slice.match(/"ownerText":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"[\s\S]{0,600}?"canonicalBaseUrl":"((?:[^"\\]|\\.)*)"/);
-      if (cm) { ch = cm[1]; chUrl = 'https://www.youtube.com' + cm[2]; }
-      else {
-        const cm2 = slice.match(/"ownerText":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/);
-        if (cm2) ch = cm2[1];
-      }
-      vids.push({ id, title, ch, chUrl });
-    }
-    /* Extraction des chaînes depuis les données vidéos (ownerText) */
-    const chs = [];
-    vids.forEach(v => {
-      if (v.ch && v.chUrl && !chs.some(c => c.name === v.ch)) chs.push({ name: v.ch, url: v.chUrl });
-    });
+    let parsed = ytExtract(html);
+    let vids = parsed.vids, chs = parsed.chs;
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
+    if (!vids.length && !chs.length && isSearch) {
+      /* La page HTML n'a rien donné (page de consentement, IP filtrée...) :
+         repli sur l'API youtubei via le Service Worker du proxy */
+      try {
+        const qu = new URL(u);
+        const body = {
+          context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr', gl: 'FR' } },
+          query: qu.searchParams.get('search_query') || ''
+        };
+        const sp = qu.searchParams.get('sp');
+        if (sp) body.params = sp;
+        const rep = await ytProxyFetch('https://www.youtube.com/youtubei/v1/search?key=' + YT_API_KEY + '&prettyPrint=false', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body), signal: AbortSignal.timeout(20000)
+        });
+        if (rep.ok) {
+          const data = await rep.json();
+          html = JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
+          parsed = ytExtract(html);
+          vids = parsed.vids; chs = parsed.chs;
+        }
+      } catch (e) {}
+    }
     if (!vids.length && !chs.length) {
       ytResults.innerHTML = `<div class="col-span-full text-center text-[12px] text-slate-400 py-10">Aucune vidéo trouvée sur cette page.</div>`;
       return;
