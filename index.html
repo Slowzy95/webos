@@ -2343,9 +2343,9 @@ function initBrowser(body) {
 ============================================================ */
 const AI_PROVIDERS = {
   pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
-  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
+  google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour (compteur remis à zéro chaque jour)' },
   groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (compteur remis à zéro chaque jour, llama-4 = vision)' },
-  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'liquid/lfm-2.5-2.6b:free', 'recursive/flint-v1.0:free', 'xingchen-agi/xing4.0-29b-a4b:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
+  openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'xingchen-agi/xing4.0-29b-a4b:free'], vision: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour (compteur remis à zéro chaque jour)' }
 };
 let aiHistory = [];
 let aiProvider = LS.get('ai_provider', 'pollinations');
@@ -2449,21 +2449,8 @@ function initAI(body, rec) {
     keyInput.value = apiKeys[aiProvider] || '';
     keyInput.placeholder = p.free ? 'Clé API gratuite' : 'Clé API';
     updateQuota();
-    /* Liste dynamique des modèles gratuits OpenRouter (marqués 👁 = vision) */
-    if (p.dynamic && !p._fetched) {
-      p._fetched = true;
-      fetch('https://openrouter.ai/api/v1/models').then(r => r.json()).then(d => {
-        /* modèles gratuits, sans ceux réservés aux agents (thinkingmachines), NVIDIA en priorité */
-        const free = (d.data || []).filter(m => (m.pricing?.prompt === '0' || m.id.endsWith(':free')) && !m.id.startsWith('thinkingmachines/'));
-        if (free.length) {
-          free.sort((a, b) => (b.id.includes('nemotron') ? 1 : 0) - (a.id.includes('nemotron') ? 1 : 0));
-          p.models = free.slice(0, 40).map(m => m.id);
-          const cur = modelSel.value;
-          modelSel.innerHTML = p.models.map(m => `<option value="${m}">${m}</option>`).join('');
-          modelSel.value = p.models.includes(cur) ? cur : p.models[0];
-        }
-      }).catch(() => {});
-    }
+    /* Liste dynamique des modèles gratuits OpenRouter : désactivée — liste fixée
+       sur les modèles testés qui marchent (NVIDIA + xingchen) */
   };
   refreshProviderUI();
 
@@ -2514,7 +2501,7 @@ function initAI(body, rec) {
        bascule automatiquement sur un modèle vision du même fournisseur */
     const VISION_MODELS = {
       groq: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct'],
-      google: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest']
+      google: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
     };
     if (aiImage && VISION_MODELS[aiProvider] && !VISION_MODELS[aiProvider].includes(model)) {
       model = VISION_MODELS[aiProvider][0];
