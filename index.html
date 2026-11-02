@@ -296,6 +296,55 @@
     body.skin-macos .win-header .wbtn { color: #1d1d1f; border-radius: 99px; }
     body.skin-macos .win-header .wbtn.close { background: #ff5f57; }
     body.skin-macos .win-header .wbtn.close i { color: #fff; }
+
+    /* ===== SKINS PROFONDS : logos d'apps, boutons de fenêtre, onglets ouverts ===== */
+    .tb-lbl { display: none; }
+    /* macOS : icônes façon dock + boutons feux tricolores à gauche */
+    body.skin-macos .desk-icon .ic, body.skin-macos .sm-tile .ic { border-radius: 26%; }
+    body.skin-macos .ic-svg { border-radius: 26%; background: linear-gradient(160deg,#f2f4f8,#d3d8e0); padding: 7px; filter: none; box-shadow: 0 5px 14px rgba(0,0,0,.3); }
+    body.skin-macos .win-header { flex-direction: row-reverse; padding: 0 13px 0 5px; }
+    body.skin-macos .win-header .wbtn { width: 13px; height: 13px; border-radius: 50%; padding: 0; margin-right: 6px; font-size: 0; }
+    body.skin-macos .win-header .wbtn i { display: none; }
+    body.skin-macos .win-header .wbtn:hover { color: transparent; background: #d5d7dc; }
+    body.skin-macos .win-header .wbtn[data-act="reload"] { background: #c7cbd3; }
+    body.skin-macos .win-header .wbtn[data-act="min"] { background: #febc2e; }
+    body.skin-macos .win-header .wbtn[data-act="max"] { background: #28c840; }
+    body.skin-macos .win-header .wbtn.close { background: #ff5f57; }
+    /* Windows 98 : icônes plates carrées + boutons 3D */
+    body.skin-win98 .desk-icon .ic, body.skin-win98 .sm-tile .ic { border-radius: 0; background: linear-gradient(145deg,#7a9cc4,#4a6c96); box-shadow: inset -1px -1px 0 rgba(0,0,0,.45), inset 1px 1px 0 rgba(255,255,255,.35); }
+    body.skin-win98 .ic-svg { border-radius: 0; background: #c0c0c0; padding: 6px; filter: none; box-shadow: inset -1px -1px 0 #404040, inset 1px 1px 0 #fff; }
+    body.skin-win98 .win-header .wbtn { width: 21px; height: 18px; border-radius: 0; background: #c0c0c0; color: #000; font-size: 9px; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #404040; }
+    body.skin-win98 .win-header .wbtn:hover { background: #d4d4d4; color: #000; }
+    body.skin-win98 .win-header .wbtn.close:hover { background: #d4d4d4; color: #000; }
+    body.skin-win98 .desk-icon .lbl { text-shadow: 1px 1px 0 #000; }
+    body.skin-win98 .desk-icon.selected { background: rgba(0,0,128,.55); border-color: #fff; }
+    body.skin-win98 #start-menu { border-radius: 0; }
+    /* Windows XP : icônes luisantes bleues + boutons glossy */
+    body.skin-winxp .desk-icon .ic, body.skin-winxp .sm-tile .ic { border-radius: 14%; background: linear-gradient(160deg,#8ec4f0 0%,#2f7fd0 50%,#1d5fae 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 4px 10px rgba(0,0,0,.4); }
+    body.skin-winxp .ic-svg { border-radius: 14%; background: linear-gradient(160deg,#8ec4f0,#2f7fd0 50%,#1d5fae); padding: 7px; filter: none; }
+    body.skin-winxp .win-header .wbtn { width: 21px; height: 18px; border-radius: 3px; background: linear-gradient(180deg,#5e94e0,#2a5cb8); color: #fff; font-size: 9px; box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+    body.skin-winxp .win-header .wbtn.close { background: linear-gradient(180deg,#e88a6a,#c14423); }
+    body.skin-winxp #start-menu { border-radius: 8px 8px 0 0; }
+    /* Windows 7 : icônes verre dépoli */
+    body.skin-win7 .desk-icon .ic, body.skin-win7 .sm-tile .ic { border-radius: 16%; background: linear-gradient(160deg, rgba(200,230,252,.95), rgba(120,175,228,.92)); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 4px 12px rgba(20,50,90,.35); }
+    body.skin-win7 .ic-svg { border-radius: 16%; background: linear-gradient(160deg, rgba(215,238,255,.95), rgba(140,185,232,.92)); padding: 7px; filter: none; }
+    /* Ubuntu : icônes rondes orange */
+    body.skin-ubuntu .desk-icon .ic, body.skin-ubuntu .sm-tile .ic { border-radius: 50%; background: linear-gradient(145deg,#e95420,#a63a12); }
+    body.skin-ubuntu .ic-svg { border-radius: 50%; background: linear-gradient(145deg,#e95420,#a63a12); padding: 8px; filter: none; }
+    /* Onglets ouverts dans la barre des tâches : vrais boutons avec nom (Win98/XP/7/10) */
+    body.skin-win98 .tb-icon.open, body.skin-winxp .tb-icon.open, body.skin-win7 .tb-icon.open, body.skin-win10 .tb-icon.open { width: auto; min-width: 46px; flex-direction: row; gap: 6px; padding: 0 9px; }
+    body.skin-win98 .tb-icon.open .tb-lbl, body.skin-winxp .tb-icon.open .tb-lbl, body.skin-win7 .tb-icon.open .tb-lbl, body.skin-win10 .tb-icon.open .tb-lbl { display: inline; font-size: 11px; font-weight: 500; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    body.skin-win98 .tb-icon.open { background: #c0c0c0; border-radius: 2px; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #404040; }
+    body.skin-win98 .tb-icon.open .tb-glyph .fa-solid, body.skin-win98 .tb-icon.open .tb-glyph .fa-brands { color: #000080; }
+    body.skin-win98 .tb-icon.open .tb-lbl { color: #000080; }
+    body.skin-winxp .tb-icon.open { background: linear-gradient(180deg,#4f98e8,#245edb 45%,#1941a5); border-radius: 3px; }
+    body.skin-winxp .tb-icon.open .tb-lbl { color: #fff; }
+    body.skin-win7 .tb-icon.open { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.15)); border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+    body.skin-win7 .tb-icon.open .tb-lbl { color: #14304d; }
+    body.skin-win10 .tb-icon.open { background: rgba(255,255,255,.12); border-bottom: 2px solid #4cc2ff; border-radius: 0; }
+    body.skin-win10 .tb-icon.open .tb-lbl { color: #dbe4f0; }
+  /* icônes SVG dessinées par le skin : pas de cadre CSS ajouté */
+  .ic-svg.ic-skin { padding: 0 !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; }
   </style>
 </head>
 <body>
@@ -1122,10 +1171,74 @@ function applySkin(id, restore = false) {
     LS.set('skin', id);
     toast('Apparence « ' + s.name + ' » appliquée', 'fa-wand-magic-sparkles', 'text-violet-400');
   }
+  /* les onglets de la barre des tâches et les logos d'apps s'adaptent au skin */
+  try { renderTaskbar(); refreshSkinIcons(); } catch (e) {}
 }
 /* restaure le skin sauvegardé au démarrage (sans écraser le fond choisi) */
 const savedSkin = LS.get('skin', '');
 if (savedSkin && OS_SKINS[savedSkin]) applySkin(savedSkin, true);
+
+/* ============================================================
+   LOGOS D'APPLICATIONS PAR SKIN : chaque système a ses icônes
+   (98 = flat rétro, XP = luisant, 7 = verre, Ubuntu = rond, macOS = squircle)
+============================================================ */
+const SKIN_GLYPHS = {
+  browser: (M, D) => `<circle cx="12" cy="12" r="8.2" fill="none" stroke="${M}" stroke-width="1.7"/><path d="M3.8 12h16.4M12 3.8c3.8 4 3.8 12.4 0 16.4M12 3.8c-3.8 4-3.8 12.4 0 16.4" fill="none" stroke="${M}" stroke-width="1.3"/>`,
+  ai: (M, D) => `<rect x="6.5" y="8.5" width="11" height="9" rx="2.5" fill="${M}"/><circle cx="9.8" cy="12.5" r="1.2" fill="${D}"/><circle cx="14.2" cy="12.5" r="1.2" fill="${D}"/><path d="M10 15.6h4M12 8.5V6.2" stroke="${M}" stroke-width="1.5"/><circle cx="12" cy="4.8" r="1.3" fill="${M}"/>`,
+  games: (M, D) => `<path d="M8.2 8h7.6l2 6.6c.4 1.5-.9 2.8-2.3 2.1L13 15.6h-2l-2.5 1.1c-1.4.7-2.7-.6-2.3-2.1Z" fill="${M}"/><path d="M9.6 10.6v2.6M8.3 11.9h2.6" stroke="${D}" stroke-width="1.2"/><circle cx="14.9" cy="11" r="1" fill="${D}"/>`,
+  media: (M, D) => `<rect x="4" y="5.5" width="16" height="13" rx="2.5" fill="${M}"/><path d="M10.5 9.3l4.8 2.7-4.8 2.7Z" fill="${D}"/>`,
+  settings: (M, D) => `<circle cx="12" cy="12" r="2.6" fill="${M}"/><path d="M12 4.2v2.6M12 17.2v2.6M4.2 12h2.6M17.2 12h2.6M6.5 6.5l1.9 1.9M15.6 15.6l1.9 1.9M17.5 6.5l-1.9 1.9M8.4 15.6l-1.9 1.9" stroke="${M}" stroke-width="1.8"/>`,
+  trash: (M, D) => `<path d="M7 7.6h10l-.8 10.5a1.6 1.6 0 0 1-1.6 1.5H9.4a1.6 1.6 0 0 1-1.6-1.5Z" fill="${M}"/><rect x="6" y="4.9" width="12" height="2.3" rx="1.15" fill="${M}"/>`,
+  addapp: (M, D) => `<path d="M12 5.5v13M5.5 12h13" stroke="${M}" stroke-width="2.6"/>`
+};
+const SKIN_FRAMES = {
+  win98: `<rect x="1" y="1" width="22" height="22" rx="1.5" fill="#d9d9d0" stroke="#404040"/><path d="M2 2h20v4.2H2z" fill="#000080"/><rect x="1.9" y="1.9" width="20.2" height="1.5" fill="#fff"/>`,
+  winxp: `<rect x="1" y="1" width="22" height="22" rx="4.5" fill="#2f7fd0" stroke="#0d3a8f"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.4)"/>`,
+  win7: `<rect x="1" y="1" width="22" height="22" rx="5" fill="#d6ecfa" stroke="#7ba7cc" stroke-width="1.4"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.65)"/>`,
+  ubuntu: `<circle cx="12" cy="12" r="11" fill="#e95420"/>`,
+  macos: `<rect x="1" y="1" width="22" height="22" rx="5.8" fill="#3b82f6"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.3)"/>`
+};
+const SKIN_COLORS = {
+  win98: { M: '#000080', D: '#c0c0c0' },
+  winxp: { M: '#ffffff', D: '#0d3a8f' },
+  win7: { M: '#0d4f8a', D: '#ffffff' },
+  ubuntu: { M: '#ffffff', D: '#772953' },
+  macos: { M: '#ffffff', D: '#1d4ed8' }
+};
+const SKIN_APP_ICONS = {};
+['win98', 'winxp', 'win7', 'ubuntu', 'macos'].forEach(sk => {
+  SKIN_APP_ICONS[sk] = {};
+  Object.entries(SKIN_GLYPHS).forEach(([app, g]) => {
+    SKIN_APP_ICONS[sk][app] = `<svg viewBox="0 0 24 24">${SKIN_FRAMES[sk]}<g transform="translate(0,1.2)">${g(SKIN_COLORS[sk].M, SKIN_COLORS[sk].D)}</g></svg>`;
+  });
+});
+function skinIconFor(id, fallback) {
+  const skin = (document.body.className.match(/skin-(\w+)/) || [])[1];
+  if (skin && SKIN_APP_ICONS[skin] && SKIN_APP_ICONS[skin][id]) return `<div class="ic-svg ic-skin">${SKIN_APP_ICONS[skin][id]}</div>`;
+  return fallback || null;
+}
+/* re-rend les logos du bureau et du menu Démarrer quand le skin change */
+function refreshSkinIcons() {
+  document.querySelectorAll('.desk-icon[data-icon-id]').forEach(b => {
+    const id = b.dataset.iconId;
+    if (!id) return;
+    const holder = b.querySelector('.ic, .ic-svg');
+    if (!holder) return;
+    let html = null;
+    if (id === 'trash') html = skinIconFor('trash', `<div class="ic-svg">${TRASH_SVG}</div>`);
+    else if (id === 'addapp') html = skinIconFor('addapp', `<div class="ic" style="background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.45)"><i class="fa-solid fa-plus text-slate-200"></i></div>`);
+    else if (APPS[id]) html = appIconHtml(APPS[id], id);
+    if (html) holder.outerHTML = html;
+  });
+  document.querySelectorAll('.sm-tile[data-icon-id]').forEach(t => {
+    const id = t.dataset.iconId;
+    const app = APPS[id];
+    if (!app) return;
+    const holder = t.querySelector('.ic, .ic-svg');
+    if (!holder) return;
+    holder.outerHTML = appIconHtml(app, id);
+  });
+}
 
 /* ============================================================
    GESTIONNAIRE DE FENÊTRES
@@ -1371,7 +1484,7 @@ function renderTaskbar() {
     const b = document.createElement('div');
     b.className = 'tb-icon' + (w ? ' open' : '') + (focusedApp === id && w && !w.minimized ? ' active' : '');
     b.title = app.title;
-    b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><div class="run-dot"></div>`;
+    b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><span class="tb-lbl">${escHtml(app.title)}</span><div class="run-dot"></div>`;
     b.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
@@ -2196,7 +2309,13 @@ function initBrowser(body) {
 const AI_PROVIDERS = {
   pollinations: { label: 'Pollinations — IA gratuite SANS clé ⚡', models: ['openai', 'openai-fast', 'openai-large', 'mistral', 'qwen-coder'], endpoint: 'https://text.pollinations.ai/openai', vision: true, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit, vision d\'images incluse' },
   google: { label: 'Google Gemini (gratuit)', models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'], vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
-  groq: { label: 'Groq (gratuit, très rapide)', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — modèles puissants' },
+  groq: { label: 'Groq (gratuit, très rapide)', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour' },
+  cerebras: { label: 'Cerebras (gratuit, ultra-rapide)', models: ['llama-3.3-70b', 'llama-4-scout-17b', 'llama-4-maverick-17b', 'gpt-oss-120b'], endpoint: 'https://api.cerebras.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.cerebras.ai — ~14 400 requêtes/jour' },
+  mistral: { label: 'Mistral (gratuit, français 🇫🇷)', models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'magistral-small-latest'], endpoint: 'https://api.mistral.ai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.mistral.ai — 1 requête/seconde, illimité' },
+  sambanova: { label: 'SambaNova (gratuit, très rapide)', models: ['Meta-Llama-4-Scout-17B-16E-Instruct', 'Meta-Llama-4-Maverick-17B-128E-Instruct', 'Llama-3.3-70B-Instruct'], endpoint: 'https://api.sambanova.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.sambanova.ai — quota journalier' },
+  github: { label: 'GitHub Models (gratuit avec compte GitHub)', models: ['openai/gpt-4.1-mini', 'openai/gpt-4o-mini', 'meta/Llama-4-Scout-17B-16E-Instruct', 'mistralai/mistral-small-2503'], endpoint: 'https://models.github.ai/inference/chat/completions', vision: true, free: 'Token gratuit sur github.com/settings/tokens — ~50 requêtes/jour' },
+  cohere: { label: 'Cohere (clé d\u2019essai gratuite)', models: ['command-a-03-2025', 'command-r-plus-08-2024', 'command-r7b-12-2024'], endpoint: 'https://api.cohere.ai/compatibility/v1/chat/completions', vision: false, free: 'Clé d\u2019essai gratuite sur dashboard.cohere.com — ~1000 requêtes/mois' },
+  huggingface: { label: 'Hugging Face (gratuit)', models: ['deepseek-ai/DeepSeek-V3-0324', 'meta-llama/Llama-4-Scout-17B-16E-Instruct', 'Qwen/Qwen2.5-72B-Instruct'], endpoint: 'https://router.huggingface.co/v1/chat/completions', vision: false, free: 'Token gratuit sur huggingface.co/settings/tokens — ~1000 crédits/mois' },
   openrouter: { label: 'OpenRouter (modèles gratuits)', models: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-4-scout:free', 'qwen/qwen2.5-vl-72b-instruct:free', 'deepseek/deepseek-r1:free', 'mistralai/mistral-small-3.1-24b-instruct:free'], vision: true, dynamic: true, free: 'Clé gratuite sur openrouter.ai — ~50 requêtes/jour' },
   openai: { label: 'OpenAI (payant)', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'], endpoint: 'https://api.openai.com/v1/chat/completions', vision: true },
   anthropic: { label: 'Anthropic (payant)', models: ['claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'], vision: true }
@@ -2220,7 +2339,7 @@ function aiBumpCount(p) {
   o.n++;
   LS.setJSON(aiQuotaKey(p), o);
 }
-const AI_DAILY_LIMITS = { pollinations: 0, google: 250, openrouter: 50, groq: 14400, openai: 0, anthropic: 0 };
+const AI_DAILY_LIMITS = { pollinations: 0, google: 250, openrouter: 50, groq: 14400, cerebras: 14400, mistral: 0, sambanova: 500, github: 50, cohere: 0, huggingface: 0, openai: 0, anthropic: 0 };
 
 function renderAI() {
   return `
@@ -3058,7 +3177,7 @@ function renderSettings() {
 
       <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-desktop mr-2 text-sky-400"></i>Apparence du système (skins)</h3>
-        <p class="text-slate-400 text-[11px] mb-3">Transforme tout le bureau d'un coup : barre des tâches, fenêtres, bouton Démarrer, fond d'écran, couleurs et police — façon Windows 10, 7, XP, 98, Ubuntu ou macOS.</p>
+        <p class="text-slate-400 text-[11px] mb-3">Transforme tout le bureau d'un coup : logos des apps, barre des tâches, onglets ouverts avec noms, fenêtres, boutons de contrôle, fond d'écran, couleurs et police — façon Windows 10, 7, XP, 98, Ubuntu ou macOS.</p>
         <div class="grid grid-cols-2 gap-2 mb-2" id="st-skins"></div>
         <button class="btn btn-ghost w-full" id="st-skin-off"><i class="fa-solid fa-xmark"></i> Revenir à l'apparence Windows 11 personnalisée</button>
       </section>
@@ -3131,7 +3250,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v9 — Skins système + anti-superposition</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v10 — Skins profonds + 10 IA gratuites</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -3594,14 +3713,16 @@ function addDeskIcon(id, iconHtml, label, onClick) {
   return b;
 }
 /* HTML d'icône d'application : SVG, image de logo réel ou Font Awesome */
-function appIconHtml(app) {
+function appIconHtml(app, id) {
+  const sk = skinIconFor(id, null);
+  if (sk) return sk;
   if (app.svg) return `<div class="ic-svg">${app.svg}</div>`;
   if (app.img) return `<div class="ic bg-gradient-to-br ${app.color}">${appGlyph(app)}</div>`;
   return `<div class="ic bg-gradient-to-br ${app.color}"><i class="fa-solid ${app.icon}"></i></div>`;
 }
 iconOrder.forEach(id => {
   const app = APPS[id];
-  addDeskIcon(id, appIconHtml(app), app.title, () => openApp(id));
+  addDeskIcon(id, appIconHtml(app, id), app.title, () => openApp(id));
 });
 /* Applications personnalisées (ajoutées via Paramètres) */
 function renderCustomIcons() {
@@ -3618,11 +3739,11 @@ function renderCustomIcons() {
 renderCustomIcons();
 /* Bouton + : ajouter une app */
 addDeskIcon('addapp',
-  `<div class="ic" style="background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.45)"><i class="fa-solid fa-plus text-slate-200"></i></div>`,
+  skinIconFor('addapp', `<div class="ic" style="background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.45)"><i class="fa-solid fa-plus text-slate-200"></i></div>`),
   'Ajouter', () => { openApp('settings'); toast('Ajoutez vos apps dans « Mes applications »', 'fa-plus', 'text-sky-400'); });
 // Corbeille (décorative, façon Windows)
 addDeskIcon('trash',
-  `<div class="ic-svg">${TRASH_SVG}</div>`,
+  skinIconFor('trash', `<div class="ic-svg">${TRASH_SVG}</div>`),
   'Corbeille', () => toast('La corbeille est vide', 'fa-trash-can', 'text-slate-400'));
 
 /* Au démarrage : résout les superpositions mémorisées (anciennes sauvegardes
@@ -3663,7 +3784,8 @@ iconOrder.forEach(id => {
   const t = document.createElement('div');
   t.className = 'sm-tile';
   t.dataset.name = (app.title + ' ' + (SEARCH_ALIASES[id] || '')).toLowerCase();
-  t.innerHTML = appIconHtml(app) + `<span class="lbl">${app.title}</span>`;
+  t.dataset.iconId = id;
+  t.innerHTML = appIconHtml(app, id) + `<span class="lbl">${app.title}</span>`;
   t.addEventListener('click', () => { toggleStartMenu(false); openApp(id); });
   smApps.appendChild(t);
 });
