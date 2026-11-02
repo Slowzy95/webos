@@ -1570,7 +1570,13 @@ function initBrowser(body) {
   }
   function ytNextToken(obj) {
     if (!obj || typeof obj !== 'object') return null;
-    if (obj.continuationCommand?.token) return obj.continuationCommand.token;
+    /* Ne prend que les jetons de continuation de résultats (continuationItemRenderer) —
+       les réponses contiennent aussi des jetons « chips » (filtres) à ne pas suivre. */
+    if (obj.continuationItemRenderer) {
+      const t = obj.continuationItemRenderer.continuationEndpoint?.continuationCommand?.token
+        || obj.continuationItemRenderer.continuationCommand?.token;
+      if (t) return t;
+    }
     for (const v of Object.values(obj)) {
       const t = ytNextToken(v);
       if (t) return t;
@@ -1703,7 +1709,9 @@ function initBrowser(body) {
         });
         if (rep.ok) {
           const data = await rep.json();
-          html = JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
+          const tok0 = ytNextToken(data);
+          html = (tok0 ? '"continuationCommand":{"token":"' + tok0 + '"}' : '')
+            + JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
         }
       } catch (e) {}
     }
@@ -1736,7 +1744,11 @@ function initBrowser(body) {
         });
         if (rep.ok) {
           const data = await rep.json();
-          html = JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
+          /* Place le jeton de continuation de résultats en tête (l'analyse par
+             regex prend le premier trouvé ; les jetons « chips » sont à éviter) */
+          const tok0 = ytNextToken(data);
+          html = (tok0 ? '"continuationCommand":{"token":"' + tok0 + '"}' : '')
+            + JSON.stringify(data) + '"INNERTUBE_API_KEY":"' + YT_API_KEY + '"';
           parsed = ytExtract(html);
           vids = parsed.vids; chs = parsed.chs;
         }
