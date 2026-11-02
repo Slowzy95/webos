@@ -172,6 +172,43 @@
     body.theme-cyan   { --accent: #0891b2; --accent-hover: #06b6d4; --accent-light: #22d3ee; --accent-soft: rgba(8,145,178,.18); --accent-glow: rgba(34,211,238,.15); }
     body.theme-gold   { --accent: #d97706; --accent-hover: #f59e0b; --accent-light: #fbbf24; --accent-soft: rgba(217,119,6,.18); --accent-glow: rgba(251,191,36,.15); }
 
+    /* Thèmes colorés : la couleur s'applique aussi aux fenêtres, barre, menus et cartes */
+    body.theme-red    .window { background: linear-gradient(180deg, rgba(48,14,18,.94), rgba(34,10,13,.96)); border-color: rgba(220,38,38,.25); }
+    body.theme-red    .win-header { background: rgba(220,38,38,.10); border-bottom-color: rgba(220,38,38,.20); }
+    body.theme-red    #taskbar { background: rgba(38,12,15,.78); border-top-color: rgba(220,38,38,.30); }
+    body.theme-red    #start-menu, body.theme-red #tray-popup { background: rgba(34,11,14,.93); border-color: rgba(220,38,38,.25); }
+    body.theme-red    .glass-card { background: rgba(220,38,38,.07); }
+    body.theme-purple .window { background: linear-gradient(180deg, rgba(30,14,48,.94), rgba(20,10,34,.96)); border-color: rgba(124,58,237,.28); }
+    body.theme-purple .win-header { background: rgba(124,58,237,.10); border-bottom-color: rgba(124,58,237,.22); }
+    body.theme-purple #taskbar { background: rgba(24,12,40,.78); border-top-color: rgba(124,58,237,.32); }
+    body.theme-purple #start-menu, body.theme-purple #tray-popup { background: rgba(22,11,38,.93); border-color: rgba(124,58,237,.28); }
+    body.theme-purple .glass-card { background: rgba(124,58,237,.07); }
+    body.theme-green  .window { background: linear-gradient(180deg, rgba(8,34,26,.94), rgba(6,24,18,.96)); border-color: rgba(5,150,105,.28); }
+    body.theme-green  .win-header { background: rgba(5,150,105,.10); border-bottom-color: rgba(5,150,105,.20); }
+    body.theme-green  #taskbar { background: rgba(7,26,20,.78); border-top-color: rgba(5,150,105,.30); }
+    body.theme-green  #start-menu, body.theme-green #tray-popup { background: rgba(6,23,18,.93); border-color: rgba(5,150,105,.28); }
+    body.theme-green  .glass-card { background: rgba(5,150,105,.07); }
+    body.theme-orange .window { background: linear-gradient(180deg, rgba(46,22,8,.94), rgba(32,16,6,.96)); border-color: rgba(234,88,12,.28); }
+    body.theme-orange .win-header { background: rgba(234,88,12,.10); border-bottom-color: rgba(234,88,12,.20); }
+    body.theme-orange #taskbar { background: rgba(36,18,7,.78); border-top-color: rgba(234,88,12,.30); }
+    body.theme-orange #start-menu, body.theme-orange #tray-popup { background: rgba(32,16,6,.93); border-color: rgba(234,88,12,.28); }
+    body.theme-orange .glass-card { background: rgba(234,88,12,.07); }
+    body.theme-pink   .window { background: linear-gradient(180deg, rgba(46,10,30,.94), rgba(32,8,22,.96)); border-color: rgba(219,39,119,.28); }
+    body.theme-pink   .win-header { background: rgba(219,39,119,.10); border-bottom-color: rgba(219,39,119,.20); }
+    body.theme-pink   #taskbar { background: rgba(38,9,25,.78); border-top-color: rgba(219,39,119,.30); }
+    body.theme-pink   #start-menu, body.theme-pink #tray-popup { background: rgba(34,8,23,.93); border-color: rgba(219,39,119,.28); }
+    body.theme-pink   .glass-card { background: rgba(219,39,119,.07); }
+    body.theme-cyan   .window { background: linear-gradient(180deg, rgba(8,30,38,.94), rgba(6,22,28,.96)); border-color: rgba(8,145,178,.28); }
+    body.theme-cyan   .win-header { background: rgba(8,145,178,.10); border-bottom-color: rgba(8,145,178,.20); }
+    body.theme-cyan   #taskbar { background: rgba(7,24,30,.78); border-top-color: rgba(8,145,178,.30); }
+    body.theme-cyan   #start-menu, body.theme-cyan #tray-popup { background: rgba(6,22,28,.93); border-color: rgba(8,145,178,.28); }
+    body.theme-cyan   .glass-card { background: rgba(8,145,178,.07); }
+    body.theme-gold   .window { background: linear-gradient(180deg, rgba(42,28,6,.94), rgba(30,20,5,.96)); border-color: rgba(217,119,6,.28); }
+    body.theme-gold   .win-header { background: rgba(217,119,6,.10); border-bottom-color: rgba(217,119,6,.20); }
+    body.theme-gold   #taskbar { background: rgba(34,23,5,.78); border-top-color: rgba(217,119,6,.30); }
+    body.theme-gold   #start-menu, body.theme-gold #tray-popup { background: rgba(30,20,5,.93); border-color: rgba(217,119,6,.28); }
+    body.theme-gold   .glass-card { background: rgba(217,119,6,.07); }
+
     /* Onglets du navigateur */
     #br-tabs { display: flex; align-items: flex-end; gap: 2px; min-height: 34px; }
     .tab { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px 8px 0 0; font-size: 11px; color: #94a3b8; cursor: pointer; max-width: 160px; min-width: 80px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-bottom: none; transition: all .12s; flex-shrink: 0; }
@@ -2309,7 +2346,7 @@ function initBrowser(body) {
 const AI_PROVIDERS = {
   pollinations: { label: 'Pollinations — SANS clé ⚡', cat: 'nokey', models: ['openai', 'openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Aucune clé nécessaire — 100% gratuit (1 réponse/45 s, relance auto)' },
   google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé gratuite sur aistudio.google.com — ~250 requêtes/jour' },
-  groq: { label: 'Groq (très rapide)', cat: 'free', models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour' },
+  groq: { label: 'Groq (très rapide)', cat: 'free', models: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.groq.com — ~14 400 requêtes/jour (llama-4 = vision d\u2019images)' },
   cerebras: { label: 'Cerebras (ultra-rapide)', cat: 'free', models: ['llama-3.3-70b', 'llama-4-scout-17b', 'llama-4-maverick-17b', 'gpt-oss-120b'], endpoint: 'https://api.cerebras.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.cerebras.ai — ~14 400 requêtes/jour' },
   mistral: { label: 'Mistral (français 🇫🇷)', cat: 'free', models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'magistral-small-latest'], endpoint: 'https://api.mistral.ai/v1/chat/completions', vision: true, free: 'Clé gratuite sur console.mistral.ai — 1 requête/seconde, illimité' },
   sambanova: { label: 'SambaNova (très rapide)', cat: 'free', models: ['Meta-Llama-4-Scout-17B-16E-Instruct', 'Meta-Llama-4-Maverick-17B-128E-Instruct', 'Llama-3.3-70B-Instruct'], endpoint: 'https://api.sambanova.ai/v1/chat/completions', vision: false, free: 'Clé gratuite sur cloud.sambanova.ai — quota journalier' },
@@ -2477,7 +2514,19 @@ function initAI(body, rec) {
     if (!text && !aiImage) return;
     const p = AI_PROVIDERS[aiProvider];
     if (!p.nokey && !apiKeys[aiProvider]) { toast('Aucune clé API pour ce fournisseur', 'fa-triangle-exclamation', 'text-amber-400'); return; }
-    const model = modelSel.value;
+    let model = modelSel.value;
+    /* Vision : si une image est jointe et que le modèle ne voit pas les images,
+       bascule automatiquement sur un modèle vision du même fournisseur */
+    const VISION_MODELS = {
+      groq: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-instruct'],
+      google: ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest']
+    };
+    if (aiImage && VISION_MODELS[aiProvider] && !VISION_MODELS[aiProvider].includes(model)) {
+      model = VISION_MODELS[aiProvider][0];
+      modelSel.value = model;
+      LS.set('ai_model_' + aiProvider, model);
+      toast('Modèle basculé sur ' + model + ' (vision d\u2019images)', 'fa-image', 'text-sky-400');
+    }
     const image = aiImage;
     if (image && !p.vision) { toast('Ce modèle ne voit pas les images — utilisez Google Gemini ou OpenRouter', 'fa-triangle-exclamation', 'text-amber-400'); return; }
     input.value = '';
@@ -2581,6 +2630,8 @@ function initAI(body, rec) {
         ? 'GitHub Models bloque les appels depuis un navigateur (CORS) — utilisez Pollinations, Gemini, Groq ou OpenRouter à la place.'
         : 'Connexion impossible (réseau ou CORS) — vérifiez votre connexion internet.';
       if (/high demand/i.test(msg)) msg = 'Ce modèle est saturé pour le moment — essayez un autre modèle de la liste (ex : gemini-3.5-flash).';
+      if (/image|vision|multimodal|modalit/i.test(msg) && aiImage) msg = 'Ce modèle ne voit pas les images — l\u2019app basculera automatiquement sur un modèle vision (llama-4) au prochain envoi d\u2019image.';
+      if (/429|RESOURCE_EXHAUSTED/i.test(msg) && aiProvider === 'google') msg = 'Quota Gemini épuisé pour aujourd\u2019hui (remise à zéro à minuit) — utilisez Pollinations ou Groq en attendant.';
       if (/429|rate limit|quota/i.test(msg) && aiProvider === 'openrouter') msg = 'Quota gratuit OpenRouter épuisé pour aujourd\'hui (remise à zéro demain) — ou changez de modèle gratuit.';
       typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
@@ -3286,7 +3337,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v11 — Catégories IA + clés auto-détectées</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v12 — Thèmes complets + vision auto</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
