@@ -1868,7 +1868,8 @@ const SJ_PROXY = 'https://slowzy95.github.io/proxy/sj/go.html?url=';
 const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
 const PROXY_TRANSPORTS = { libcurl: 'libcurl', epoxy: 'Epoxy' };
 /* Sites qui ne fonctionnent bien qu'avec Ultraviolet (constaté en test) */
-const UV_ONLY_SITES = /^(bloxd\.io)$/;
+/* sites qui exigent Ultraviolet : Bloxd (Scramjet incompatible) et Discord (le captcha hCaptcha tourne à l'infini sous Scramjet, il marche sous Ultraviolet) */
+const UV_ONLY_SITES = /^(bloxd\.io|discord\.com|discordapp\.com|discord\.gg|[a-z0-9-]+\.discord\.com)$/;
 function proxyPrefs() {
   const engine = LS.get('proxy_engine', 'sj');
   const transport = LS.get('proxy_transport', 'libcurl');
@@ -1884,8 +1885,8 @@ function proxyPlan(u) {
   let first = { engine: p.engine, transport: p.transport, wisp: 0 };
   const remembered = LS.getJSON('proxy_ok', {})[host];
   if (LS.get('proxy_auto', '1') === '1') {
-    if (remembered && PROXY_ENGINES[remembered.engine] && PROXY_TRANSPORTS[remembered.transport]) first = { ...remembered, wisp: 0 };
-    else if (UV_ONLY_SITES.test(host)) first = { engine: 'uv', transport: 'epoxy', wisp: 0 };
+    if (UV_ONLY_SITES.test(host)) first = (remembered && remembered.engine === 'uv' && PROXY_TRANSPORTS[remembered.transport]) ? { ...remembered, wisp: 0 } : { engine: 'uv', transport: 'epoxy', wisp: 0 };
+    else if (remembered && PROXY_ENGINES[remembered.engine] && PROXY_TRANSPORTS[remembered.transport]) first = { ...remembered, wisp: 0 };
   }
   const oEng = first.engine === 'sj' ? 'uv' : 'sj';
   const oTr = first.transport === 'libcurl' ? 'epoxy' : 'libcurl';
