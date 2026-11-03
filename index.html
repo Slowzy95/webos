@@ -2955,6 +2955,13 @@ function initBrowser(body) {
       return;
     }
     u = normalize(u); if (!u) return;
+    /* CrazyGames : les pages de jeu (crazygames.com/game/X) chargent un
+       chargeur v2.13 incompatible avec le proxy (jeux bloqués) — on ouvre
+       directement le cadre du jeu, qui fonctionne. */
+    {
+      const cg = u.match(/^https?:\/\/(?:www\.)?crazygames\.com\/game\/([\w-]+)/);
+      if (cg) u = 'https://games.crazygames.com/fr_FR/' + cg[1] + '/index.html';
+    }
     /* Mise à jour de l'onglet actif */
     const activeTab = tabs.find(t => t.id === activeTabId);
     if (activeTab) {
