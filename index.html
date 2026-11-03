@@ -164,6 +164,48 @@
 
     /* ================= THÈMES (couleurs d'accent) ================= */
     :root { --accent: #2563eb; --accent-hover: #3b82f6; --accent-light: #4cc2ff; --accent-soft: rgba(37,99,235,.18); --accent-glow: rgba(76,194,255,.15); }
+
+    /* ==== LE THÈME COLORE AUSSI L'INTÉRIEUR DES APPLICATIONS ==== */
+    ::selection { background: var(--accent); color: #fff; }
+    .win-body { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, rgba(18,24,42,.90)), color-mix(in srgb, var(--accent) 3%, rgba(13,18,33,.94))); }
+    .field:focus, .win-body input:focus, .win-body textarea:focus, .win-body select:focus { outline: none; border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-soft); }
+    .btn { border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+    .btn:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+    .btn-green { background: linear-gradient(135deg, var(--accent), var(--accent-hover)); }
+    .btn-green:hover { background: linear-gradient(135deg, var(--accent-hover), var(--accent)); filter: brightness(1.1); }
+    .btn-blue, .btn-violet { background: var(--accent); }
+    .btn-blue:hover, .btn-violet:hover { background: var(--accent-hover); }
+    .chip.chip-on { background: var(--accent-soft); border-color: var(--accent); color: #fff; }
+    .msg-user { background: var(--accent-soft); border-color: var(--accent); }
+    .desk-icon.selected { background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .wbtn:hover { background: var(--accent-soft); color: #fff; }
+    .sm-tile:hover { border-color: var(--accent); }
+    .tab.on, .yt-ch.on { border-color: var(--accent); }
+    *::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 50%, #334155); border-radius: 8px; }
+    *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ==== MODES D'ANIMATION (fenêtres, clics, souris) ==== */
+    body[data-anim] .window.win-open { animation: wosOpenWin .24s cubic-bezier(.16,1,.3,1); }
+    @keyframes wosOpenWin { from { opacity: 0; transform: scale(.90) translateY(14px); } }
+    body[data-anim="linux"] .window.win-open { animation-name: wosOpenLinux; animation-duration: .28s; }
+    @keyframes wosOpenLinux { from { opacity: 0; transform: translateY(48px) scale(.97); } }
+    body[data-anim="full"] .window.win-open { animation-name: wosOpenFull; animation-duration: .3s; }
+    @keyframes wosOpenFull { 0% { opacity: 0; transform: scale(.6) rotate(-3deg); } 60% { transform: scale(1.04) rotate(.5deg); } 100% { opacity: 1; transform: scale(1); } }
+    body[data-anim="none"] .window.win-open { animation: none; }
+    body[data-anim] .window.win-close { animation: wosClose .16s ease-in forwards; }
+    @keyframes wosClose { to { opacity: 0; transform: scale(.92); } }
+    body[data-anim="linux"] .window.win-close { animation-name: wosCloseLinux; }
+    @keyframes wosCloseLinux { to { opacity: 0; transform: translateY(44px); } }
+    body[data-anim="none"] .window.win-close { animation: none; }
+    body[data-anim] .window.win-min { animation: wosMin .2s ease-in forwards; }
+    @keyframes wosMin { to { opacity: 0; transform: scale(.7) translateY(55%); } }
+    body[data-anim="none"] .window.win-min { animation: none; }
+    body[data-anim] .window.win-unmin { animation: wosUnmin .24s cubic-bezier(.2,.9,.3,1.3); }
+    @keyframes wosUnmin { from { opacity: 0; transform: scale(.7) translateY(50%); } }
+    body[data-anim="none"] .window.win-unmin { animation: none; }
+    body[data-anim="full"] .tb-icon.launch { animation: wosBounce .5s cubic-bezier(.2,.9,.3,1.4); }
+    @keyframes wosBounce { 0% { transform: translateY(0); } 40% { transform: translateY(-7px); } 70% { transform: translateY(-2px); } 100% { transform: translateY(0); } }
+
     body.theme-red    { --accent: #dc2626; --accent-hover: #ef4444; --accent-light: #f87171; --accent-soft: rgba(220,38,38,.18); --accent-glow: rgba(248,113,113,.15); }
     body.theme-purple { --accent: #7c3aed; --accent-hover: #8b5cf6; --accent-light: #a78bfa; --accent-soft: rgba(124,58,237,.18); --accent-glow: rgba(167,139,250,.15); }
     body.theme-green  { --accent: #059669; --accent-hover: #10b981; --accent-light: #34d399; --accent-soft: rgba(5,150,105,.18); --accent-glow: rgba(52,211,153,.15); }
@@ -176,6 +218,21 @@
     body.theme-teal    { --accent: #0d9488; --accent-hover: #14b8a6; --accent-light: #2dd4bf; --accent-soft: rgba(13,148,136,.18); --accent-glow: rgba(45,212,191,.15); }
     body.theme-lime    { --accent: #65a309; --accent-hover: #84cc16; --accent-light: #bef264; --accent-soft: rgba(101,163,9,.18); --accent-glow: rgba(190,242,100,.15); }
     body.theme-crimson { --accent: #be123c; --accent-hover: #e11d48; --accent-light: #fb7185; --accent-soft: rgba(190,18,60,.18); --accent-glow: rgba(251,113,133,.15); }
+    body.theme-violet  { --accent: #8b5cf6; --accent-hover: #a78bfa; --accent-light: #c4b5fd; --accent-soft: rgba(139,92,246,.18); --accent-glow: rgba(196,181,253,.15); }
+    body.theme-fuchsia { --accent: #d946ef; --accent-hover: #e879f9; --accent-light: #f0abfc; --accent-soft: rgba(217,70,239,.16); --accent-glow: rgba(240,171,252,.15); }
+    body.theme-emeraude { --accent: #10b981; --accent-hover: #34d399; --accent-light: #6ee7b7; --accent-soft: rgba(16,185,129,.16); --accent-glow: rgba(110,231,183,.15); }
+    body.theme-ambre   { --accent: #f59e0b; --accent-hover: #fbbf24; --accent-light: #fcd34d; --accent-soft: rgba(245,158,11,.16); --accent-glow: rgba(252,211,77,.15); }
+    body.theme-menthe  { --accent: #2dd4bf; --accent-hover: #5eead4; --accent-light: #99f6e4; --accent-soft: rgba(45,212,191,.16); --accent-glow: rgba(153,246,228,.15); }
+    /* Thèmes ANIMÉS : l'accent change de couleur tout seul */
+    @property --accent { syntax: '<color>'; inherits: true; initial-value: #2563eb; }
+    body.theme-arcenciel { --accent-hover: #94a3b8; --accent-light: #cbd5e1; --accent-soft: rgba(148,163,184,.16); --accent-glow: rgba(148,163,184,.15); animation: wosRainbow 16s linear infinite; }
+    @keyframes wosRainbow { 0% { --accent: #38bdf8; } 17% { --accent: #818cf8; } 33% { --accent: #c084fc; } 50% { --accent: #f472b6; } 67% { --accent: #fb7185; } 83% { --accent: #fbbf24; } 100% { --accent: #38bdf8; } }
+    body.theme-pulsar { --accent: #a855f7; --accent-hover: #c084fc; --accent-light: #d8b4fe; --accent-soft: rgba(168,85,247,.18); --accent-glow: rgba(192,132,252,.2); }
+    body.theme-pulsar #taskbar { animation: wosPulse 2.6s ease-in-out infinite; }
+    @keyframes wosPulse { 0%, 100% { box-shadow: 0 -2px 24px rgba(168,85,247,0); } 50% { box-shadow: 0 -2px 34px rgba(168,85,247,.55); } }
+    body.theme-lave { --accent: #f97316; --accent-hover: #fb923c; --accent-light: #fdba74; --accent-soft: rgba(249,115,22,.18); --accent-glow: rgba(253,186,116,.18); }
+    body.theme-lave #taskbar { background: linear-gradient(270deg, #7c2d12, #b45309, #dc2626, #b45309, #7c2d12); background-size: 300% 100%; animation: wosLava 8s linear infinite; border-top-color: rgba(251,146,60,.55); }
+    @keyframes wosLava { to { background-position: 300% 0; } }
 
     /* Thèmes colorés : la couleur s'applique aussi aux fenêtres, barre, menus et cartes */
     body.theme-red    .window { background: linear-gradient(180deg, rgba(48,14,18,.94), rgba(34,10,13,.96)); border-color: rgba(220,38,38,.25); }
@@ -238,6 +295,45 @@
     body.theme-crimson #taskbar { background: rgba(35,9,19,.80); border-top-color: rgba(225,29,72,.30); }
     body.theme-crimson #start-menu, body.theme-crimson #tray-popup { background: rgba(31,8,17,.94); border-color: rgba(225,29,72,.28); }
     body.theme-crimson .glass-card { background: rgba(225,29,72,.07); }
+    body.theme-violet  .window { background: linear-gradient(180deg, rgba(34,22,58,.94), rgba(24,15,42,.96)); border-color: rgba(139,92,246,.28); }
+    body.theme-violet  .win-header { background: rgba(139,92,246,.10); border-bottom-color: rgba(139,92,246,.20); }
+    body.theme-violet  #taskbar { background: rgba(27,18,46,.80); border-top-color: rgba(139,92,246,.30); }
+    body.theme-violet  #start-menu, body.theme-violet #tray-popup { background: rgba(24,16,42,.94); border-color: rgba(139,92,246,.28); }
+    body.theme-violet  .glass-card { background: rgba(139,92,246,.07); }
+    body.theme-fuchsia .window { background: linear-gradient(180deg, rgba(48,14,50,.94), rgba(34,9,36,.96)); border-color: rgba(217,70,239,.28); }
+    body.theme-fuchsia .win-header { background: rgba(217,70,239,.10); border-bottom-color: rgba(217,70,239,.20); }
+    body.theme-fuchsia #taskbar { background: rgba(38,10,40,.80); border-top-color: rgba(217,70,239,.30); }
+    body.theme-fuchsia #start-menu, body.theme-fuchsia #tray-popup { background: rgba(34,9,36,.94); border-color: rgba(217,70,239,.28); }
+    body.theme-fuchsia .glass-card { background: rgba(217,70,239,.07); }
+    body.theme-emeraude .window { background: linear-gradient(180deg, rgba(6,38,32,.94), rgba(5,27,23,.96)); border-color: rgba(16,185,129,.28); }
+    body.theme-emeraude .win-header { background: rgba(16,185,129,.10); border-bottom-color: rgba(16,185,129,.20); }
+    body.theme-emeraude #taskbar { background: rgba(6,32,27,.80); border-top-color: rgba(16,185,129,.30); }
+    body.theme-emeraude #start-menu, body.theme-emeraude #tray-popup { background: rgba(5,29,24,.94); border-color: rgba(16,185,129,.28); }
+    body.theme-emeraude .glass-card { background: rgba(16,185,129,.07); }
+    body.theme-ambre   .window { background: linear-gradient(180deg, rgba(44,30,8,.94), rgba(32,21,6,.96)); border-color: rgba(245,158,11,.28); }
+    body.theme-ambre   .win-header { background: rgba(245,158,11,.10); border-bottom-color: rgba(245,158,11,.20); }
+    body.theme-ambre   #taskbar { background: rgba(36,25,7,.80); border-top-color: rgba(245,158,11,.30); }
+    body.theme-ambre   #start-menu, body.theme-ambre #tray-popup { background: rgba(32,22,6,.94); border-color: rgba(245,158,11,.28); }
+    body.theme-ambre   .glass-card { background: rgba(245,158,11,.07); }
+    body.theme-menthe  .window { background: linear-gradient(180deg, rgba(8,40,38,.94), rgba(6,29,27,.96)); border-color: rgba(45,212,191,.28); }
+    body.theme-menthe  .win-header { background: rgba(45,212,191,.10); border-bottom-color: rgba(45,212,191,.20); }
+    body.theme-menthe  #taskbar { background: rgba(7,33,31,.80); border-top-color: rgba(45,212,191,.30); }
+    body.theme-menthe  #start-menu, body.theme-menthe #tray-popup { background: rgba(6,30,28,.94); border-color: rgba(45,212,191,.28); }
+    body.theme-menthe  .glass-card { background: rgba(45,212,191,.07); }
+    body.theme-arcenciel .window { background: linear-gradient(180deg, rgba(24,24,30,.94), rgba(15,15,20,.96)); border-color: rgba(255,255,255,.20); }
+    body.theme-arcenciel .win-header { background: rgba(255,255,255,.07); border-bottom-color: rgba(255,255,255,.16); }
+    body.theme-arcenciel #taskbar { background: rgba(16,16,21,.82); border-top-color: rgba(255,255,255,.24); }
+    body.theme-arcenciel #start-menu, body.theme-arcenciel #tray-popup { background: rgba(14,14,19,.95); border-color: rgba(255,255,255,.20); }
+    body.theme-arcenciel .glass-card { background: rgba(255,255,255,.05); }
+    body.theme-pulsar   .window { background: linear-gradient(180deg, rgba(28,18,46,.94), rgba(20,13,34,.96)); border-color: rgba(168,85,247,.30); }
+    body.theme-pulsar   .win-header { background: rgba(168,85,247,.12); border-bottom-color: rgba(168,85,247,.22); }
+    body.theme-pulsar   #taskbar { background: rgba(24,15,40,.82); border-top-color: rgba(168,85,247,.32); }
+    body.theme-pulsar   #start-menu, body.theme-pulsar #tray-popup { background: rgba(22,14,38,.95); border-color: rgba(168,85,247,.30); }
+    body.theme-pulsar   .glass-card { background: rgba(168,85,247,.08); }
+    body.theme-lave     .window { background: linear-gradient(180deg, rgba(40,16,8,.94), rgba(29,11,6,.96)); border-color: rgba(249,115,22,.30); }
+    body.theme-lave     .win-header { background: rgba(249,115,22,.12); border-bottom-color: rgba(249,115,22,.22); }
+    body.theme-lave     #start-menu, body.theme-lave #tray-popup { background: rgba(33,13,7,.95); border-color: rgba(249,115,22,.28); }
+    body.theme-lave     .glass-card { background: rgba(249,115,22,.08); }
 
     /* Onglets du navigateur */
     #br-tabs { display: flex; align-items: flex-end; gap: 2px; min-height: 34px; }
@@ -955,6 +1051,40 @@ async function memberWallPublish(name, url) {
   LS.setJSON('memberwalls', trimmed);
   return trimmed;
 }
+
+/* Souris de MEMBRES (curseurs partagés par tout le monde) — même système que les fonds d'écran */
+const SHARED_CURSORS_API = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a0d154871bf8';
+let MEMBER_CURSORS = LS.getJSON('membercursors', []);
+async function memberCursorsFetch() {
+  try {
+    const rep = await fetch(SHARED_CURSORS_API);
+    if (!rep.ok) throw new Error('ko');
+    const j = await rep.json();
+    const list = (j.data && Array.isArray(j.data.cursors)) ? j.data.cursors : [];
+    MEMBER_CURSORS = list;
+    LS.setJSON('membercursors', list);
+    return list;
+  } catch (e) { return LS.getJSON('membercursors', []); }
+}
+async function memberCursorPublish(name, arrow, pointer) {
+  const cur = await memberCursorsFetch();
+  const list = cur.filter(c => c.arrow !== arrow);
+  list.unshift({ name: name || 'Souris d\u2019un membre', arrow, pointer: pointer || arrow, by: 'Membre', ts: Date.now() });
+  const trimmed = list.slice(0, 60);
+  const rep = await fetch(SHARED_CURSORS_API, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'webos-cursors', data: { cursors: trimmed } })
+  });
+  if (!rep.ok) throw new Error('publication impossible');
+  MEMBER_CURSORS = trimmed;
+  LS.setJSON('membercursors', trimmed);
+  return trimmed;
+}
+function applyMemberCursor(arrow, pointer) {
+  LS.setJSON('cursor_custom', { a: arrow, p: pointer || arrow });
+  setCursorTheme('custom');
+  toast('Souris des membres appliquée', 'fa-users', 'text-violet-400');
+}
 function applyMemberWall(url) {
   applyWallpaper({ id: 'member:' + url, type: 'image', url });
   toast('Fond d\u2019écran des membres appliqué', 'fa-users', 'text-pink-400');
@@ -976,6 +1106,17 @@ const _sword = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="32" height
 const _flower = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><g fill="${c}" stroke="#0b1120" stroke-width="1.2"><circle cx="15" cy="6" r="5"/><circle cx="23.5" cy="12" r="5"/><circle cx="20" cy="22.5" r="5"/><circle cx="10" cy="22.5" r="5"/><circle cx="6.5" cy="12" r="5"/></g><circle cx="15" cy="14.5" r="4" fill="#fbbf24" stroke="#0b1120" stroke-width="1.2"/></svg>`;
 const _paw = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><g fill="${c}" stroke="#0b1120" stroke-width="1.2"><ellipse cx="15" cy="19" rx="8" ry="6.5"/><ellipse cx="5.5" cy="10" rx="3.4" ry="4.4"/><ellipse cx="15" cy="6.5" rx="3.4" ry="4.6"/><ellipse cx="24.5" cy="10" rx="3.4" ry="4.4"/></g></svg>`;
 const _swirl = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="11.5" fill="none" stroke="${c}" stroke-width="3.2"/><path d="M15 15 a5.5 5.5 0 1 0 5.5 -5.5" stroke="${c}" stroke-width="3.2" fill="none" stroke-linecap="round"/></svg>`;
+/* Persos d'animé et mascottes : fantôme, chat, renard, panda, fusée, lune, nuage, éclair, bonbon, licorne */
+const _ghost = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M15 3 C8 3 5 8 5 13 L5 25 L9 21 L12 25 L15 21 L18 25 L21 21 L25 25 L25 13 C25 8 22 3 15 3 Z" fill="${c}" stroke="#0b1120" stroke-width="1.5" stroke-linejoin="round"/><circle cx="11" cy="13" r="2.2" fill="#0b1120"/><circle cx="19" cy="13" r="2.2" fill="#0b1120"/></svg>`;
+const _cat = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M5 12 L5 4 L11 8 Z M25 12 L25 4 L19 8 Z" fill="${c}" stroke="#0b1120" stroke-width="1.4" stroke-linejoin="round"/><ellipse cx="15" cy="16" rx="11" ry="9.5" fill="${c}" stroke="#0b1120" stroke-width="1.4"/><circle cx="10.5" cy="14.5" r="2" fill="#0b1120"/><circle cx="19.5" cy="14.5" r="2" fill="#0b1120"/><path d="M15 18.5 l-1.4 1.4 h2.8 Z" fill="#f472b6"/></svg>`;
+const _fox = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M4 13 L4 4 L11 9 Z M26 13 L26 4 L19 9 Z" fill="${c}" stroke="#0b1120" stroke-width="1.4" stroke-linejoin="round"/><path d="M15 25 C9 25 5 20 4 13 C7 15 15 16 15 16 C15 16 23 15 26 13 C25 20 21 25 15 25 Z" fill="${c}" stroke="#0b1120" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10.5" cy="15" r="1.8" fill="#0b1120"/><circle cx="19.5" cy="15" r="1.8" fill="#0b1120"/></svg>`;
+const _panda = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><ellipse cx="7" cy="9" rx="4" ry="5" fill="#1e293b"/><ellipse cx="23" cy="9" rx="4" ry="5" fill="#1e293b"/><circle cx="15" cy="16" r="10.5" fill="${c}" stroke="#0b1120" stroke-width="1.4"/><ellipse cx="10.5" cy="14" rx="3" ry="3.8" fill="#0b1120"/><ellipse cx="19.5" cy="14" rx="3" ry="3.8" fill="#0b1120"/><ellipse cx="15" cy="19.5" rx="2.6" ry="1.9" fill="#0b1120"/></svg>`;
+const _rocket = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M15 2 C19 6 20 10 20 14 L20 19 L10 19 L10 14 C10 10 11 6 15 2 Z" fill="${c}" stroke="#0b1120" stroke-width="1.4" stroke-linejoin="round"/><circle cx="15" cy="11" r="2.4" fill="#0b1120"/><path d="M10 19 L6 24 L10 22 Z M20 19 L24 24 L20 22 Z" fill="#f97316" stroke="#0b1120" stroke-width="1.2"/><path d="M13 21 L15 28 L17 21 Z" fill="#fbbf24"/></svg>`;
+const _moon = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M20 3 A12 12 0 1 0 27 17 A9.5 9.5 0 0 1 20 3 Z" fill="${c}" stroke="#0b1120" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const _cloud = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M8 21 A5 5 0 0 1 8.5 11 A6.5 6.5 0 0 1 21 9.5 A5.5 5.5 0 0 1 22.5 21 Z" fill="${c}" stroke="#0b1120" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const _bolt = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M17 2 L6 17 L13 17 L11 28 L24 12 L16 12 Z" fill="${c}" stroke="#0b1120" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const _candy = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="7.5" fill="${c}" stroke="#0b1120" stroke-width="1.5"/><path d="M8 13 A7.5 7.5 0 0 1 15 7.5" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/><path d="M3 10 L6 13 M3 20 L6 17 M27 10 L24 13 M27 20 L24 17" stroke="${c}" stroke-width="3.4" stroke-linecap="round"/></svg>`;
+const _unicorn = (c) => `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><path d="M10 3 L12 9 M15 2 L15 8 M20 3 L18 9" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/><ellipse cx="15" cy="17" rx="10" ry="9" fill="${c}" stroke="#0b1120" stroke-width="1.4"/><circle cx="10.5" cy="15.5" r="1.8" fill="#0b1120"/><circle cx="19.5" cy="15.5" r="1.8" fill="#0b1120"/><path d="M11 20 Q15 23 19 20" stroke="#f472b6" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`;
 const CURSOR_THEMES = {
   default:  { name: 'Classique (Windows)', icon: 'fa-arrow-pointer' },
   neon:     { name: 'Néon cyan',   icon: 'fa-bolt',            arrow: _arrow('#38bdf8', '#38bdf8'), pointer: _pointer('#38bdf8'), text: _text('#38bdf8') },
@@ -988,7 +1129,17 @@ const CURSOR_THEMES = {
   etoile:   { name: 'Étoile magique ✦', icon: 'fa-star',       arrow: _star('#fbbf24'), pointer: _star('#c084fc'), text: _text('#fbbf24') },
   fleur:    { name: 'Fleur sakura 🌸', icon: 'fa-spa',          arrow: _flower('#f9a8d4'), pointer: _flower('#fda4af'), text: _text('#f9a8d4') },
   griffe:   { name: 'Griffe de chat 🐾', icon: 'fa-paw',        arrow: _paw('#fdba74'), pointer: _paw('#f87171'), text: _text('#fdba74') },
-  tourbillon: { name: 'Tourbillon 🌀', icon: 'fa-hurricane',    arrow: _swirl('#38bdf8'), pointer: _swirl('#a78bfa'), text: _text('#38bdf8') }
+  tourbillon: { name: 'Tourbillon 🌀', icon: 'fa-hurricane',    arrow: _swirl('#38bdf8'), pointer: _swirl('#a78bfa'), text: _text('#38bdf8') },
+  fantome:  { name: 'Fantôme 👻',   icon: 'fa-ghost',           arrow: _ghost('#e2e8f0'), pointer: _ghost('#c7d2fe'), text: _text('#e2e8f0') },
+  chat:     { name: 'Chat noir 🐱',  icon: 'fa-cat',             arrow: _cat('#1e293b'), pointer: _cat('#f59e0b'), text: _text('#94a3b8') },
+  renard:   { name: 'Renard 🦊',    icon: 'fa-fox',             arrow: _fox('#f97316'), pointer: _fox('#fb923c'), text: _text('#f97316') },
+  panda:    { name: 'Panda 🐼',     icon: 'fa-paw',             arrow: _panda('#f8fafc'), pointer: _panda('#e2e8f0'), text: _text('#94a3b8') },
+  fusee:    { name: 'Fusée 🚀',    icon: 'fa-rocket',          arrow: _rocket('#e2e8f0'), pointer: _rocket('#7dd3fc'), text: _text('#7dd3fc') },
+  lune:     { name: 'Lune 🌙',      icon: 'fa-moon',            arrow: _moon('#fde68a'), pointer: _moon('#93c5fd'), text: _text('#fde68a') },
+  nuage:    { name: 'Nuage ☁️',     icon: 'fa-cloud',           arrow: _cloud('#f1f5f9'), pointer: _cloud('#bae6fd'), text: _text('#e2e8f0') },
+  eclair:   { name: 'Éclair ⚡',    icon: 'fa-bolt',            arrow: _bolt('#fbbf24'), pointer: _bolt('#38bdf8'), text: _text('#fbbf24') },
+  bonbon:   { name: 'Bonbon 🍬',    icon: 'fa-candy-cane',      arrow: _candy('#f472b6'), pointer: _candy('#c084fc'), text: _text('#f472b6') },
+  licorne:  { name: 'Licorne 🦄',   icon: 'fa-hornbill',        arrow: _unicorn('#f9a8d4'), pointer: _unicorn('#c4b5fd'), text: _text('#f9a8d4') }
 };
 function setCursorTheme(themeId) {
   let st = document.getElementById('cursor-style');
@@ -1033,6 +1184,14 @@ function applyWallpaper(w) {
     wp.style.background = w.css;
     if (w.anim) wp.classList.add('wp-anim-gradient');
     if (w.blobs) wp.innerHTML = '<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>';
+  }
+  else if (w.type === 'video') {
+    /* Fond d'écran VIDÉO par URL (mp4/webm) : boucle, sans son */
+    const v = document.createElement('video');
+    v.src = w.url; v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+    wp.appendChild(v);
+    v.play().catch(() => {});
   }
   else if (w.type === 'svg') {
     wp.style.background = '#040b22';
@@ -1451,6 +1610,16 @@ function openApp(appId) {
   if (app.init) app.init(el.querySelector('.win-body'), rec);
   renderTaskbar();
   focusWindow(appId);
+  /* Animation d'ouverture + rebond de l'icône dans la barre des tâches (mode full) */
+  if ((document.body.dataset.anim || 'windows') !== 'none') {
+    el.classList.add('win-open');
+    setTimeout(() => el.classList.remove('win-open'), 340);
+  }
+  if (document.body.dataset.anim === 'full') {
+    document.querySelectorAll('#tb-pinned .tb-icon').forEach(ic => {
+      if (ic.title === app.title) { ic.classList.add('launch'); setTimeout(() => ic.classList.remove('launch'), 550); }
+    });
+  }
   // Sur petit écran (mobile), les fenêtres s'ouvrent maximisées pour rester utilisables
   if (desk.width < 720) toggleMaximize(appId);
 }
@@ -1484,9 +1653,14 @@ function closeApp(appId) {
   const w = windows.get(appId);
   if (!w) return;
   if (w.cleanup) try { w.cleanup(); } catch (e) {}
-  w.el.remove();
   windows.delete(appId);
   if (focusedApp === appId) focusedApp = null;
+  /* Fermeture animée (fondu + rétrécissement), sauf si animations désactivées */
+  const el = w.el;
+  if ((document.body.dataset.anim || 'windows') !== 'none') {
+    el.classList.add('win-close');
+    setTimeout(() => el.remove(), 170);
+  } else el.remove();
   renderTaskbar();
 }
 
@@ -1494,8 +1668,19 @@ function toggleMinimize(appId) {
   const w = windows.get(appId);
   if (!w) return;
   w.minimized = !w.minimized;
-  w.el.style.display = w.minimized ? 'none' : 'flex';
-  if (!w.minimized) focusWindow(appId); else if (focusedApp === appId) focusedApp = null;
+  const animated = (document.body.dataset.anim || 'windows') !== 'none';
+  if (w.minimized) {
+    /* Réduction animée : la fenêtre fond vers la barre des tâches */
+    if (animated) {
+      w.el.classList.add('win-min');
+      setTimeout(() => { w.el.style.display = 'none'; w.el.classList.remove('win-min'); }, 210);
+    } else w.el.style.display = 'none';
+    if (focusedApp === appId) focusedApp = null;
+  } else {
+    w.el.style.display = 'flex';
+    if (animated) { w.el.classList.add('win-unmin'); setTimeout(() => w.el.classList.remove('win-unmin'), 260); }
+    focusWindow(appId);
+  }
   renderTaskbar();
 }
 
@@ -1659,6 +1844,30 @@ document.addEventListener('keydown', (e) => {
   if (focusedApp && windows.get(focusedApp)?.gameKeys && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
     windows.get(focusedApp).gameKeys(e);
   }
+}, true);
+
+/* MODE D'ANIMATION (fenêtres, clics, souris) : windows | linux | full | none */
+document.body.dataset.anim = LS.get('anim', 'windows');
+/* FULL ANIMATION : onde de choc à chaque clic */
+document.addEventListener('pointerdown', (e) => {
+  if (document.body.dataset.anim !== 'full') return;
+  const r = document.createElement('div');
+  r.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:radial-gradient(circle, var(--accent), transparent 70%);pointer-events:none;z-index:99999;`;
+  document.body.appendChild(r);
+  r.animate([{ transform: 'scale(1)', opacity: .85 }, { transform: 'scale(8)', opacity: 0 }], { duration: 520, easing: 'ease-out' }).onfinish = () => r.remove();
+}, true);
+/* FULL ANIMATION : traînée colorée derrière la souris */
+let wosTrailT = 0;
+document.addEventListener('pointermove', (e) => {
+  if (document.body.dataset.anim !== 'full') return;
+  const now = performance.now();
+  if (now - wosTrailT < 40) return;
+  wosTrailT = now;
+  const sz = 4 + Math.random() * 6;
+  const d = document.createElement('div');
+  d.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;width:${sz}px;height:${sz}px;margin:${-sz / 2}px 0 0 ${-sz / 2}px;border-radius:50%;background:var(--accent);pointer-events:none;z-index:99998;opacity:.5;`;
+  document.body.appendChild(d);
+  d.animate([{ opacity: .5, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.2)' }], { duration: 640, easing: 'ease-out' }).onfinish = () => d.remove();
 }, true);
 
 /* RELAIS DE LA TOUCHE D'URGENCE DANS LES IFRAMES (navigateur intégré, YouTube via proxy…)
@@ -2797,6 +3006,127 @@ function initAI(body, rec) {
 }
 
 /* ============================================================
+   APP : GALERIE DE CURSEURS — tous les curseurs + souris des membres
+============================================================ */
+function renderCursors() {
+  const cur = LS.get('cursor', 'default');
+  const presetCards = Object.entries(CURSOR_THEMES).map(([k, t]) => `
+    <button data-cursorpick="${k}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2 transition-transform hover:scale-105 ${k === cur ? 'ring-2 ring-sky-400' : ''}">
+      <img src="${t.arrow}" alt="" class="w-9 h-9" style="image-rendering:auto">
+      <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(t.name)}</span>
+      ${k === cur ? '<span class="text-[9.5px] text-emerald-400 font-bold">ACTIF</span>' : ''}
+    </button>`).join('');
+  const memberCards = (MEMBER_CURSORS || []).map((c, i) => `
+    <div class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
+      <img src="${escHtml(c.arrow)}" alt="" class="w-9 h-9" style="object-fit:contain">
+      <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(c.name || 'Souris')}</span>
+      <div class="flex gap-1.5">
+        <button data-membercur-apply="${i}" class="btn btn-blue !py-1 !px-2.5 !text-[11px]">Utiliser</button>
+        <button data-membercur-copy="${i}" class="btn btn-ghost !py-1 !px-2 !text-[11px]" title="Copier le lien"><i class="fa-solid fa-copy"></i></button>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="overflow-y-auto h-full p-4 space-y-5">
+      <div>
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-wand-magic-sparkles mr-2 text-violet-400"></i>Curseurs proposés — cliquez pour appliquer</h3>
+        <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">${presetCards}</div>
+      </div>
+      <div>
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-users mr-2 text-pink-400"></i>Souris des membres</h3>
+        <p class="text-slate-400 text-[11px] mb-2">Curseurs partagés par toute la communauté — cliquez sur « Utiliser » pour l'appliquer instantanément (enregistré automatiquement).</p>
+        <div id="cursor-members" class="grid grid-cols-4 sm:grid-cols-6 gap-2">${memberCards || '<p class="text-slate-500 text-[11px]">Aucune souris de membre pour l\u2019instant — soyez le premier à en publier une !</p>'}</div>
+      </div>
+      <div>
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-share-nodes mr-2 text-emerald-400"></i>Publier ma souris pour les membres</h3>
+        <div class="space-y-2">
+          <input id="cur-pub-name" class="field w-full" placeholder="Nom de votre curseur (ex : Pikachu doré)" />
+          <input id="cur-pub-arrow" class="field w-full" placeholder="Lien de l'image du curseur normal (PNG 32x32 conseillé)" />
+          <input id="cur-pub-pointer" class="field w-full" placeholder="Lien de l'image du curseur clic (optionnel)" />
+          <button class="btn btn-green w-full" id="cur-pub-go"><i class="fa-solid fa-share-nodes"></i> Publier pour tous les membres</button>
+        </div>
+        <p class="text-slate-500 text-[10.5px] mt-1.5">Besoin d'images ? Cherchez « cursor png » sur un site d'images, ou créez les vôtres — hébergez-les (Catbox, GitHub…) et collez le lien direct.</p>
+      </div>
+      <div>
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-link mr-2 text-sky-400"></i>Curseur perso par lien</h3>
+        <div class="space-y-2">
+          <input id="cur-perso-arrow" class="field w-full" placeholder="Lien du curseur normal (https://...)" value="${escHtml(LS.getJSON('cursor_custom', {}).a || '')}" />
+          <input id="cur-perso-pointer" class="field w-full" placeholder="Lien du curseur clic (https://...)" value="${escHtml(LS.getJSON('cursor_custom', {}).p || '')}" />
+          <button class="btn btn-blue w-full" id="cur-perso-go"><i class="fa-solid fa-check"></i> Appliquer mon curseur perso</button>
+        </div>
+      </div>
+      <button class="btn btn-ghost w-full" id="cur-reset"><i class="fa-solid fa-rotate-left"></i> Revenir au curseur normal (par défaut)</button>
+    </div>`;
+}
+function initCursors(body) {
+  const refreshMembers = () => {
+    const box = body.querySelector('#cursor-members');
+    if (!box) return;
+    box.innerHTML = (MEMBER_CURSORS || []).map((c, i) => `
+      <div class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
+        <img src="${escHtml(c.arrow)}" alt="" class="w-9 h-9" style="object-fit:contain">
+        <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(c.name || 'Souris')}</span>
+        <div class="flex gap-1.5">
+          <button data-membercur-apply="${i}" class="btn btn-blue !py-1 !px-2.5 !text-[11px]">Utiliser</button>
+          <button data-membercur-copy="${i}" class="btn btn-ghost !py-1 !px-2 !text-[11px]" title="Copier le lien"><i class="fa-solid fa-copy"></i></button>
+        </div>
+      </div>`).join('') || '<p class="text-slate-500 text-[11px]">Aucune souris de membre pour l\u2019instant — soyez le premier à en publier une !</p>';
+    bindMemberBtns();
+  };
+  const bindMemberBtns = () => {
+    body.querySelectorAll('[data-membercur-apply]').forEach(b => b.addEventListener('click', () => {
+      const c = MEMBER_CURSORS[+b.dataset.membercurApply];
+      if (c) applyMemberCursor(c.arrow, c.pointer);
+    }));
+    body.querySelectorAll('[data-membercur-copy]').forEach(b => b.addEventListener('click', () => {
+      const c = MEMBER_CURSORS[+b.dataset.membercurCopy];
+      if (c && navigator.clipboard) navigator.clipboard.writeText(c.arrow).then(() => toast('Lien copié', 'fa-copy', 'text-sky-400'));
+    }));
+  };
+  bindMemberBtns();
+  /* Appliquer un curseur proposé */
+  body.querySelectorAll('[data-cursorpick]').forEach(b => b.addEventListener('click', () => {
+    setCursorTheme(b.dataset.cursorpick);
+    body.querySelectorAll('[data-cursorpick]').forEach(x => x.classList.remove('ring-2', 'ring-sky-400'));
+    b.classList.add('ring-2', 'ring-sky-400');
+    toast('Curseur : ' + CURSOR_THEMES[b.dataset.cursorpick].name, 'fa-arrow-pointer', 'text-violet-400');
+  }));
+  /* Curseur perso par lien */
+  body.querySelector('#cur-perso-go').addEventListener('click', () => {
+    const a = body.querySelector('#cur-perso-arrow').value.trim();
+    const p = body.querySelector('#cur-perso-pointer').value.trim();
+    if (!a && !p) { toast('Collez au moins un lien d\u2019image', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    LS.setJSON('cursor_custom', { a, p });
+    setCursorTheme('custom');
+    toast('Curseur perso appliqué', 'fa-arrow-pointer', 'text-violet-400');
+  });
+  /* Publication pour les membres */
+  body.querySelector('#cur-pub-go').addEventListener('click', async () => {
+    const name = body.querySelector('#cur-pub-name').value.trim();
+    const arrow = body.querySelector('#cur-pub-arrow').value.trim();
+    const pointer = body.querySelector('#cur-pub-pointer').value.trim();
+    if (!/^https?:\/\//i.test(arrow)) { toast('Collez le lien de l\u2019image du curseur normal (https://…)', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    const btn = body.querySelector('#cur-pub-go');
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publication...';
+    try {
+      await memberCursorPublish(name, arrow, pointer);
+      toast('Souris publiée pour tous les membres', 'fa-share-nodes', 'text-emerald-400');
+      refreshMembers();
+    } catch (e) {
+      toast('Publication impossible pour le moment', 'fa-triangle-exclamation', 'text-amber-400');
+    } finally {
+      btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Publier pour tous les membres';
+    }
+  });
+  body.querySelector('#cur-reset').addEventListener('click', () => {
+    LS.setJSON('cursor_custom', { a: '', p: '' });
+    setCursorTheme('default');
+    toast('Curseur par défaut restauré', 'fa-rotate-left', 'text-slate-400');
+  });
+  /* Charge les souris des membres en arrière-plan */
+  memberCursorsFetch().then(() => refreshMembers());
+}
+
+/* ============================================================
    APP : GAME HUB — 6 jeux intégrés + plateformes dans l'app
 ============================================================ */
 function renderGames() {
@@ -3355,8 +3685,20 @@ function renderSettings() {
 
       <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-palette mr-2 text-pink-400"></i>Thème</h3>
-        <p class="text-slate-400 text-[11px] mb-3">Change la couleur d'accent de tout le système.</p>
+        <p class="text-slate-400 text-[11px] mb-3">Change la couleur de tout le système : bureau, fenêtres ET l'intérieur des applications (boutons, champs, onglets du navigateur, sélection IA…).</p>
         <div class="flex flex-wrap gap-2 mb-3" id="st-themes"></div>
+      </section>
+
+      <section class="pt-4 border-t border-white/8">
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-film mr-2 text-fuchsia-400"></i>Animations</h3>
+        <p class="text-slate-400 text-[11px] mb-3">Animations de tout le système : ouverture, fermeture et réduction des fenêtres, clics, souris.</p>
+        <div class="flex flex-wrap gap-2 mb-3" id="st-anim">
+          <button class="btn btn-ghost" data-animmode="windows"><i class="fa-brands fa-windows"></i> Style Windows</button>
+          <button class="btn btn-ghost" data-animmode="linux"><i class="fa-brands fa-ubuntu"></i> Style Linux</button>
+          <button class="btn btn-ghost" data-animmode="full"><i class="fa-solid fa-wand-magic-sparkles"></i> Full animation</button>
+          <button class="btn btn-ghost" data-animmode="none"><i class="fa-solid fa-ban"></i> Aucune</button>
+        </div>
+        <p class="text-slate-500 text-[10.5px]"><b>Style Windows</b> : les fenêtres apparaissent en fondu-zoom, comme Windows 11. <b>Style Linux</b> : glissement vertical, comme Ubuntu/GNOME. <b>Full animation</b> : tout + onde de choc à chaque clic + traînée colorée derrière la souris + rebond des icônes. <b>Aucune</b> : instantané (idéal si ça lag).</p>
       </section>
 
       <section class="pt-4 border-t border-white/8">
@@ -3382,6 +3724,11 @@ function renderSettings() {
           <button class="btn btn-blue" id="st-wall-apply">Appliquer</button>
           <button class="btn btn-violet" id="st-wall-share" title="Partager ce fond avec tous les membres"><i class="fa-solid fa-share-nodes"></i> Publier</button>
         </div>
+        <div class="flex gap-2 mt-2">
+          <input id="st-wall-video" class="field flex-1" placeholder="URL de VIDÉO (.mp4 ou .webm) pour fond animé" />
+          <button class="btn btn-blue" id="st-wall-video-go" title="Appliquer la vidéo comme fond d'écran"><i class="fa-solid fa-play"></i> Vidéo</button>
+        </div>
+        <p class="text-slate-500 text-[10.5px] mt-1.5">Oui, les vidéos marchent en fond d'écran : collez le lien direct d'un .mp4 ou .webm (ex : un lien de Pixabay/Pexels/Catbox) — elle tourne en boucle, sans son. Pour une image c'est le champ du dessus.</p>
         <button class="btn btn-ghost w-full mt-2" id="st-wall-random"><i class="fa-solid fa-shuffle"></i> Fond d'écran aléatoire</button>
         <label class="flex items-center gap-2.5 mt-3 cursor-pointer select-none">
           <input type="checkbox" id="st-mc" class="accent-emerald-500 w-4 h-4" />
@@ -3398,6 +3745,7 @@ function renderSettings() {
           <div class="flex items-center gap-2"><span class="w-28 flex-none text-[11px] text-slate-400">Curseur clic</span><input id="st-cur-pointer" class="field flex-1 !py-1.5" placeholder="Lien de l'image pour les boutons et liens" value="${escHtml(LS.getJSON('cursor_custom', {}).p || '')}" /></div>
           <p class="text-slate-500 text-[10.5px]">Curseur personnalisé par lien (comme les fonds d'écran) : collez les URLs de vos images, l'enregistrement est automatique et le curseur s'applique instantanément. Laissez les deux champs vides pour revenir aux curseurs proposés.</p>
         </div>
+        <button class="btn btn-violet w-full mt-3" id="st-cursor-gallery"><i class="fa-solid fa-images"></i> Ouvrir la galerie de curseurs (persos d'animé, souris des membres…)</button>
       </section>
 
       <section class="pt-4 border-t border-white/8">
@@ -3439,7 +3787,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v16 — fenêtres sans superposition (placement et glissement intelligents), touche d'urgence active même dans le navigateur et YouTube, sélection au lasso sur tout le bureau</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v17 — les thèmes colorent aussi l'intérieur des apps, 13 nouveaux thèmes (3 animés), 11 nouveaux curseurs (persos d'animé), galerie de curseurs + souris de membres, fonds d'écran vidéo, 4 modes d'animations (Windows, Linux, Full)</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -3586,7 +3934,15 @@ function initSettings(body) {
     { id: 'indigo', name: 'Indigo', color: '#4f46e5' },
     { id: 'teal',   name: 'Sarcelle', color: '#0d9488' },
     { id: 'lime',   name: 'Vert lime', color: '#84cc16' },
-    { id: 'crimson', name: 'Bordeaux', color: '#be123c' }
+    { id: 'crimson', name: 'Bordeaux', color: '#be123c' },
+    { id: 'violet', name: 'Violet', color: '#8b5cf6' },
+    { id: 'fuchsia', name: 'Fuchsia', color: '#d946ef' },
+    { id: 'emeraude', name: 'Émeraude', color: '#10b981' },
+    { id: 'ambre', name: 'Ambre', color: '#f59e0b' },
+    { id: 'menthe', name: 'Menthe', color: '#2dd4bf' },
+    { id: 'arcenciel', name: 'Arc-en-ciel (animé)', color: '#38bdf8' },
+    { id: 'pulsar', name: 'Pulsar néon (animé)', color: '#a855f7' },
+    { id: 'lave', name: 'Lave (animé)', color: '#f97316' }
   ];
   const currentTheme = LS.get('theme', 'blue');
   themesEl.innerHTML = THEMES.map(t => `<button data-theme="${t.id}" class="chip ${t.id === currentTheme ? '!text-white' : ''}" style="${t.id === currentTheme ? 'background:' + t.color + ';border-color:' + t.color : ''}"><span class="w-3 h-3 rounded-full inline-block" style="background:${t.color}"></span> ${t.name}</button>`).join('');
@@ -3671,6 +4027,32 @@ function initSettings(body) {
     applyWallpaper({ id: 'custom', type: 'image', url: u });
     toast('Fond d\u2019écran personnalisé appliqué');
   });
+  /* Fond d\u2019écran VIDÉO par URL (mp4/webm en boucle, sans son) */
+  body.querySelector('#st-wall-video-go').addEventListener('click', () => {
+    const u = body.querySelector('#st-wall-video').value.trim();
+    if (!/^https?:\/\/.+\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(u)) { toast('Lien vidéo invalide — il faut un lien direct finissant par .mp4 ou .webm', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    applyWallpaper({ id: 'video:' + u, type: 'video', url: u });
+    toast('Fond d\u2019écran vidéo appliqué (boucle, sans son)', 'fa-film', 'text-pink-400');
+  });
+  /* Mode d\u2019animation : Windows / Linux / Full / Aucune */
+  const animBtns = body.querySelectorAll('#st-anim [data-animmode]');
+  const refreshAnimUI = () => {
+    const cur = document.body.dataset.anim || 'windows';
+    animBtns.forEach(b => {
+      const on = b.dataset.animmode === cur;
+      b.classList.toggle('btn-blue', on);
+      b.classList.toggle('btn-ghost', !on);
+    });
+  };
+  animBtns.forEach(b => b.addEventListener('click', () => {
+    document.body.dataset.anim = b.dataset.animmode;
+    LS.set('anim', b.dataset.animmode);
+    refreshAnimUI();
+    toast('Animations : ' + ({ windows: 'style Windows', linux: 'style Linux', full: 'FULL ANIMATION', none: 'désactivées' })[b.dataset.animmode], 'fa-film', 'text-fuchsia-400');
+  }));
+  refreshAnimUI();
+  /* Galerie de curseurs (application dédiée) */
+  body.querySelector('#st-cursor-gallery').addEventListener('click', () => openApp('cursors'));
   body.querySelector('#st-wall-random').addEventListener('click', randomWallpaper);
   /* Publier un fond pour toute la communauté (catégorie Membres) */
   body.querySelector('#st-wall-share').addEventListener('click', async () => {
@@ -3783,16 +4165,18 @@ const APPS = {
   ai:       { title: 'Assistant IA',    icon: 'fa-robot',        color: 'from-emerald-500 to-green-600', w: 680, h: 560, render: renderAI,       init: initAI, img: 'https://www.google.com/s2/favicons?domain=openai.com&sz=128' },
   games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames, img: 'https://www.google.com/s2/favicons?domain=xbox.com&sz=128' },
   media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia, img: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128' },
-  settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings, svg: GEAR_SVG }
+  settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings, svg: GEAR_SVG },
+  cursors:  { title: 'Curseurs',       icon: 'fa-arrow-pointer', color: 'from-violet-500 to-fuchsia-600', w: 640, h: 560, render: renderCursors, init: initCursors, img: 'https://www.google.com/s2/favicons?domain=custom-cursor.com&sz=128' }
 };
 
-const iconOrder = ['browser', 'ai', 'games', 'media', 'settings'];
+const iconOrder = ['browser', 'ai', 'games', 'media', 'cursors', 'settings'];
 const SEARCH_ALIASES = {
   browser: 'navigateur web internet browser proxy google',
   ai: 'assistant ia chat robot intelligence artificielle',
   games: 'game hub jeux games jeux vidéo play',
   media: 'media hub streaming youtube musique vidéo netflix spotify',
-  settings: 'paramètres options camouflage réglages fond écran'
+  settings: 'paramètres options camouflage réglages fond écran',
+  cursors: 'curseurs souris curseur pointeur animé manga membres'
 };
 const di = document.getElementById('desk-icons');
 const getIconPos = () => LS.getJSON('iconpos', {});
