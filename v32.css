@@ -12,6 +12,10 @@
 .cursor-code-panel p,.cursor-code-panel label{font-size:12px;line-height:1.6;opacity:.85;display:block;margin-bottom:9px}
 .cursor-code-panel textarea{width:100%;resize:vertical;min-height:115px;max-height:350px;font-family:Consolas,monospace;font-size:12px;margin:5px 0 10px}
 .cursor-code-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.cursor-code-publish{padding:12px 0;margin:10px 0;border-top:1px solid #64748b55}
+.cursor-code-publish .field{width:100%;margin-bottom:9px}
+.cursor-code-publish p{margin-top:8px}
+#aiw-clear-confirm[hidden]{display:none!important}
 #cur-code-preview{border:1px dashed #64748b;padding:18px;border-radius:6px;font-size:12px}
 #cur-code-status[data-state=error]{color:#fb7185}
 #cur-code-status[data-state=ok]{color:#34d399}

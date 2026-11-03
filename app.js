@@ -616,29 +616,38 @@ async function memberWallsClean() {
 /* Souris de MEMBRES (curseurs partagés par tout le monde) — même système que les fonds d'écran */
 const SHARED_CURSORS_API = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a0d154871bf8';
 let MEMBER_CURSORS = LS.getJSON('membercursors', []);
-async function memberCursorsFetch() {
+async function memberCursorsFetch(strict = false) {
   try {
-    const rep = await fetch(SHARED_CURSORS_API);
+    const rep = await fetch(SHARED_CURSORS_API, { signal: AbortSignal.timeout(10000) });
     if (!rep.ok) throw new Error('ko');
     const j = await rep.json();
     const list = (j.data && Array.isArray(j.data.cursors)) ? j.data.cursors : [];
     MEMBER_CURSORS = list;
     LS.setJSON('membercursors', list);
     return list;
-  } catch (e) { return LS.getJSON('membercursors', []); }
+  } catch (e) { if (strict) throw new Error('Galerie indisponible : aucune publication effectuée. Réessaie plus tard.'); return LS.getJSON('membercursors', []); }
 }
-async function memberCursorPublish(name, arrow, pointer) {
-  const cur = await memberCursorsFetch();
-  const list = cur.filter(c => c.arrow !== arrow);
-  list.unshift({ name: name || 'Souris d\u2019un membre', arrow, pointer: pointer || arrow, by: 'Membre', ts: Date.now() });
+async function memberCursorPublish(name, arrow, pointer, code = null) {
+  if (code) {
+    code = webos32.cursorData(code);
+    if (new TextEncoder().encode(JSON.stringify(code)).length > 64000) throw new Error('Publication limitée à 64 Ko par curseur. Réduis le nombre ou la taille des images.');
+    arrow = code.frames[0].url; pointer = arrow;
+  } else {
+    arrow = webos32.imageURL(arrow); pointer = webos32.imageURL(pointer || arrow);
+    if (!arrow || !pointer) throw new Error('Images du curseur invalides.');
+  }
+  const cur = await memberCursorsFetch(true);
+  const list = cur.filter(c => code ? JSON.stringify(c.code) !== JSON.stringify(code) : c.arrow !== arrow);
+  list.unshift({ name: String(name || 'Souris d’un membre').slice(0, 60), arrow, pointer: pointer || arrow, ...(code ? { code } : {}), by: 'Membre', ts: Date.now() });
   const trimmed = list.slice(0, 60);
   const rep = await fetch(SHARED_CURSORS_API, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
     body: JSON.stringify({ name: 'webos-cursors', data: { cursors: trimmed } })
   });
-  if (!rep.ok) throw new Error('publication impossible');
+  if (!rep.ok) throw new Error('Publication refusée par le service (HTTP ' + rep.status + '). Aucun succès confirmé.');
   MEMBER_CURSORS = trimmed;
   LS.setJSON('membercursors', trimmed);
+  window.dispatchEvent(new Event('webos:cursors-updated'));
   return trimmed;
 }
 function applyMemberCursor(arrow, pointer) {
@@ -1790,7 +1799,7 @@ function openInApp(url) {
   url = browserAddress(url);
   openApp('browser');
   if (!browserAPI) throw new Error('Navigateur indisponible');
-  browserAPI.navigate(url);
+  (browserAPI.openURL || browserAPI.navigate)(url);
 }
 window.addEventListener('message', (e) => {
   if (!browserAPI?.ownsSource(e.source)) return;
@@ -1887,11 +1896,8 @@ function initBrowser(body, rec) {
   const urlInput = body.querySelector('#br-url');
   const loadOv = body.querySelector('#br-load');
   const statusEl = body.querySelector('#br-status');
-  const ytPanel = body.querySelector('#br-yt');
-  const ytResults = body.querySelector('#yt-results');
-  const ytPlayerWrap = body.querySelector('#yt-player-wrap');
-  const ytPlayer = body.querySelector('#yt-player');
-  const ytQ = body.querySelector('#yt-q');
+  const ytTemplate = body.querySelector('#br-yt');
+  ytTemplate.remove();
   const serviceNotice = body.querySelector('#br-service-notice');
   const stopButton = body.querySelector('#br-stop');
   let inspectionTimers = [];
@@ -1946,6 +1952,10 @@ function initBrowser(body, rec) {
     else f.src = url;
     framesContainer.appendChild(f);
     const tab = { id, url, title: 'Nouvel onglet', frame: f, ytActive: false };
+    const panel = ytTemplate.cloneNode(true);
+    panel.dataset.ytTab = id;
+    framesContainer.append(panel);
+    tab.youtube = makeYouTube(panel, tab);
     tabs.push(tab);
     setActiveTab(id);
     return tab;
@@ -1954,6 +1964,7 @@ function initBrowser(body, rec) {
     cancelBrowserLoad();
     activeTabId = id;
     tabs.forEach(t => { t.frame.style.display = t.id === id ? '' : 'none'; });
+    tabs.forEach(t => t.youtube.activate(t.id === id));
     const tab = tabs.find(t => t.id === id);
     if (tab) {
       frame = tab.frame;
@@ -1969,6 +1980,7 @@ function initBrowser(body, rec) {
     if (activeTabId === id) cancelBrowserLoad();
     const idx = tabs.findIndex(t => t.id === id);
     if (idx === -1) return;
+    tabs[idx].youtube.destroy();
     tabs[idx].frame.remove();
     tabs.splice(idx, 1);
     if (!tabs.length) { createTab(BROWSER_HOME); return; }
@@ -2054,12 +2066,26 @@ function initBrowser(body, rec) {
   const showLoad = (v) => loadOv.classList.toggle('hidden', !v);
 
   /* ---------- Mode YouTube intégré (jamais de page blanche) ---------- */
+  function showYT(v) { tabs.find(t => t.id === activeTabId)?.youtube.show(v); }
+  function ytSearch(u) { return tabs.find(t => t.id === activeTabId)?.youtube.search(u); }
+  function ytPlay(id, title) { return tabs.find(t => t.id === activeTabId)?.youtube.play(id, title); }
+  function ytHome() { return tabs.find(t => t.id === activeTabId)?.youtube.home(); }
+  function makeYouTube(panel, tab) {
+  const ytPanel = panel, ytResults = panel.querySelector('#yt-results');
+  const ytPlayerWrap = panel.querySelector('#yt-player-wrap'), ytPlayer = panel.querySelector('#yt-player');
+  const ytQ = panel.querySelector('#yt-q');
+  const ids = [panel, ...panel.querySelectorAll('[id]')].map(el => { const id = el.id; el.dataset.ytId = id; return [el, id]; });
+  let destroyed = false, ytRun = 0;
+  const outerStatus = statusEl;
+  const setStatus = text => { tab.ytStatus = text; if (!destroyed && activeTabId === tab.id) outerStatus.textContent = text; };
   function showYT(v) {
-    ytPanel.classList.toggle('hidden', !v);
-    ytPanel.classList.toggle('flex', v);
-    if (!v) { ytPlayer.src = ''; ytPlayerWrap.classList.add('hidden'); ytPlayerWrap.classList.remove('flex'); }
+    tab.ytActive = !!v;
+    ytPanel.classList.toggle('hidden', !v || activeTabId !== tab.id);
+    ytPanel.classList.toggle('flex', !!v && activeTabId === tab.id);
+    if (!v) { ytPlayer.src = 'about:blank'; ytPlayerWrap.classList.add('hidden'); ytPlayerWrap.classList.remove('flex'); }
   }
   function ytPlay(id, title) {
+    tab.title = title || 'Vidéo YouTube'; renderTabs();
     ytResults.classList.add('hidden');
     ytPlayerWrap.classList.remove('hidden');
     ytPlayerWrap.classList.add('flex');
@@ -2076,24 +2102,24 @@ function initBrowser(body, rec) {
   }
   function getHist() { try { return LS.getJSON('ythist', []); } catch (e) { return []; } }
   function ytShowResults() {
-    ytPlayer.src = '';
+    ytPlayer.src = 'about:blank';
     ytPlayerWrap.classList.add('hidden');
     ytPlayerWrap.classList.remove('flex');
     ytResults.classList.remove('hidden');
   }
-  body.querySelector('#yt-back').addEventListener('click', ytShowResults);
-  body.querySelector('#yt-close-player').addEventListener('click', ytShowResults);
-  body.querySelector('#yt-exit').addEventListener('click', () => showYT(false));
-  body.querySelector('#yt-search-btn').addEventListener('click', () => ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(ytQ.value)));
+  panel.querySelector('#yt-back').addEventListener('click', ytShowResults);
+  panel.querySelector('#yt-close-player').addEventListener('click', ytShowResults);
+  panel.querySelector('#yt-exit').addEventListener('click', () => showYT(false));
+  panel.querySelector('#yt-search-btn').addEventListener('click', () => ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(ytQ.value)));
   ytQ.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(ytQ.value)); } });
-  body.querySelector('#yt-hist').addEventListener('click', () => ytShowHistory());
+  panel.querySelector('#yt-hist').addEventListener('click', () => ytShowHistory());
 
   /* Rendu d'une carte vidéo YouTube (grande miniature + chaîne) */
   function ytCard(v, opts = {}) {
     const ch = v.ch ? `<button class="yt-ch" data-churl="${escHtml(v.chUrl || ('https://www.youtube.com/results?search_query=' + encodeURIComponent(v.ch)))}"><i class="fa-solid fa-circle-user text-[10px]"></i> ${escHtml(v.ch)}</button>` : '';
     return `
       <div class="glass-card overflow-hidden text-left flex flex-col">
-        <button class="relative block group" data-yt="${v.id}" data-title="${escHtml(v.title)}">
+        <button class="relative block group" data-yt="${v.id}" data-title="${escHtml(v.title)}" aria-label="Lire : ${escHtml(v.title)}">
           <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" class="w-full aspect-video object-cover bg-slate-800" loading="lazy" alt="">
           <div class="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="fa-solid fa-circle-play text-4xl text-white drop-shadow"></i></div>
         </button>
@@ -2150,8 +2176,8 @@ function initBrowser(body, rec) {
 
   /* Filtres de tri YouTube (pertinence / récents / vues / notés) */
   let ytFilter = '';
-  body.querySelectorAll('[data-ytfilter]').forEach(c => c.addEventListener('click', () => {
-    body.querySelectorAll('[data-ytfilter]').forEach(x => x.classList.remove('chip-on'));
+  panel.querySelectorAll('[data-ytfilter]').forEach(c => c.addEventListener('click', () => {
+    panel.querySelectorAll('[data-ytfilter]').forEach(x => x.classList.remove('chip-on'));
     c.classList.add('chip-on');
     ytFilter = c.dataset.ytfilter || '';
     const q = ytQ.value.trim();
@@ -2169,7 +2195,7 @@ function initBrowser(body, rec) {
   let ytScroll = null; /* { endpoint, token, count, key } */
   let ytLoading = false;
   const ytSeen = new Set();
-  let ytProxyWin = null, ytProxyPromise = null;
+  let ytProxyWin = null, ytProxyPromise = null, ytProxyCleanup = () => {};
 
   function ytProxyFetch(url, opts) {
     /* Crée (une fois) un mini cadre caché dans la portée du Service Worker
@@ -2179,9 +2205,9 @@ function initBrowser(body, rec) {
         const ifr = document.createElement('iframe');
         ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0';
         ifr.src = '/proxy/uv/blank.html';
-        const to = setTimeout(() => reject(new Error('proxy introuvable')), 12000);
+        const to = setTimeout(() => { ytProxyCleanup(); reject(new Error('proxy introuvable')); }, 12000);
         const onMsg = (ev) => {
-          if (ev.data && ev.data.wosYtProxy === 'ready') {
+          if (ev.source === ifr.contentWindow && ev.data && ev.data.wosYtProxy === 'ready') {
             clearTimeout(to);
             window.removeEventListener('message', onMsg);
             ytProxyWin = ifr.contentWindow;
@@ -2189,6 +2215,7 @@ function initBrowser(body, rec) {
           }
         };
         window.addEventListener('message', onMsg);
+        ytProxyCleanup = () => { clearTimeout(to); window.removeEventListener('message', onMsg); ifr.remove(); reject(new Error('Cadre YouTube fermé')); };
         ifr.addEventListener('error', () => { clearTimeout(to); reject(new Error('chargement impossible')); });
         document.body.appendChild(ifr);
       }).catch(e => { ytProxyPromise = null; throw e; });
@@ -2235,10 +2262,10 @@ function initBrowser(body, rec) {
   }
 
   function ytAppendLoader() {
-    let d = document.getElementById('yt-more');
+    let d = panel.querySelector('[data-yt-more]');
     if (!d) {
       d = document.createElement('div');
-      d.id = 'yt-more';
+      d.dataset.ytMore = '1';
       d.className = 'col-span-full flex flex-col items-center gap-2 py-6 text-[12px] text-slate-400';
       ytResults.appendChild(d);
     }
@@ -2247,6 +2274,7 @@ function initBrowser(body, rec) {
 
   async function ytLoadMore() {
     if (!ytScroll || ytLoading || ytScroll.count >= YT_MAX) return;
+    const run = ytRun;
     ytLoading = true;
     const loader = ytAppendLoader();
     loader.innerHTML = '<div class="spinner"></div><div>Chargement de plus de vidéos... (' + ytScroll.count + '/' + YT_MAX + ')</div>';
@@ -2262,6 +2290,7 @@ function initBrowser(body, rec) {
       });
       if (!rep.ok) throw new Error('HTTP ' + rep.status);
       const data = await rep.json();
+      if (destroyed || run !== ytRun) return;
       const vids = [];
       ytFromJson(data, vids);
       const token = ytNextToken(data);
@@ -2285,7 +2314,7 @@ function initBrowser(body, rec) {
     } catch (e) {
       loader.innerHTML = '<div class="text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Impossible de charger plus pour le moment (' + escHtml(e.message) + ').</div>';
     }
-    ytLoading = false;
+    if (run === ytRun) ytLoading = false;
   }
   function ytScroll0Count() { return ytSeen.size; }
 
@@ -2323,14 +2352,20 @@ function initBrowser(body, rec) {
 
   /* Recherche / chargement d'une page YouTube (recherche, chaîne, playlist...) */
   async function ytSearch(u) {
+    const run = ++ytRun;
     u = (u || '').trim();
     if (!u) { ytQ.focus(); return; }
     if (!/^https?:\/\//i.test(u)) u = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(u);
     showYT(true);
     ytShowResults();
-    ytScroll = null; ytSeen.clear();
+    ytScroll = null; ytLoading = false; ytSeen.clear();
     const isSearch = u.includes('results?search_query=');
     if (isSearch && ytFilter && !u.includes('&sp=')) u += '&sp=' + ytFilter;
+    tab.url = u;
+    tab.title = isSearch ? 'YouTube : ' + (new URL(u).searchParams.get('search_query') || '') : 'YouTube';
+    if (activeTabId === tab.id) { history[hIndex] = u; urlInput.value = u; }
+    if (tab.history) tab.history[tab.hIndex || 0] = u;
+    renderTabs();
     const label = isSearch ? 'Recherche des vidéos YouTube...' : 'Chargement de la page...';
     const t0 = Date.now();
     ytResults.innerHTML = `<div class="col-span-full flex flex-col items-center gap-3 py-10"><div class="spinner"></div><div class="text-[12px] text-slate-400">${label}</div></div>`;
@@ -2342,6 +2377,7 @@ function initBrowser(body, rec) {
       return t;
     })());
     try { html = await Promise.any(attempts); } catch (e) { html = null; }
+    if (destroyed || run !== ytRun) return;
     if (!html && isSearch) {
       /* Repli : recherche via l'API youtubei (POST) à travers le Service Worker
          du proxy — le JSON retourné contient les mêmes champs que la page HTML. */
@@ -2365,6 +2401,7 @@ function initBrowser(body, rec) {
         }
       } catch (e) {}
     }
+    if (destroyed || run !== ytRun) return;
     if (!html) {
       ytResults.innerHTML = `<div class="col-span-full flex flex-col items-center gap-3 py-10 text-center">
         <i class="fa-solid fa-triangle-exclamation text-amber-400 text-2xl"></i>
@@ -2414,6 +2451,7 @@ function initBrowser(body, rec) {
         <i class="fa-solid fa-user-group text-slate-400"></i><span class="text-[13px] font-bold text-slate-200">Chaînes</span>
         ${chs.map(c => `<button class="chip" data-chpage="${escHtml(c.url)}"><i class="fa-solid fa-circle-user text-[11px]"></i> ${escHtml(c.name)} <span class="text-slate-500">→ toutes les vidéos</span></button>`).join('')}
       </div>` : '';
+    if (destroyed || run !== ytRun) return;
     ytResults.innerHTML = chHtml + vids.map(v => ytCard(v)).join('');
     /* Défilement infini : mémorise la page, le jeton de continuation et la clé API */
     vids.forEach(v => ytSeen.add(v.id));
@@ -2431,6 +2469,18 @@ function initBrowser(body, rec) {
       if (cu) { ytQ.value = ''; ytSearch(cu); }
     }));
     ytBindCards(ytResults);
+  }
+  return {
+    show: showYT, search: ytSearch, play: ytPlay, home: ytHome, results: ytShowResults,
+    query(value) { ytQ.value = value; },
+    activate(active) {
+      ids.forEach(([el, id]) => { el.id = active ? id : tab.id + '-' + id; });
+      ytPanel.classList.toggle('hidden', !active || !tab.ytActive);
+      ytPanel.classList.toggle('flex', active && !!tab.ytActive);
+      if (active && tab.ytActive && tab.ytStatus) outerStatus.textContent = tab.ytStatus;
+    },
+    destroy() { destroyed = true; ytRun++; ytProxyCleanup(); ytPlayer.src = 'about:blank'; panel.remove(); }
+  };
   }
 
   /* Page intermédiaire pour les sites trop lourds pour l'iframe (Discord…) :
@@ -2537,7 +2587,7 @@ function initBrowser(body, rec) {
       frame.onload = null;
       showYT(true);
       if ((v && ytUrl.pathname === '/watch') || shorts) ytPlay(v || shorts[1]);
-      else if (q !== null) { ytQ.value = q; ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(q)); }
+      else if (q !== null) { activeTab.youtube.query(q); ytSearch('https://www.youtube.com/results?search_query=' + encodeURIComponent(q)); }
       else if (ytUrl.pathname === '/' || ytUrl.pathname === '') ytHome();
       else ytSearch(u); // chaîne (@handle, /channel/...), playlist, page thématique...
       setStatus('YouTube intégré');
@@ -2856,7 +2906,8 @@ function initBrowser(body, rec) {
     setStatus('Chargement arrêté');
   });
   body.querySelector('#br-fs').addEventListener('click', async () => {
-    const target = ytPanel && !ytPanel.classList.contains('hidden') ? body.querySelector('#br-yt') : frame;
+    const ytPanel = body.querySelector('#br-yt');
+    const target = ytPanel && !ytPanel.classList.contains('hidden') ? ytPanel : frame;
     try {
       if (document.fullscreenElement) { await document.exitFullscreen(); return; }
       if (target.requestFullscreen) await target.requestFullscreen();
@@ -2922,7 +2973,8 @@ function initBrowser(body, rec) {
   });
   const dismissEngineMenu = e => { if (!engMenu.contains(e.target)) engMenu.classList.add('hidden'); };
   document.addEventListener('click', dismissEngineMenu);
-  body.querySelectorAll('.chip[data-url]').forEach(c => c.addEventListener('click', () => navigate(c.dataset.url)));
+  const openURL = u => { if (history[hIndex] !== BROWSER_HOME) createTab(); navigate(u); };
+  body.querySelectorAll('.chip[data-url]').forEach(c => c.addEventListener('click', () => openURL(c.dataset.url)));
 
   updateNav();
   function accountNotice(u) {
@@ -2942,7 +2994,8 @@ function initBrowser(body, rec) {
   };
   document.addEventListener('keydown', browserKeys);
   browserAPI = {
-    navigate, accountNotice, currentUrl: () => history[hIndex],
+    navigate, openURL, newTab: u => { createTab(); if (u) navigate(u); }, accountNotice, currentUrl: () => history[hIndex],
+    videoResults: () => tabs.find(t => t.id === activeTabId)?.youtube.results(),
     ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source),
     readerDocument: () => {
       try {
@@ -2955,7 +3008,7 @@ function initBrowser(body, rec) {
   };
   const saved = LS.getJSON('browser_session_v30', null);
   if (LS.get('remember_tabs', '1') === '1' && Array.isArray(saved?.tabs) && saved.tabs.length) {
-    tabs.forEach(t => t.frame.remove());
+    tabs.forEach(t => { t.youtube.destroy(); t.frame.remove(); });
     tabs = [];
     saved.tabs.slice(0, 12).forEach(t => {
       const tab = createTab();
@@ -2971,6 +3024,7 @@ function initBrowser(body, rec) {
   if (rec) rec.cleanup = () => {
     saveSession();
     cancelBrowserLoad();
+    tabs.forEach(t => t.youtube.destroy());
     document.removeEventListener('click', dismissEngineMenu);
     document.removeEventListener('keydown', browserKeys);
     window.removeEventListener('message', onProxyMessage);
@@ -3501,6 +3555,7 @@ aiw.innerHTML = `
       <span style="font-weight:600;font-size:12.5px">Assistant IA</span>
       <button id="aiw-setbtn" class="aiw-btn" title="Choisir l'IA (fournisseur et modèle)"><i class="fa-solid fa-sliders"></i></button>
       <button id="aiw-boost" class="aiw-btn" title="Activer ou désactiver le mode Boost, indépendamment du contrôle IA"><i class="fa-solid fa-gauge-high"></i></button>
+      <button id="aiw-clear" class="aiw-btn" title="Effacer la conversation" aria-label="Effacer la conversation"><i class="fa-solid fa-trash"></i></button>
       <button id="aiw-min" class="aiw-btn" title="Réduire en bulle" style="margin-left:auto"><i class="fa-solid fa-chevron-down"></i></button>
       <button id="aiw-power" class="aiw-btn" title="Désactiver le contrôle de l'ordinateur" style="color:#fca5a5"><i class="fa-solid fa-power-off"></i></button>
     </div>
@@ -3509,6 +3564,7 @@ aiw.innerHTML = `
       <select id="aiw-model" title="Modèle"></select>
       <span id="aiw-keyhint" style="font-size:10px;color:#94a3b8;flex:none"></span>
     </div>
+    <div id="aiw-clear-confirm" hidden role="alert" style="padding:10px;font-size:12px;border-bottom:1px solid #64748b">Effacer cette conversation et annuler l’action en cours ? Tes clés et réglages sont conservés.<div style="display:flex;gap:8px;margin-top:8px"><button id="aiw-clear-yes" class="btn btn-blue">Effacer</button><button id="aiw-clear-no" class="btn btn-ghost">Annuler</button></div></div>
     <div id="aiw-msgs"></div>
     <div id="aiw-status"></div>
     <div id="aiw-inputbar">
@@ -3522,6 +3578,15 @@ const aiwPanel = aiw.querySelector('#aiw-panel');
 const aiwMsgs = aiw.querySelector('#aiw-msgs');
 const aiwStatus = aiw.querySelector('#aiw-status');
 const aiwInput = aiw.querySelector('#aiw-input');
+aiw.querySelector('#aiw-clear').onclick = () => { aiw.querySelector('#aiw-clear-confirm').hidden = false; aiwFitPanel(); };
+aiw.querySelector('#aiw-clear-no').onclick = () => { aiw.querySelector('#aiw-clear-confirm').hidden = true; aiwFitPanel(); };
+aiw.querySelector('#aiw-clear-yes').onclick = () => {
+  aiwRunId++; aiwRequestController?.abort(); aiwBusy = false;
+  aiwHist = []; LS.setJSON('aiwhist', []);
+  aiwMsgs.replaceChildren(); aiwInput.value = ''; aiwStatus.textContent = '';
+  aiw.querySelector('#aiw-clear-confirm').hidden = true;
+  aiwAddMsg('assistant', 'Conversation effacée. Tes clés, tes réglages et tes onglets sont conservés.');
+};
 
 /* position sauvegardée */
 (function () {
@@ -3707,6 +3772,8 @@ function aiwSysPrompt() {
     '- {"cmd":"search","query":"météo Paris"} — recherche WebOS lisible sans intégrer Google ; utiliser cette action pour toute recherche Web\n' +
     '- {"cmd":"open_result","index":1,"title":""} — attend les résultats Web actuels puis ouvre celui demandé (index commence à 1 ou titre)\n' +
     '- {"cmd":"play_video","index":1,"title":""} — attend les vidéos visibles dans YouTube WebOS puis sélectionne la vidéo demandée ; lecture distante non garantie\n' +
+    '- {"cmd":"new_tab","url":"https://www.youtube.com/"} — ouvre un nouvel onglet WebOS sans remplacer le jeu ou la vidéo en cours ; utiliser si un autre contenu doit rester ouvert\n' +
+    'Pour un titre de vidéo donné par l’utilisateur, transmettre ses mots dans play_video.title sans inventer le titre complet ; la correspondance tolère accents, ponctuation, mots manquants et petites fautes. Si plusieurs titres sont proches, demander lequel.\n' +
     '- {"cmd":"click","index":12} — clique sur l\'élément n°12 de la liste\n' +
     '- {"cmd":"type","index":5,"text":"..."} — écrit le texte dans l\'élément n°5\n' +
     '- {"cmd":"theme","id":"red"} — change le thème (blue, cyan, purple, green, red, orange, pink, slate)\n' +
@@ -3791,6 +3858,10 @@ async function aiwExec(a, snapshot = aiwItems()) {
         browserAPI.search(query);
         done.push('recherche WebOS lancée : ' + query);
         break;
+      }
+      case 'new_tab': {
+        openApp('browser'); browserAPI.newTab(a.url ? browserAddress(a.url) : null);
+        done.push('nouvel onglet ouvert dans WebOS'); break;
       }
       case 'open_result':
       case 'play_video': {
@@ -3947,14 +4018,26 @@ function initCursors(body) {
   const bindMemberBtns = () => {
     body.querySelectorAll('[data-membercur-apply]').forEach(b => b.addEventListener('click', () => {
       const c = MEMBER_CURSORS[+b.dataset.membercurApply];
-      if (c) applyMemberCursor(c.arrow, c.pointer);
+      if (c) {
+        try {
+          if (c.code) { const code = webos32.cursorData(c.code); LS.setJSON('cursor_code', code); setCursorTheme('code'); toast('Curseur du membre appliqué', 'fa-users', 'text-violet-400'); }
+          else applyMemberCursor(c.arrow, c.pointer);
+        } catch (e) { toast('Curseur invalide : ' + e.message, 'fa-triangle-exclamation', 'text-amber-400'); }
+      }
     }));
     body.querySelectorAll('[data-membercur-copy]').forEach(b => b.addEventListener('click', () => {
       const c = MEMBER_CURSORS[+b.dataset.membercurCopy];
-      if (c && navigator.clipboard) navigator.clipboard.writeText(c.arrow).then(() => toast('Lien copié', 'fa-copy', 'text-sky-400'));
+      if (c && navigator.clipboard) {
+        try {
+          navigator.clipboard.writeText(c.code ? webos32.cursorCode(c.code) : c.arrow).then(() => toast(c.code ? 'Code copié' : 'Lien copié', 'fa-copy', 'text-sky-400')).catch(() => toast('Copie non autorisée par le navigateur', 'fa-triangle-exclamation', 'text-amber-400'));
+        } catch (e) { toast('Code invalide', 'fa-triangle-exclamation', 'text-amber-400'); }
+      }
     }));
   };
   bindMemberBtns();
+  const onMemberUpdate = () => { if (body.isConnected) refreshMembers(); };
+  window.addEventListener('webos:cursors-updated', onMemberUpdate);
+  body.closest('.window')?.addEventListener('webos:cleanup', () => window.removeEventListener('webos:cursors-updated', onMemberUpdate), { once: true });
   /* Appliquer un curseur proposé */
   body.querySelectorAll('[data-cursorpick]').forEach(b => b.addEventListener('click', () => {
     setCursorTheme(b.dataset.cursorpick);
@@ -4501,7 +4584,7 @@ function initMedia(body) {
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${m.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${m.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
     </div>`).join('');
-  freeGrid.querySelectorAll('[data-inapp]').forEach(b => b.addEventListener('click', () => { openApp('browser'); browserAPI.navigate(b.dataset.inapp); }));
+  freeGrid.querySelectorAll('[data-inapp]').forEach(b => b.addEventListener('click', () => openInApp(b.dataset.inapp)));
   const grid = body.querySelector('#mh-grid');
   grid.innerHTML = MEDIA_LINKS.map(m => `
     <div class="glass-card p-4 flex items-center gap-3">
@@ -4659,7 +4742,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v32 : fenêtres stables, paramètres classés, curseurs par code et IA sans clé.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v33 : onglets YouTube indépendants, curseurs par code partageables et conversation IA effaçable.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -4882,7 +4965,7 @@ function initSettings(body) {
     }));
     appListEl.querySelectorAll('[data-appopen]').forEach(b => b.addEventListener('click', () => {
       const a = CUSTOM_APPS.find(x => String(x.id) === b.dataset.appopen);
-      if (a) { openApp('browser'); browserAPI.navigate(a.url); }
+      if (a) openInApp(a.url);
     }));
   };
   renderAppList();
@@ -5232,7 +5315,7 @@ function renderCustomIcons() {
     try { fav = brandImg(new URL(a.url).hostname); } catch (e) {}
     addDeskIcon('custom_' + a.id,
       `<div class="ic" style="background:linear-gradient(135deg,#312e81,#7c3aed)">${fav ? `<img src="${fav}" alt="" style="width:60%;height:60%;object-fit:contain" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${escHtml(a.emoji)}',style:'font-size:24px'}))">` : `<span style="font-size:24px">${escHtml(a.emoji)}</span>`}</div>`,
-      escHtml(a.title), () => { openApp('browser'); browserAPI.navigate(a.url); });
+      escHtml(a.title), () => openInApp(a.url));
     const el = di.lastChild; el.dataset.custom = a.id;
   });
 }

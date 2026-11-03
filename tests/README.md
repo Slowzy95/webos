@@ -1,4 +1,4 @@
-# Tests de fiabilité WebOS v32
+# Tests de fiabilité WebOS v33
 
 La suite couvre l’interface et l’intégration des fournisseurs avec des réponses HTTP simulées. Elle ne prouve pas qu’un compte réel a accès aux modèles, ni qu’un réseau scolaire autorise les jeux.
 
@@ -19,6 +19,7 @@ node tests/reliability.mjs
 node tests/v30.mjs
 node tests/v31.mjs
 node tests/v32.mjs
+node tests/v33.mjs
 ```
 
 Pour une autre URL :
@@ -62,3 +63,11 @@ La suite `v32.mjs` couvre 25 cycles réduction/restauration sans déplacement, q
 Les autres scénarios vérifient l’IA sans clé et son délai partagé de 45 secondes, l’absence d’en-tête Authorization pour ce fournisseur, la recherche suivie de la sélection du premier résultat, la sélection d’une vidéo après chargement asynchrone, l’annulation pendant l’attente, le retrait des modèles définitivement absents et l’exclusion persistante des modèles « conversation seulement » du pilotage. Les API et le contenu distant sont simulés dans cette suite, pas la logique de l’interface. La lecture distante réelle d’une vidéo et les jeux tiers ne sont pas attestés par ces fixtures.
 
 Le bouton « Tester tous mes fournisseurs » utilise seulement les clés enregistrées sur l’appareil courant et signale les fournisseurs non testés faute de clé. Une erreur de budget, d’accès, de réseau ou de quota n’est pas une preuve qu’un modèle a disparu. Les diagnostics n’exécutent jamais les actions produites par les modèles.
+
+## Régressions v33
+
+`v33.mjs` vérifie la publication d’un curseur animé sur une galerie simulée, son application dans un client indépendant, le maintien des anciennes entrées, la copie réimportable, le refus des scripts et des publications trop volumineuses, et l’absence d’écriture si la lecture de la galerie échoue. Aucun faux curseur n’est envoyé à la galerie publique.
+
+Le scénario navigateur conserve trois onglets YouTube et l’état d’un jeu simulé. Il contrôle les URL des lecteurs conservées au changement d’onglet et l’ouverture des services dans le même navigateur. Les tests de titres portent sur accents, ponctuation, mots manquants, fautes légères, numéros d’épisode, ambiguïtés et titres sans rapport.
+
+Le bouton de suppression du widget est testé avec confirmation, annulation et requête IA en attente. Les clés et les onglets doivent rester, l’historique enregistré doit être vide et aucune réponse tardive ne doit réapparaître. Les exceptions de la page WebOS sont vérifiées séparément de celles des lecteurs distants : la lecture d’un flux YouTube et les jeux tiers réels ne sont pas attestés par ces fixtures.

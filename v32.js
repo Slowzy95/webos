@@ -1,6 +1,53 @@
 'use strict';
 /* Small, auditable helpers. Imported cursor HTML is NEVER inserted into DOM. */
 window.webos32 = {
+  cursorData(config) {
+    const style = document.createElement('style'); this.applyCursor(config, style);
+    return {
+      ms: Math.max(100, Math.min(60000, Number(config.ms) || 1000)),
+      frames: config.frames.map(f => ({ url: this.imageURL(f.url), x: f.x, y: f.y, times: Array.isArray(f.times) ? f.times.filter(t => Number.isFinite(t) && t >= 0 && t <= 100).slice(0, 64) : [0] }))
+    };
+  },
+  cursorCode(config) {
+    const safe = this.cursorData(config);
+    const value = f => `url("${f.url}") ${f.x} ${f.y}, auto`;
+    const rules = safe.frames.map(f => (f.times.length ? f.times : [0]).map(t => t + '%').join(',') + '{cursor:' + value(f) + ';}').join('');
+    return '<style>' + (safe.frames.length === 1 ? 'body{cursor:' + value(safe.frames[0]) + ';}' : '@keyframes wosSharedCursor{' + rules + '}body{animation:wosSharedCursor ' + safe.ms + 'ms steps(1,end) infinite;}') + '</style>';
+  },
+  titleText(value) {
+    return String(value || '').slice(0, 500).replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  },
+  distance(a, b) {
+    const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let old = row[0]; row[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const next = row[j]; row[j] = Math.min(row[j] + 1, row[j - 1] + 1, old + (a[i - 1] === b[j - 1] ? 0 : 1)); old = next;
+      }
+    }
+    return row[b.length];
+  },
+  matchTitle(list, title) {
+    const query = this.titleText(title);
+    const q = [...new Set(query.split(' ').filter(Boolean))];
+    if (!q.length) throw new Error('Précise le titre de la vidéo.');
+    const numeric = q.filter(t => /^\d+$/.test(t));
+    const ranked = list.map(el => {
+      const text = this.titleText(el.dataset.title || el.textContent), tokens = [...new Set(text.split(' '))];
+      if (text === query) return { el, score: 1, exact: true };
+      if (numeric.some(n => !tokens.includes(n))) return { el, score: 0 };
+      const hits = q.filter(t => tokens.some(v => t === v || (Math.min(t.length, v.length) >= 5 && Math.abs(t.length - v.length) <= 2 && this.distance(t, v) <= Math.min(2, Math.floor(t.length * .2))))).length;
+      if (hits < Math.min(2, q.length) || hits / q.length < .66) return { el, score: 0 };
+      const chars = 1 - this.distance(query.slice(0, 250), text.slice(0, 250)) / Math.max(query.length, text.length, 1);
+      return { el, score: .65 * hits / q.length + .2 * hits / Math.max(tokens.length, 1) + .15 * chars };
+    }).sort((a, b) => b.score - a.score);
+    const top = ranked[0], next = ranked[1];
+    if (top?.score >= .72 && (!next || top.score - next.score >= .07)) return top.el;
+    const choices = ranked.filter(r => r.score > .4).slice(0, 3);
+    const suggestions = (choices.length ? choices : ranked.slice(0, 3)).map(r => String(r.el.dataset.title || r.el.textContent).trim().slice(0, 100)).join(' / ');
+    throw new Error((top?.score >= .72 ? 'Plusieurs titres sont proches. Précise quelques mots ou le numéro : ' : 'Aucun titre assez proche. Titres visibles : ') + suggestions);
+  },
   imageURL(value) {
     const s = String(value).trim();
     if (!s || s.length > 700000 || /["'\\\s<>]/.test(s)) return '';
@@ -51,6 +98,24 @@ window.webos32 = {
     section.innerHTML = '<h3>Importer un code de curseur</h3><p>Colle ton code HTML/CSS, comme celui de RW Designer. Seules les images, les points et les étapes du curseur sont extraits. Aucun script ni style étranger n’est exécuté.</p><label for="cur-code">Code HTML / CSS</label><textarea id="cur-code" class="field" rows="6" spellcheck="false" placeholder="&lt;style&gt; body { cursor: url(...) 0 0, auto; } &lt;/style&gt;"></textarea><div class="cursor-code-actions"><button class="btn btn-blue" id="cur-code-apply">Vérifier et appliquer</button><button class="btn btn-ghost" id="cur-code-reset">Curseur par défaut</button></div><p id="cur-code-status" role="status">Compatible avec les images intégrées en base64 et les animations par étapes. Les images trop grandes peuvent être refusées par le navigateur.</p><div id="cur-code-preview">Zone d’aperçu : déplace la souris ici après application.</div>';
     (target || body.firstElementChild).prepend(section);
     const status = section.querySelector('#cur-code-status');
+    const publisher = document.createElement('div'); publisher.className = 'cursor-code-publish';
+    publisher.innerHTML = '<label for="cur-code-name">Nom dans la galerie des membres</label><input id="cur-code-name" class="field" maxlength="60" placeholder="Ex. Minecraft diamant"><button id="cur-code-publish" class="btn btn-green">Publier le code pour tous les membres</button><p>Publication publique : seules les images, les points et l’animation validés seront partagés. Maximum 64 Ko. Ne colle aucune information privée.</p>';
+    section.querySelector('#cur-code-preview').before(publisher);
+    const publish = publisher.querySelector('button');
+    publish.onclick = async () => {
+      publish.disabled = true;
+      try {
+        const raw = section.querySelector('#cur-code').value.trim();
+        const code = raw ? this.parseCursor(raw) : this.cursorData(LS.getJSON('cursor_code', null));
+        const name = section.querySelector('#cur-code-name').value.trim();
+        if (!name) throw new Error('Donne un nom au curseur avant de le publier.');
+        status.textContent = 'Publication dans la galerie des membres…';
+        await memberCursorPublish(name, '', '', code);
+        status.textContent = 'Curseur publié : les autres membres peuvent maintenant l’utiliser dans la galerie.';
+        status.dataset.state = 'ok';
+      } catch (e) { status.textContent = e.message; status.dataset.state = 'error'; }
+      finally { publish.disabled = false; }
+    };
     section.querySelector('#cur-code-apply').onclick = () => {
       try {
         const config = this.parseCursor(section.querySelector('#cur-code').value);
@@ -141,6 +206,7 @@ window.webos32 = {
   },
   async selectResult(action, signal) {
     const deadline = Date.now() + 20000;
+    if (action.cmd === 'play_video' && !document.querySelector('#yt-results button[data-yt]')?.getClientRects().length) browserAPI?.videoResults();
     while (Date.now() < deadline) {
       if (signal?.aborted) throw new Error('Action annulée');
       if (!browserAPI || !windows.has('browser')) throw new Error('Le navigateur est fermé');
@@ -151,7 +217,7 @@ window.webos32 = {
       if (list.length) {
         const index = action.index == null ? 1 : Number(action.index);
         const title = String(action.title || '').trim().toLocaleLowerCase('fr');
-        const el = title ? list.find(x => (x.dataset.title || x.textContent).toLocaleLowerCase('fr').includes(title)) : list[index - 1];
+        const el = title ? this.matchTitle(list, title) : list[index - 1];
         if (!el) throw new Error('Résultat ou vidéo introuvable parmi les éléments visibles');
         if (isWeb) browserAPI.navigate(el.href); else el.click();
         return;
