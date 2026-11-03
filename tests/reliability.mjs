@@ -59,6 +59,7 @@ const open = async title => {
   await page.locator('#start-btn').click();
   await page.locator('#sm-search').fill(title);
   await page.locator('.sm-tile').filter({ hasText: title }).click();
+  if (title === 'Paramètres') await page.locator('[data-category="all"]').click();
 };
 const wait = async predicate => page.waitForFunction(predicate);
 const send = async text => {

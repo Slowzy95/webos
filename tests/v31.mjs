@@ -30,6 +30,7 @@ const open = async name => {
   await page.locator('#start-btn').click();
   await page.locator('#sm-search').fill(name);
   await page.locator('#sm-apps .sm-tile:visible').click();
+  if (name === 'Paramètres') await page.locator('[data-category="all"]').click();
 };
 const closeAll = async () => {
   while(await page.locator('.window:not(.win-close)').count()) await page.locator('.window:not(.win-close) [data-act="close"]').last().click();

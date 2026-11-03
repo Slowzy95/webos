@@ -27,6 +27,7 @@ const open = async name => {
   await page.locator('#start-btn').click();
   await page.locator('#sm-search').fill(name);
   await page.locator('#sm-apps .sm-tile').filter({ hasText: name }).click();
+  if (name === 'Paramètres') await page.locator('[data-category="all"]').click();
 };
 const closeAll = async () => {
   while (await page.locator('.window:not(.win-close)').count()) await page.locator('.window:not(.win-close) [data-act="close"]').last().click();
@@ -190,6 +191,7 @@ try {
   await memoryPage.locator('#shortcut-menu [data-destination="taskbar"]').click();
   assert.equal(await memoryPage.locator('#tb-pinned [data-v30-shortcut]').count(), 1);
   await memoryPage.locator('#tb-pinned [data-app-pin="settings"]').click();
+  await memoryPage.locator('[data-category="all"]').click();
   await memoryPage.locator('#st-storage-v30').waitFor();
   assert.match(await memoryPage.locator('#st-storage-v30').textContent(), /Stockage restreint/);
   assert.deepEqual(memoryErrors, []);

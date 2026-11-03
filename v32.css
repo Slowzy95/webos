@@ -1,0 +1,21 @@
+.settings-layout32 > section[hidden], .settings-empty32[hidden], #ai-savekey[hidden], #ai-key[hidden] { display:none!important }
+.settings-nav32{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;position:relative;padding-bottom:14px;border-bottom:1px solid rgba(148,163,184,.2)}
+.settings-nav32 .field{grid-column:1/-1;margin-bottom:4px;font-size:12px}
+.settings-category32{display:flex;align-items:center;gap:9px;min-height:38px;padding:8px 10px;text-align:left;font-size:12px;border:1px solid transparent;border-radius:7px;color:inherit;background:rgba(148,163,184,.07);transition:background .15s}
+.settings-category32:hover{background:rgba(148,163,184,.18)}
+.settings-category32[aria-pressed=true]{background:rgba(59,130,246,.16);border-color:rgba(96,165,250,.45)}
+.settings-category32 i{width:16px;text-align:center;color:#60a5fa}
+.settings-layout32>section{margin-top:16px!important}
+.settings-layout32 .cursor-code-panel{padding-top:0;border:0;margin-bottom:18px}
+.cursor-code-panel{padding:16px;border:1px solid rgba(148,163,184,.22);border-radius:9px;margin-bottom:16px}
+.cursor-code-panel h3{font-size:14px;font-weight:650;margin:0 0 8px}
+.cursor-code-panel p,.cursor-code-panel label{font-size:12px;line-height:1.6;opacity:.85;display:block;margin-bottom:9px}
+.cursor-code-panel textarea{width:100%;resize:vertical;min-height:115px;max-height:350px;font-family:Consolas,monospace;font-size:12px;margin:5px 0 10px}
+.cursor-code-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+#cur-code-preview{border:1px dashed #64748b;padding:18px;border-radius:6px;font-size:12px}
+#cur-code-status[data-state=error]{color:#fb7185}
+#cur-code-status[data-state=ok]{color:#34d399}
+.settings-empty32{padding:16px;font-size:13px}
+body[data-os=win7] .settings-category32,body[data-os=winxp] .settings-category32,body[data-os=win98] .settings-category32{background:rgba(0,0,0,.04);color:#172638}
+body[data-os=win7] .settings-category32[aria-pressed=true],body[data-os=winxp] .settings-category32[aria-pressed=true],body[data-os=win98] .settings-category32[aria-pressed=true]{background:#dcecff}
+@media(max-width:420px){.settings-nav32{gap:5px}.settings-category32{padding:8px;font-size:12px;gap:6px}.settings-layout32{padding:12px!important}}

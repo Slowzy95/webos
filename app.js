@@ -705,10 +705,14 @@ const CURSOR_THEMES = {
 function setCursorTheme(themeId) {
   let st = document.getElementById('cursor-style');
   if (!st) { st = document.createElement('style'); st.id = 'cursor-style'; document.head.appendChild(st); }
-  /* Curseur personnalisé par URL (comme les fonds d'écran) */
+  if (themeId === 'code') {
+    try { webos32.applyCursor(LS.getJSON('cursor_code', null), st); LS.set('cursor', 'code'); return; }
+    catch (e) { themeId = 'default'; }
+  }
+  /* Validate URLs even when restored from local storage. */
   if (themeId === 'custom') {
     const c = LS.getJSON('cursor_custom', {});
-    const a = (c.a || '').trim(), p = (c.p || '').trim();
+    const a = webos32.imageURL(c.a || ''), p = webos32.imageURL(c.p || '');
     if (a || p) {
       const A = a || p, P = p || a;
       st.textContent = `
@@ -1244,22 +1248,22 @@ function avoidOverlap(x, y, w, h, selfEl, desk) {
     }
   });
   /* bornes de l'écran */
-  r.l = Math.max(-w + 90, Math.min(r.l, desk.width - 90));
-  r.t = Math.max(0, Math.min(r.t, desk.height - 42));
+  r.l = Math.max(0, Math.min(r.l, desk.width - w));
+  r.t = Math.max(0, Math.min(r.t, desk.height - h));
   return r;
 }
 /* DÉPÔT SUR LA GRILLE : au relâchement, la fenêtre s'aligne sur la grille et se
    range dans la première case libre (spirale autour du point visé). Résultat :
    les fenêtres forment toujours un carré propre, comme sur un vrai PC. */
 function gridDrop(x, y, w, h, selfEl, desk) {
-  x = Math.max(0, Math.min(wSnap(x), desk.width - 90));
-  y = Math.max(0, Math.min(wSnap(y), desk.height - 42));
+  x = Math.max(0, Math.min(wSnap(x), desk.width - w));
+  y = Math.max(0, Math.min(wSnap(y), desk.height - h));
   const rects = windowRects(selfEl);
   if (!rects.length) return { x, y };
   const gx = Math.round(x / WGRID), gy = Math.round(y / WGRID);
   const fits = (cx, cy) => {
     const px = cx * WGRID, py = cy * WGRID;
-    if (px < -w + 90 || px > desk.width - 90 || py < 0 || py > desk.height - 42) return false;
+    if (px < 0 || px > desk.width - w || py < 0 || py > desk.height - h) return false;
     return rects.every(o => px + w <= o.l + 4 || px >= o.r - 4 || py + h <= o.t + 4 || py >= o.b - 4);
   };
   if (fits(gx, gy)) return { x: gx * WGRID, y: gy * WGRID };
@@ -1429,7 +1433,7 @@ function toggleMinimize(appId) {
   const w = windows.get(appId);
   if (!w) return;
   if (w.minTimer) { clearTimeout(w.minTimer); w.minTimer = null; }
-  w.el.classList.remove('win-min');
+  w.el.classList.remove('win-min', 'win-unmin');
   w.minimized = !w.minimized;
   const animated = (document.body.dataset.anim || 'windows') !== 'none';
   if (w.minimized) {
@@ -1441,17 +1445,13 @@ function toggleMinimize(appId) {
     if (focusedApp === appId) focusedApp = null;
   } else {
     w.el.style.display = 'flex';
-    /* ANTI-SUPERPOSITION : si la place d'origine est occupée, la fenêtre se
-       range dans la première case libre de la grille */
+    /* Restore logical coordinates, never transform-affected animation bounds. */
     const desk = layer.getBoundingClientRect();
-    const r = w.el.getBoundingClientRect();
     if (desk.width < 720) {
       windows.forEach((other, id) => { if (id !== appId && !other.minimized) toggleMinimize(id); });
       if (!w.maximized) toggleMaximize(appId);
     } else {
-      const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
-      if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
-      else retileAll();
+      webos32.clampWindow(w.el, desk);
     }
     if (animated) { w.el.classList.add('win-unmin'); setTimeout(() => w.el.classList.remove('win-unmin'), 260); }
     focusWindow(appId);
@@ -1481,14 +1481,7 @@ function toggleMaximize(appId) {
     w.el.querySelector('[data-act="max"] i').className = 'fa-regular fa-square';
     setTimeout(() => {
       w.el.style.transition = '';
-      /* ANTI-SUPERPOSITION : si la place d'origine est prise, on se range
-         dans la première case libre de la grille */
-      if (!w.maximized) {
-        const r = w.el.getBoundingClientRect();
-        const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
-        if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
-        else retileAll(); /* aucune case libre : tout se range en carrés */
-      }
+      if (!w.maximized) webos32.clampWindow(w.el, layer.getBoundingClientRect());
     }, 210);
   }
 }
@@ -2499,13 +2492,7 @@ function initBrowser(body, rec) {
       if (/^(www\.)?google\.[a-z.]+$/.test(destination.hostname) && destination.pathname === '/' && !destination.search)
         u = SEARCH_ENGINES.webos.url;
     }
-    /* CrazyGames : les pages de jeu (crazygames.com/game/X) chargent un
-       chargeur v2.13 incompatible avec le proxy (jeux bloqués) — on ouvre
-       directement le cadre du jeu, qui fonctionne. */
-    {
-      const cg = u.match(/^https?:\/\/(?:www\.)?crazygames\.com\/game\/([\w-]+)/);
-      if (cg) u = 'https://games.crazygames.com/fr_FR/' + cg[1] + '/index.html';
-    }
+    /* Keep official game URLs. Invented game-frame paths break site checks. */
     /* Mise à jour de l'onglet actif */
     const activeTab = tabs.find(t => t.id === activeTabId);
     if (activeTab) {
@@ -2950,7 +2937,18 @@ function initBrowser(body, rec) {
     if (e.key.toLowerCase() === 'w') { e.preventDefault(); closeTab(activeTabId); }
   };
   document.addEventListener('keydown', browserKeys);
-  browserAPI = { navigate, accountNotice, currentUrl: () => history[hIndex], ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source) };
+  browserAPI = {
+    navigate, accountNotice, currentUrl: () => history[hIndex],
+    ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source),
+    readerDocument: () => {
+      try {
+        const u = new URL(history[hIndex]);
+        if (u.hostname !== 'www.bing.com' || u.pathname !== '/search' || u.searchParams.get('wos_reader') !== '1') return null;
+        return frame.hasAttribute('srcdoc') && frame.contentDocument?.querySelector('#search-form') ? frame.contentDocument : null;
+      } catch (e) { return null; }
+    },
+    search: query => navigate('https://www.bing.com/search?wos_reader=1&q=' + encodeURIComponent(query))
+  };
   const saved = LS.getJSON('browser_session_v30', null);
   if (LS.get('remember_tabs', '1') === '1' && Array.isArray(saved?.tabs) && saved.tabs.length) {
     tabs.forEach(t => t.frame.remove());
@@ -2990,14 +2988,16 @@ function browserHomeHTML() {
    APP : ASSISTANT IA MULTI-PROVIDER
 ============================================================ */
 const AI_PROVIDERS = {
+  pollinations: { label: 'Pollinations · sans clé', cat: 'nokey', models: ['openai-fast'], endpoint: 'https://text.pollinations.ai/openai', vision: false, nokey: true, free: 'Sans clé : une requête toutes les 45 secondes. Disponibilité selon le service public.' },
   google: { label: 'Google Gemini', cat: 'free', models: ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'], endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', vision: true, free: 'Clé sur aistudio.google.com — disponibilité et quota selon le compte. Actualisez le catalogue avec le diagnostic.' },
   groq: { label: 'Groq', cat: 'free', models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: false, free: 'Clé sur console.groq.com — limites selon le compte et le modèle. Lancez le diagnostic pour actualiser les modèles.' },
   openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'recursive/flint-v1.0:free', 'xingchen-agi/xing4.0-29b-a4b:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling-small:free'], vision: true, free: 'Clé sur openrouter.ai — limites et modalités selon le modèle. Actualisez le catalogue avec le diagnostic.' }
 };
 Object.entries(AI_PROVIDERS).forEach(([prov, p]) => {
+  if (p.nokey) return; // Canonical anonymous model, not an old alias cache.
   const cache = LS.getJSON('ai_catalog_' + prov, null);
   if (cache && Date.now() - cache.at < 7 * 86400000 && Array.isArray(cache.models) &&
-      cache.models.length && cache.models.every(m => typeof m === 'string' && /^[a-zA-Z0-9._:/-]+$/.test(m)))
+      cache.models.every(m => typeof m === 'string' && /^[a-zA-Z0-9._:/-]+$/.test(m)))
     p.models = cache.models;
 });
 /* Détection du fournisseur selon le format de la clé (app IA + Paramètres) */
@@ -3010,12 +3010,18 @@ function detectKeyProvider(key) {
   return null;
 }
 let aiHistory = [];
-let aiProvider = LS.get('ai_provider', 'groq');
-if (!AI_PROVIDERS[aiProvider]) aiProvider = 'groq';
+let aiProvider = LS.get('ai_provider', 'pollinations');
+if (!AI_PROVIDERS[aiProvider]) aiProvider = 'pollinations';
 let aiImage = null; /* image jointe : { mime, data } */
 let aiChatBusy = false;
 let aiDiagnosticsBusy = false;
-const aiModelResults = {};
+const aiModelResults = LS.getJSON('ai_model_results_v32', {});
+Object.entries(AI_PROVIDERS).forEach(([prov, p]) => {
+  p.models = p.models.filter(m => aiModelResults[prov + ':' + m] !== 'missing');
+});
+function aiControlModels(prov) {
+  return AI_PROVIDERS[prov].models.filter(m => aiModelResults[prov + ':' + m] !== 'chat-only');
+}
 
 async function aiFetch(url, options = {}) {
   const controller = new AbortController();
@@ -3053,6 +3059,15 @@ async function aiChatRequest(prov, model, messages, signal) {
   const key = String(apiKeys[prov] || '').trim();
   if (!p.nokey && !key) throw new Error('Clé API requise pour ' + p.label);
   if (!model) throw new Error('Aucun modèle disponible : relancez le diagnostic');
+  if (p.nokey) {
+    const next = Number(LS.get('pollinations_next', '0'));
+    const remaining = Math.ceil((next - Date.now()) / 1000);
+    if (remaining > 0 && remaining <= 45) {
+      const err = new Error('IA sans clé : attends encore ' + remaining + ' s (1 message / 45 s).');
+      err.status = 429; throw err;
+    }
+    LS.set('pollinations_next', String(Date.now() + 45000));
+  }
   let data;
   if (prov === 'google') {
     const sys = messages.find(m => m.role === 'system');
@@ -3077,7 +3092,7 @@ async function aiChatRequest(prov, model, messages, signal) {
     return reply;
   }
   const headers = { 'Content-Type': 'application/json' };
-  if (key) headers.Authorization = 'Bearer ' + key;
+  if (key && !p.nokey) headers.Authorization = 'Bearer ' + key;
   data = await aiFetch(prov === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : p.endpoint, {
     method: 'POST', signal, headers, body: JSON.stringify({ model, messages })
   });
@@ -3089,10 +3104,17 @@ async function aiChatRequest(prov, model, messages, signal) {
 function aiSyncSelectors() {
   document.querySelectorAll('#ai-provider, #aiw-prov').forEach(el => { el.value = aiProvider; });
   document.querySelectorAll('#ai-model, #aiw-model').forEach(el => {
-    el.innerHTML = AI_PROVIDERS[aiProvider].models.map(m => '<option value="' + escHtml(m) + '">' + escHtml(m) + '</option>').join('');
+    const models = el.id === 'aiw-model' ? aiControlModels(aiProvider) : AI_PROVIDERS[aiProvider].models;
+    el.innerHTML = models.map(m => '<option value="' + escHtml(m) + '">' + escHtml(m) + '</option>').join('');
     el.value = aiSelectedModel(aiProvider);
   });
   aiwRefreshSetUI();
+  const keyInput = document.querySelector('#ai-key');
+  if (keyInput) {
+    keyInput.parentElement.hidden = !!AI_PROVIDERS[aiProvider].nokey;
+    keyInput.value = apiKeys[aiProvider] || '';
+    document.querySelector('#ai-savekey').hidden = !!AI_PROVIDERS[aiProvider].nokey;
+  }
 }
 async function aiRunDiagnostics(body) {
   if (aiDiagnosticsBusy || aiChatBusy || aiwBusy) return;
@@ -3106,6 +3128,7 @@ async function aiRunDiagnostics(body) {
   const originalModels = [...p.models];
   try {
     let models = [...originalModels];
+    if (p.nokey) models = ['openai-fast'];
     const headers = { Authorization: 'Bearer ' + key };
     if (prov === 'groq') {
       const catalog = await aiFetch('https://api.groq.com/openai/v1/models', { headers });
@@ -3146,10 +3169,10 @@ async function aiRunDiagnostics(body) {
         aiBumpCount(prov);
       } catch (err) {
         const missing = (err.status === 404 || err.status === 400) && /model.*(not.found|does not exist|decommission|not.support|invalid)|model_not_found|model_decommissioned/i.test(err.message + ' ' + err.code);
-        if (missing) p.models = p.models.filter(m => m !== model);
+        if (missing) { p.models = p.models.filter(m => m !== model); aiModelResults[prov + ':' + model] = 'missing'; }
         row.textContent = model + ' : ' + err.message + (missing ? ' — retiré de la liste' : ' — conservé, indisponibilité non définitive');
         row.style.color = '#fca5a5';
-        if ([401, 403, 429].includes(err.status)) { abortReason = 'Tests restants non effectués : accès ou quota refusé. Aucun autre modèle supprimé.'; break; }
+        if ([401, 402, 403, 429].includes(err.status)) { abortReason = 'Tests restants non effectués : accès, budget ou quota refusé. Aucun autre modèle supprimé.'; break; }
       }
     }
     const note = document.createElement('div');
@@ -3162,6 +3185,7 @@ async function aiRunDiagnostics(body) {
     aiDiagnosticsBusy = false;
     button.disabled = false;
     LS.setJSON('ai_catalog_' + prov, { at: Date.now(), models: p.models });
+    LS.setJSON('ai_model_results_v32', aiModelResults);
     aiSyncSelectors();
   }
 }
@@ -3188,6 +3212,7 @@ function renderAI() {
       <div class="flex-none px-3 py-2.5 border-b border-white/8 bg-white/3 flex items-center gap-2 flex-wrap">
         <select id="ai-provider" class="field !w-auto !py-1.5">
           ${[
+            { g: 'Sans clé · 45 secondes', cat: 'nokey' },
             { g: '🎁 Gratuit avec clé', cat: 'free' },
             { g: '💳 Payant', cat: 'paid' }
           ].map(gr => {
@@ -3204,6 +3229,7 @@ function renderAI() {
         <button class="btn btn-green !py-1.5" id="ai-savekey"><i class="fa-solid fa-floppy-disk"></i> Clé</button>
         <button class="btn btn-ghost !py-1.5" id="ai-clear" title="Nouvelle conversation"><i class="fa-solid fa-broom"></i></button>
         <button class="btn btn-ghost !py-1.5" id="ai-diagnostics" title="Actualise le catalogue et teste chaque modèle de conversation du fournisseur sélectionné. Consomme votre quota.">Tester les modèles (quota)</button>
+        <button class="btn btn-ghost !py-1.5" id="ai-diagnostics-all" title="Teste successivement les fournisseurs dont la clé est déjà enregistrée sur cet appareil. Consomme le quota.">Tester tous mes fournisseurs</button>
         <button class="btn ${aiControlOn ? 'btn-green' : 'btn-ghost'} !py-1.5" id="ai-ctrl" title="Active ou désactive les actions de l’IA dans le WebOS uniquement. Reçoit la liste des fenêtres et contrôles, pas une capture du PC."><i class="fa-solid fa-eye"></i> Contrôle PC</button>
       </div>
       <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3 selectable"></div>
@@ -3263,6 +3289,8 @@ function initAI(body, rec) {
     modelSel.value = LS.get('ai_model_' + aiProvider, p.models[0]);
     if (!p.models.includes(modelSel.value)) modelSel.value = p.models[0];
     keyInput.value = apiKeys[aiProvider] || '';
+    keyInput.parentElement.hidden = !!p.nokey;
+    body.querySelector('#ai-savekey').hidden = !!p.nokey;
     keyInput.placeholder = p.free ? 'Clé API gratuite' : 'Clé API';
     updateQuota();
     /* Le diagnostic actualise le catalogue ; la présence dans la liste ne garantit pas l'accès du compte. */
@@ -3363,6 +3391,26 @@ function initAI(body, rec) {
   providerSel.addEventListener('change', () => { aiProvider = providerSel.value; LS.set('ai_provider', aiProvider); refreshProviderUI(); aiSyncSelectors(); });
   modelSel.addEventListener('change', () => { LS.set('ai_model_' + aiProvider, modelSel.value); aiSyncSelectors(); });
   body.querySelector('#ai-diagnostics').addEventListener('click', () => aiRunDiagnostics(body));
+  body.querySelector('#ai-diagnostics-all').addEventListener('click', async () => {
+    if (aiDiagnosticsBusy || aiChatBusy || aiwBusy) return;
+    const button = body.querySelector('#ai-diagnostics-all'), out = body.querySelector('#ai-diagnostics-results');
+    const selected = aiProvider, reports = document.createElement('div');
+    button.disabled = true;
+    try {
+      for (const [prov, p] of Object.entries(AI_PROVIDERS)) {
+        if (!body.isConnected) break;
+        const report = document.createElement('section'), heading = document.createElement('h3');
+        heading.textContent = p.label; report.append(heading);
+        if (!p.nokey && !apiKeys[prov]) report.append(document.createTextNode('Non testé : aucune clé enregistrée sur cet appareil.'));
+        else {
+          aiProvider = prov; aiSyncSelectors();
+          await aiRunDiagnostics(body);
+          report.append(...[...out.childNodes].map(n => n.cloneNode(true)));
+        }
+        reports.append(report); out.replaceChildren(reports.cloneNode(true));
+      }
+    } finally { button.disabled = false; aiProvider = selected; aiSyncSelectors(); }
+  });
   /* Détection automatique du fournisseur selon le format de la clé collée */
   const KEY_PATTERNS = [
     [/^(AIza|AQ\.)/, 'google'],
@@ -3607,11 +3655,15 @@ function aiwItems() {
     if (w.minimized) return;
     const title = (w.el.querySelector('.win-head-title') || {}).textContent || id;
     items.push({ desc: 'FENÊTRE ouverte « ' + title.trim() + ' » (id=' + id + ')' });
-    w.el.querySelectorAll('button, [role=button], input, textarea, select, a, .chip, .app-icon').forEach(el => {
+    w.el.querySelectorAll('button, [role=button], input, textarea, select, a, .chip, .app-icon, #yt-results [data-yt]').forEach(el => {
       if (el.offsetParent === null || sensitive(el)) return;
       const txt = (el.textContent || el.value || el.placeholder || el.title || '').trim().replace(/\s+/g, ' ').slice(0, 30);
       if (txt) items.push({ desc: 'dans ' + title.trim() + ' → « ' + txt + ' »', el });
     });
+  });
+  const reader = browserAPI?.readerDocument();
+  if (reader) reader.querySelectorAll('#query, #search-form button, .result a.title[data-inapp]').forEach(el => {
+    if (el.getClientRects().length) add(el, 'Recherche WebOS : ' + (el.textContent || el.value || '').trim().slice(0, 100));
   });
   return items;
 }
@@ -3619,7 +3671,7 @@ function aiwItems() {
 /* --- clic intelligent sur un élément --- */
 function aiwClickEl(el) {
   if (!el) return;
-  if (el.classList.contains('tb-icon') || el.id === 'start-btn') {
+  if (el.classList.contains('tb-icon') || el.classList.contains('wbtn') || el.id === 'start-btn') {
     try { el.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true, cancelable: true })); } catch (err) { el.click(); }
     return;
   }
@@ -3648,6 +3700,9 @@ function aiwSysPrompt() {
     '- {"cmd":"close_app","app":"browser"} — ferme une app\n' +
     '- {"cmd":"navigate","url":"https://..."} — navigue dans le navigateur interne\n' +
     '- {"cmd":"youtube","query":"recherche"} — ouvre YouTube dans le navigateur et lance la recherche\n' +
+    '- {"cmd":"search","query":"météo Paris"} — recherche WebOS lisible sans intégrer Google ; utiliser cette action pour toute recherche Web\n' +
+    '- {"cmd":"open_result","index":1,"title":""} — attend les résultats Web actuels puis ouvre celui demandé (index commence à 1 ou titre)\n' +
+    '- {"cmd":"play_video","index":1,"title":""} — attend les vidéos visibles dans YouTube WebOS puis sélectionne la vidéo demandée ; lecture distante non garantie\n' +
     '- {"cmd":"click","index":12} — clique sur l\'élément n°12 de la liste\n' +
     '- {"cmd":"type","index":5,"text":"..."} — écrit le texte dans l\'élément n°5\n' +
     '- {"cmd":"theme","id":"red"} — change le thème (blue, cyan, purple, green, red, orange, pink, slate)\n' +
@@ -3664,15 +3719,19 @@ function aiwRefreshSetUI() {
   if (!sel) return;
   sel.innerHTML = Object.entries(AI_PROVIDERS).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('');
   const p = AI_PROVIDERS[aiProvider];
-  mdl.innerHTML = p.models.map(m => `<option value="${escHtml(m)}" ${m === aiSelectedModel(aiProvider) ? 'selected' : ''}>${escHtml(m)}</option>`).join('');
-  aiw.querySelector('#aiw-keyhint').textContent = (p.nokey ? 'Gratuit, sans clé' : (apiKeys[aiProvider] ? 'Clé enregistrée ✓' : 'Clé requise (voir app IA)'));
+  const models = aiControlModels(aiProvider);
+  mdl.innerHTML = models.map(m => `<option value="${escHtml(m)}" ${m === aiSelectedModel(aiProvider) ? 'selected' : ''}>${escHtml(m)}</option>`).join('');
+  if (!models.length) mdl.innerHTML = '<option value="">Aucun modèle compatible avec les actions</option>';
+  aiw.querySelector('#aiw-keyhint').textContent = (p.nokey ? 'Sans clé · 1 message / 45 s' : (apiKeys[aiProvider] ? 'Clé enregistrée ✓' : 'Clé requise (voir app IA)'));
 }
 
 /* --- requête vers le fournisseur choisi (même logique que l'app IA, qui
    fonctionne avec les clés enregistrées : Google via x-goog-api-key,
    OpenRouter sur son endpoint dédié, les autres en format OpenAI) --- */
 async function aiwRequest(messages) {
-  return aiChatRequest(aiProvider, aiSelectedModel(aiProvider), messages, aiwRequestController?.signal);
+  const model = aiw.querySelector('#aiw-model').value;
+  if (!model) throw new Error('Aucun modèle compatible avec les actions. Lance le diagnostic dans l’app IA.');
+  return aiChatRequest(aiProvider, model, messages, aiwRequestController?.signal);
 }
 
 function aiwParseJson(text) {
@@ -3719,6 +3778,20 @@ async function aiwExec(a, snapshot = aiwItems()) {
         const url = q ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) : 'https://www.youtube.com/';
         openInApp(url);
         done.push(q ? 'Recherche YouTube demandée : « ' + q + ' »' : 'Interface YouTube ouverte');
+        break;
+      }
+      case 'search': {
+        const query = String(a.query || '').trim().slice(0, 1000);
+        if (!query) throw new Error('Recherche vide');
+        openApp('browser');
+        browserAPI.search(query);
+        done.push('recherche WebOS lancée : ' + query);
+        break;
+      }
+      case 'open_result':
+      case 'play_video': {
+        await webos32.selectResult(a, aiwRequestController?.signal);
+        done.push(a.cmd === 'open_result' ? 'résultat sélectionné dans le navigateur' : 'vidéo sélectionnée ; lecture dépend de YouTube');
         break;
       }
       case 'click': {
@@ -3777,6 +3850,7 @@ async function aiwSend() {
       await new Promise(r => setTimeout(r, 350));
       if (runId !== aiwRunId || !aiControlOn) break;
       const res = await aiwExec(a, snapshot);
+      if (runId !== aiwRunId || !aiControlOn) break;
       if (res.length) aiwAddMsg('assistant', '<span style="color:#86efac">✓ ' + escHtml(res.join(', ')) + '</span>');
     }
   } catch (err) {
@@ -3851,6 +3925,7 @@ function renderCursors() {
     </div>`;
 }
 function initCursors(body) {
+  webos32.cursorPanel(body);
   const refreshMembers = () => {
     const box = body.querySelector('#cursor-members');
     if (!box) return;
@@ -4543,7 +4618,7 @@ function renderSettings() {
 
       <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-key mr-2 text-emerald-400"></i>Clés API (IA)</h3>
-        <p class="text-slate-400 text-[11px] mb-3">Enregistrement automatique dans le stockage local de cet appareil. Utilisez vos propres clés, avec des limites de budget, et évitez de les enregistrer sur un PC partagé. Les appels IA envoient les messages au fournisseur choisi. L’ancienne option sans clé a été retirée car le service renvoyait une erreur de budget.</p>
+        <p class="text-slate-400 text-[11px] mb-3">Pollinations fonctionne sans clé, avec une requête toutes les 45 secondes selon la disponibilité du service. Les autres fournisseurs utilisent tes clés enregistrées uniquement sur cet appareil. Évite de les enregistrer sur un PC partagé. Le diagnostic dans l’app IA utilise ces clés et consomme le quota du fournisseur.</p>
         <div class="space-y-2" id="st-keys"></div>
       </section>
 
@@ -4580,14 +4655,15 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v30 : bureau personnalisé, raccourcis épinglables, onglets mémorisés et navigation par proxy intégré.</div>
-        <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. Les recherches s’ouvrent dans un onglet réel. Le diagnostic teste les modèles avec votre clé et consomme le quota du fournisseur.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v32 : fenêtres stables, paramètres classés, curseurs par code et IA sans clé.</div>
+        <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
     </div>`;
 }
 
 function initSettings(body) {
+  webos32.settings(body);
   body.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     const p = CLOAK_PRESETS[+b.dataset.preset];
     applyCloak(p.title, p.icon);
