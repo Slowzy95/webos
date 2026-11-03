@@ -1338,6 +1338,61 @@ function focusWindow(appId) {
   renderTaskbar();
 }
 
+/* Rectangles des fenêtres visibles (position relative au bureau) */
+function windowRects(skipEl) {
+  const desk = layer.getBoundingClientRect();
+  const out = [];
+  windows.forEach((w2) => {
+    if (w2.el === skipEl || w2.minimized || w2.maximized) return;
+    const r = w2.el.getBoundingClientRect();
+    out.push({ l: r.left - desk.left, t: r.top - desk.top, r: r.right - desk.left, b: r.bottom - desk.top });
+  });
+  return out;
+}
+/* Position intelligente à l'ouverture : cherche une place qui ne recouvre aucune fenêtre */
+function findFreeSpot(w, h) {
+  const desk = layer.getBoundingClientRect();
+  const rects = windowRects(null);
+  const hits = (x, y) => rects.some(o => !(x + w <= o.l + 6 || x >= o.r - 6 || y + h <= o.t + 6 || y >= o.b - 6));
+  /* 1) position en cascade classique */
+  const off = (windows.size % 7) * 26;
+  let x = Math.max(8, Math.min(110 + off, desk.width - w - 8));
+  let y = Math.max(8, Math.min(26 + off, desk.height - h - 8));
+  if (!hits(x, y)) return { x, y };
+  /* 2) balayage du bureau : première case libre trouvée */
+  for (let ty = 8; ty <= desk.height - h - 8; ty += 26) {
+    for (let tx = 8; tx <= desk.width - w - 8; tx += 26) {
+      if (!hits(tx, ty)) return { x: tx, y: ty };
+    }
+  }
+  /* 3) écran trop rempli : on accepte la cascade */
+  return { x, y };
+}
+/* ANTI-SUPERPOSITION pendant le déplacement : la fenêtre glisse autour des autres
+   au lieu de les recouvrir (poussée sur le côté le plus proche) */
+function avoidOverlap(x, y, w, h, selfEl, desk) {
+  let r = { l: x, t: y, r: x + w, b: y + h };
+  windows.forEach((w2) => {
+    if (w2.el === selfEl || w2.minimized || w2.maximized) return;
+    const o = w2.el.getBoundingClientRect();
+    const ob = { l: o.left - desk.left, t: o.top - desk.top, r: o.right - desk.left, b: o.bottom - desk.top };
+    const ix = Math.min(r.r, ob.r) - Math.max(r.l, ob.l);
+    const iy = Math.min(r.b, ob.b) - Math.max(r.t, ob.t);
+    if (ix > 14 && iy > 14) {
+      if (ix < iy) { /* décale horizontalement */
+        if ((r.l + r.r) / 2 < (ob.l + ob.r) / 2) r.l = ob.l - w; else r.l = ob.r;
+        r.r = r.l + w;
+      } else { /* décale verticalement */
+        if ((r.t + r.b) / 2 < (ob.t + ob.b) / 2) r.t = ob.t - h; else r.t = ob.b;
+        r.b = r.t + h;
+      }
+    }
+  });
+  /* bornes de l'écran */
+  r.l = Math.max(-w + 90, Math.min(r.l, desk.width - 90));
+  r.t = Math.max(0, Math.min(r.t, desk.height - 42));
+  return r;
+}
 function openApp(appId) {
   if (windows.has(appId)) {
     const w = windows.get(appId);
@@ -1349,9 +1404,9 @@ function openApp(appId) {
   const desk = layer.getBoundingClientRect();
   const w = Math.min(app.w, desk.width - 24);
   const h = Math.min(app.h, desk.height - 24);
-  const off = (windows.size % 7) * 26;
-  const x = Math.max(8, Math.min(110 + off, desk.width - w - 8));
-  const y = Math.max(8, Math.min(26 + off, desk.height - h - 8));
+  const spot = findFreeSpot(w, h);
+  const x = spot.x;
+  const y = spot.y;
 
   const el = document.createElement('div');
   el.className = 'window';
@@ -1479,8 +1534,12 @@ function makeDraggable(el, appId) {
     let snapZone = null; /* null | 'left' | 'right' | 'max' */
     try { header.setPointerCapture(e.pointerId); } catch (err) {}
     const move = (ev) => {
-      el.style.left = Math.max(-rect.width + 90, Math.min(ev.clientX - dx, desk.width - 90)) + 'px';
-      el.style.top = Math.max(0, Math.min(ev.clientY - dy, desk.height - 42)) + 'px';
+      /* position brute puis ANTI-SUPERPOSITION : la fenêtre glisse autour des autres */
+      const rawL = Math.max(-rect.width + 90, Math.min(ev.clientX - dx, desk.width - 90));
+      const rawT = Math.max(0, Math.min(ev.clientY - dy, desk.height - 42));
+      const pos = avoidOverlap(rawL, rawT, rect.width, rect.height, el, desk);
+      el.style.left = pos.l + 'px';
+      el.style.top = pos.t + 'px';
       /* Détection du bord : gauche/droite = moitié, haut = plein écran, coins = quart d'écran (comme Windows) */
       const E = 14;
       const nearL = ev.clientX <= E, nearR = ev.clientX >= desk.width - E;
@@ -1600,6 +1659,22 @@ document.addEventListener('keydown', (e) => {
   if (focusedApp && windows.get(focusedApp)?.gameKeys && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
     windows.get(focusedApp).gameKeys(e);
   }
+}, true);
+
+/* RELAIS DE LA TOUCHE D'URGENCE DANS LES IFRAMES (navigateur intégré, YouTube via proxy…)
+   quand le focus est dans un site intégré, le clavier n'atteint plus cette page :
+   on écoute donc aussi à l'intérieur de chaque iframe (possible car le proxy est même origine) */
+document.addEventListener('load', (e) => {
+  const t = e.target;
+  if (!t || t.tagName !== 'IFRAME') return;
+  try {
+    const doc = t.contentDocument;
+    if (!doc || doc.__wosPanicRelay) return;
+    doc.__wosPanicRelay = true;
+    doc.addEventListener('keydown', (ev) => {
+      if (ev.key === panicKey) { ev.preventDefault(); triggerPanic(); }
+    }, true);
+  } catch (err) { /* iframe d'un autre domaine : écoute impossible, ignoré */ }
 }, true);
 
 /* ============================================================
@@ -3364,7 +3439,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v15 — 5 nouveaux thèmes (dont Noir & Blanc), curseur personnalisable par lien, détection auto des clés IA, touche d'urgence fiable même en pleine frappe</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v16 — fenêtres sans superposition (placement et glissement intelligents), touche d'urgence active même dans le navigateur et YouTube, sélection au lasso sur tout le bureau</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -3803,11 +3878,11 @@ function makeDeskDraggable(b, id) {
     document.addEventListener('pointerup', up);
   });
 }
-/* Sélection au lasso (comme un vrai ordinateur) */
+/* Sélection au lasso (comme un vrai ordinateur) — sur TOUT le bureau, plus seulement la zone des icônes */
 let lassoBox = null, lassoStart = null, lassoMoved = false;
-di.addEventListener('pointerdown', (e) => {
+document.getElementById('desktop').addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
-  if (e.target.closest('.desk-icon') || e.target.closest('button, input, .window, #taskbar')) return;
+  if (e.target.closest('.desk-icon') || e.target.closest('button, input, textarea, select, .window, #taskbar, #start-menu, #tray-popup')) return;
   clearSelection();
   lassoStart = { x: e.clientX, y: e.clientY }; lassoMoved = false;
   lassoBox = document.createElement('div');
