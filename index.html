@@ -337,9 +337,12 @@
 
     /* Onglets du navigateur */
     #br-tabs { display: flex; align-items: flex-end; gap: 2px; min-height: 34px; }
+    /* Le navigateur prend la couleur du thème (barres, onglets, fond) */
+    .br-chrome { background: color-mix(in srgb, var(--accent) 10%, rgba(255,255,255,.02)); }
+    #br-frames { background: color-mix(in srgb, var(--accent) 4%, #0b1120); }
     .tab { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px 8px 0 0; font-size: 11px; color: #94a3b8; cursor: pointer; max-width: 160px; min-width: 80px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-bottom: none; transition: all .12s; flex-shrink: 0; }
     .tab:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
-    .tab.active { background: rgba(255,255,255,.1); color: #f1f5f9; border-color: rgba(255,255,255,.12); }
+    .tab.active { background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,.05)); color: #f1f5f9; border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
     .tab span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tab-fav { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
     .tab-close { color: #64748b; font-size: 10px; padding: 2px; border-radius: 4px; flex-shrink: 0; }
@@ -518,8 +521,11 @@
   #aiw-panel { position: absolute; right: 0; bottom: 66px; width: 330px; border-radius: 14px; overflow: hidden;
     background: rgba(15,20,38,.97); border: 1px solid rgba(255,255,255,.13); box-shadow: 0 30px 80px rgba(0,0,0,.7); }
   #aiw-panel.hidden { display: none; }
-  #aiw-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.09); cursor: grab; font-size: 12.5px; font-weight: 600; color: #f1f5f9; user-select: none; }
+  #aiw-head { display: flex; align-items: center; gap: 6px; padding: 9px 12px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.09); cursor: grab; font-size: 12.5px; font-weight: 600; color: #f1f5f9; user-select: none; }
   #aiw-head:active { cursor: grabbing; }
+  #aiw-set { display: flex; align-items: center; gap: 5px; padding: 7px 10px; background: rgba(0,0,0,.25); border-bottom: 1px solid rgba(255,255,255,.07); }
+  #aiw-set select { background: rgba(255,255,255,.07); color: #e2e8f0; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 3px 6px; font-size: 11px; max-width: 110px; cursor: pointer; }
+  #aiw-set select:focus { outline: 1px solid var(--accent); }
   #aiw-head .aiw-btn { width: 28px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #cbd5e1; cursor: pointer; font-size: 11px; }
   #aiw-head .aiw-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
   #aiw-msgs { max-height: 250px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -1657,7 +1663,7 @@ function gridDrop(x, y, w, h, selfEl, desk) {
   const fits = (cx, cy) => {
     const px = cx * WGRID, py = cy * WGRID;
     if (px < -w + 90 || px > desk.width - 90 || py < 0 || py > desk.height - 42) return false;
-    return rects.every(o => px + w <= o.l + 10 || px >= o.r - 10 || py + h <= o.t + 10 || py >= o.b - 10);
+    return rects.every(o => px + w <= o.l + 4 || px >= o.r - 4 || py + h <= o.t + 4 || py >= o.b - 4);
   };
   if (fits(gx, gy)) return { x: gx * WGRID, y: gy * WGRID };
   for (let ring = 1; ring < 90; ring++) {
@@ -1794,6 +1800,12 @@ function toggleMinimize(appId) {
     if (focusedApp === appId) focusedApp = null;
   } else {
     w.el.style.display = 'flex';
+    /* ANTI-SUPERPOSITION : si la place d'origine est occupée, la fenêtre se
+       range dans la première case libre de la grille */
+    const desk = layer.getBoundingClientRect();
+    const r = w.el.getBoundingClientRect();
+    const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
+    w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px';
     if (animated) { w.el.classList.add('win-unmin'); setTimeout(() => w.el.classList.remove('win-unmin'), 260); }
     focusWindow(appId);
   }
@@ -1804,18 +1816,32 @@ function toggleMaximize(appId) {
   const w = windows.get(appId);
   if (!w) return;
   const desk = layer.getBoundingClientRect();
+  const animated = (document.body.dataset.anim || 'windows') !== 'none';
   if (!w.maximized) {
     w.prevRect = { l: w.el.style.left, t: w.el.style.top, w: w.el.style.width, h: w.el.style.height };
+    if (animated) w.el.style.transition = 'left .18s cubic-bezier(.16,1,.3,1), top .18s cubic-bezier(.16,1,.3,1), width .18s cubic-bezier(.16,1,.3,1), height .18s cubic-bezier(.16,1,.3,1)';
     w.el.style.cssText += `left:0px;top:0px;width:${desk.width}px;height:${desk.height}px;`;
     w.el.classList.add('maximized');
     w.maximized = true;
     w.el.querySelector('[data-act="max"] i').className = 'fa-solid fa-clone text-[10px]';
+    setTimeout(() => { w.el.style.transition = ''; }, 200);
   } else {
     const p = w.prevRect || { l: '60px', t: '40px', w: '800px', h: '520px' };
+    if (animated) w.el.style.transition = 'left .18s cubic-bezier(.16,1,.3,1), top .18s cubic-bezier(.16,1,.3,1), width .18s cubic-bezier(.16,1,.3,1), height .18s cubic-bezier(.16,1,.3,1)';
     w.el.style.left = p.l; w.el.style.top = p.t; w.el.style.width = p.w; w.el.style.height = p.h;
     w.el.classList.remove('maximized');
     w.maximized = false;
     w.el.querySelector('[data-act="max"] i').className = 'fa-regular fa-square';
+    setTimeout(() => {
+      w.el.style.transition = '';
+      /* ANTI-SUPERPOSITION : si la place d'origine est prise, on se range
+         dans la première case libre de la grille */
+      if (!w.maximized) {
+        const r = w.el.getBoundingClientRect();
+        const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
+        w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px';
+      }
+    }, 210);
   }
 }
 
@@ -1833,8 +1859,10 @@ function makeDraggable(el, appId) {
     const rect = el.getBoundingClientRect();
     const dx = e.clientX - rect.left, dy = e.clientY - rect.top;
     let snapZone = null; /* null | 'left' | 'right' | 'max' */
+    let moved = false;
     try { header.setPointerCapture(e.pointerId); } catch (err) {}
     const move = (ev) => {
+      moved = true;
       /* position brute puis ANTI-SUPERPOSITION : la fenêtre glisse autour des autres */
       const rawL = Math.max(-rect.width + 90, Math.min(ev.clientX - dx, desk.width - 90));
       const rawT = Math.max(0, Math.min(ev.clientY - dy, desk.height - 42));
@@ -1887,18 +1915,17 @@ function makeDraggable(el, appId) {
             el.style.width = R[2] + 'px'; el.style.height = R[3] + 'px';
           }
         }
-      } else {
+      } else if (moved) {
         /* AIMANTATION À LA GRILLE : la fenêtre s'aligne proprement et se range
            dans la première case libre (spirale autour du point de dépôt) —
-           fini les fenêtres en vrac décalées n'importe comment. */
+           fini les fenêtres en vrac décalées n'importe comment. Toujours
+           appliqué : impossible de superposer deux applis. */
         const r2 = el.getBoundingClientRect();
         const drop = gridDrop(r2.left - desk.left, r2.top - desk.top, r2.width, r2.height, el, desk);
-        if (Math.abs(drop.x - (r2.left - desk.left)) > 1 || Math.abs(drop.y - (r2.top - desk.top)) > 1) {
-          el.style.transition = 'left .16s ease, top .16s ease';
-          el.style.left = drop.x + 'px';
-          el.style.top = drop.y + 'px';
-          setTimeout(() => { el.style.transition = ''; }, 190);
-        }
+        el.style.transition = 'left .16s ease, top .16s ease';
+        el.style.left = drop.x + 'px';
+        el.style.top = drop.y + 'px';
+        setTimeout(() => { el.style.transition = ''; }, 190);
       }
     };
     document.addEventListener('pointermove', move);
@@ -2026,6 +2053,9 @@ document.addEventListener('load', (e) => {
 const BROWSER_HOME = 'about:newtab';
 // Sites confirmés comme affichables directement dans un cadre
 const FRAMEABLE = ['wikipedia.org', 'wiktionary.org', 'bing.com', 'google.com', 'openstreetmap.org', 'krunker.io', 'archive.org', 'gutenberg.org', 'britannica.com', 'phet.colorado.edu', 'googlesource.com', '1v1.lol', 'anime-sama.com', 'slither.io', 'bloxd.io', 'territorial.io', 'threejs.org'];
+/* SITES LOURDS : ils plantent dans la fenêtre intégrée (iframe) — on propose
+   de les ouvrir dans un VRAI onglet via le proxy (plein écran, bien plus fluide). */
+const HEAVY_SITES = /^(discord\.com|canary\.discord\.com|ptb\.discord\.com|discord\.gg)$/;
 // Vrai proxy Ultraviolet (type service worker, comme les gros proxys) — hébergé sur ton GitHub, sans pub
 const WISP_PROXY = 'https://slowzy95.github.io/proxy/?url=';
 const PROXIES = [
@@ -2063,13 +2093,19 @@ function openInApp(url) {
   if (browserAPI) browserAPI.navigate(url);
 }
 window.addEventListener('message', (e) => {
-  if (e.data && e.data.wosNav && browserAPI) browserAPI.navigate(e.data.wosNav);
+  if (e.data && e.data.wosNav && browserAPI) browserAPI.navigate(e.data.wosNav, true, null, !!e.data.wosHeavy);
+  /* « Ouvrir dans un vrai onglet » (sites lourds : Discord…) : on ouvre le proxy
+     en plein écran dans un vrai onglet — plus fluide et plus stable. */
+  if (e.data && e.data.wosReal) {
+    window.open(WISP_PROXY + encodeURIComponent(e.data.wosReal), '_blank');
+    try { toast('Ouvert dans un vrai onglet via le proxy', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (err) {}
+  }
 });
 
 function renderBrowser() {
   return `
     <div class="flex flex-col h-full">
-      <div class="flex items-center gap-1.5 px-2.5 py-2 border-b border-white/8 bg-white/3 flex-none">
+      <div class="flex items-center gap-1.5 px-2.5 py-2 border-b border-white/8 br-chrome flex-none">
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-back" title="Précédent"><i class="fa-solid fa-chevron-left"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-fwd" title="Suivant"><i class="fa-solid fa-chevron-right"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-reload" title="Recharger"><i class="fa-solid fa-rotate-right"></i></button>
@@ -2081,8 +2117,8 @@ function renderBrowser() {
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-fs" title="Plein écran (idéal pour les jeux)"><i class="fa-solid fa-expand"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-newtab" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
       </div>
-      <div class="flex items-center gap-1 px-2 pt-1.5 pb-0 bg-white/3 flex-none overflow-x-auto border-b border-white/8" id="br-tabs"></div>
-      <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/8 bg-white/3 flex-none overflow-x-auto">
+      <div class="flex items-center gap-1 px-2 pt-1.5 pb-0 br-chrome flex-none overflow-x-auto border-b border-white/8" id="br-tabs"></div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/8 br-chrome flex-none overflow-x-auto">
         <span class="chip" data-search="google"><i class="fa-brands fa-google"></i> Google</span>
         <span class="chip" data-search="ddg"><i class="fa-solid fa-duck"></i> DuckDuckGo</span>
         <span class="chip" data-search="bing"><i class="fa-brands fa-bing"></i> Bing</span>
@@ -2198,7 +2234,25 @@ function initBrowser(body) {
         <button data-close="${t.id}" class="tab-close"><i class="fa-solid fa-xmark"></i></button>
       </div>`;
     }).join('') + '<button class="tab-add" id="br-tab-add" title="Nouvel onglet"><i class="fa-solid fa-plus"></i></button>';
-    tabsBarEl.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', (e) => { if (!e.target.closest('[data-close]')) setActiveTab(b.dataset.tab); }));
+    tabsBarEl.querySelectorAll('[data-tab]').forEach(b => {
+      b.addEventListener('click', (e) => { if (!e.target.closest('[data-close]')) setActiveTab(b.dataset.tab); });
+      /* Déplacer les onglets à la souris (glisser-déposer, comme un vrai navigateur) */
+      b.draggable = true;
+      b.addEventListener('dragstart', () => b.classList.add('dragging'));
+      b.addEventListener('dragend', () => {
+        b.classList.remove('dragging');
+        /* réordonne le tableau selon l'ordre visuel */
+        const order = [...tabsBarEl.querySelectorAll('[data-tab]')].map(x => x.dataset.tab);
+        tabs.sort((a, c) => order.indexOf(a.id) - order.indexOf(c.id));
+      });
+      b.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const dragging = tabsBarEl.querySelector('.dragging');
+        if (!dragging || dragging === b) return;
+        const r = b.getBoundingClientRect();
+        if (e.clientX > r.left + r.width / 2) b.after(dragging); else b.before(dragging);
+      });
+    });
     tabsBarEl.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); closeTab(b.dataset.close); }));
     const addBtn = tabsBarEl.querySelector('#br-tab-add');
     if (addBtn) addBtn.addEventListener('click', () => createTab(BROWSER_HOME));
@@ -2603,7 +2657,43 @@ function initBrowser(body) {
     ytBindCards(ytResults);
   }
 
-  function navigate(u, push = true, fallback = null) {
+  /* Page intermédiaire pour les sites trop lourds pour l'iframe (Discord…) :
+     propose l'ouverture dans un VRAI onglet via le proxy — plein écran, fluide,
+     et plus de crash « un problème est survenu ». */
+  function heavyInterstitial(u, host) {
+    frame.onload = null;
+    navSeq++;
+    frame.removeAttribute('src');
+    const ju = JSON.stringify(u);
+    frame.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Inter, system-ui, sans-serif; background: #0b1120; color: #e2e8f0; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+      .card { max-width: 430px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      .logo { font-size: 46px; }
+      h1 { font-size: 16px; font-weight: 700; }
+      p { font-size: 12.5px; color: #94a3b8; line-height: 1.55; }
+      button { font-family: inherit; border: 0; border-radius: 9px; padding: 10px 18px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+      .go { background: #4f46e5; color: #fff; }
+      .go:hover { background: #6366f1; }
+      .try { background: rgba(255,255,255,.07); color: #cbd5e1; }
+      .try:hover { background: rgba(255,255,255,.12); }
+      .host { color: #a5b4fc; font-weight: 600; }
+    </style></head><body><div class="card">
+      <div class="logo">💬</div>
+      <h1><span class="host">${escHtml(host)}</span> est trop lourd pour la fenêtre intégrée</h1>
+      <p>Ce type de site plante dans un onglet intégré (« un problème est survenu »). Ouvre-le dans un <b>vrai onglet</b> : via le proxy intégré, en plein écran — c'est bien plus fluide et stable.</p>
+      <button class="go" id="wos-real">Ouvrir dans un vrai onglet (recommandé)</button>
+      <button class="try" id="wos-try">Essayer quand même dans la fenêtre</button>
+    </div>
+    ${'<scr' + 'ipt>'}
+      document.getElementById('wos-real').onclick = function () { parent.postMessage({ wosReal: ${ju} }, '*'); };
+      document.getElementById('wos-try').onclick = function () { parent.postMessage({ wosNav: ${ju}, wosHeavy: 1 }, '*'); };
+    ${'</scr' + 'ipt>'}
+    </body></html>`;
+    setStatus(host + ' : ouverture dans un vrai onglet recommandée');
+  }
+
+  function navigate(u, push = true, fallback = null, skipHeavy = false) {
     /* Page d'accueil « nouvel onglet » : barre de recherche + raccourcis (page locale du proxy, même origine) */
     if (u === 'about:newtab' || u === BROWSER_HOME) {
       frame.onload = null;
@@ -2649,6 +2739,11 @@ function initBrowser(body) {
       if (vid) { showYT(true); ytPlay(vid); setStatus('YouTube intégré'); return; }
     }
     showYT(false);
+    /* SITES LOURDS (Discord…) : ils plantent dans la fenêtre intégrée — on
+       propose de les ouvrir dans un VRAI onglet via le proxy (plus fluide). */
+    let hHost = '';
+    try { hHost = ytUrl.hostname.replace(/^www\./, ''); } catch (e) {}
+    if (!skipHeavy && HEAVY_SITES.test(hHost)) { heavyInterstitial(u, hHost); return; }
     const t0 = Date.now();
     /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...) */
     if (mode === 'auto' && !isFrameable(u)) { wispLoad(u); return; }
@@ -3174,8 +3269,14 @@ aiw.innerHTML = `
     <div id="aiw-head">
       <i class="fa-solid fa-robot text-emerald-300"></i>
       <span style="font-weight:600;font-size:12.5px">Assistant IA</span>
-      <button id="aiw-min" title="Réduire en bulle" style="margin-left:auto"><i class="fa-solid fa-chevron-down"></i></button>
-      <button id="aiw-power" title="Désactiver le contrôle de l'ordinateur" style="margin-left:2px;color:#fca5a5"><i class="fa-solid fa-power-off"></i></button>
+      <button id="aiw-setbtn" class="aiw-btn" title="Choisir l'IA (fournisseur et modèle)"><i class="fa-solid fa-sliders"></i></button>
+      <button id="aiw-min" class="aiw-btn" title="Réduire en bulle" style="margin-left:auto"><i class="fa-solid fa-chevron-down"></i></button>
+      <button id="aiw-power" class="aiw-btn" title="Désactiver le contrôle de l'ordinateur" style="color:#fca5a5"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+    <div id="aiw-set" class="hidden">
+      <select id="aiw-prov" title="Fournisseur d'IA"></select>
+      <select id="aiw-model" title="Modèle"></select>
+      <span id="aiw-keyhint" style="font-size:10px;color:#94a3b8;flex:none"></span>
     </div>
     <div id="aiw-msgs"></div>
     <div id="aiw-status"></div>
@@ -3261,6 +3362,21 @@ aiwBubble.addEventListener('click', () => { aiwPanel.classList.toggle('hidden');
 aiw.querySelector('#aiw-min').addEventListener('click', () => aiwPanel.classList.add('hidden'));
 aiw.querySelector('#aiw-power').addEventListener('click', (e) => { e.stopPropagation(); setAIControl(false); });
 aiw.querySelector('#aiw-send').addEventListener('click', () => aiwSend());
+/* réglages : choix du fournisseur et du modèle, synchronisé avec l'app IA */
+aiw.querySelector('#aiw-setbtn').addEventListener('click', () => {
+  aiw.querySelector('#aiw-set').classList.toggle('hidden');
+  aiwRefreshSetUI();
+});
+aiw.querySelector('#aiw-prov').addEventListener('change', (e) => {
+  aiProvider = e.target.value;
+  LS.set('ai_provider', aiProvider);
+  aiwRefreshSetUI();
+  toast('IA du Contrôle PC : ' + AI_PROVIDERS[aiProvider].label, 'fa-robot', 'text-emerald-300');
+});
+aiw.querySelector('#aiw-model').addEventListener('change', (e) => {
+  LS.set('ai_model_' + aiProvider, e.target.value);
+});
+aiwRefreshSetUI();
 
 /* --- « vision » : énumération de ce que l'IA voit (fenêtres + éléments cliquables) --- */
 function aiwItems() {
@@ -3328,14 +3444,26 @@ function aiwSysPrompt() {
     "Explique brièvement ce que tu fais dans \"say\". Si la demande est impossible, mets juste \"actions\":[] et explique dans \"say\".";
 }
 
-/* --- requête vers le fournisseur configuré dans l'app IA --- */
+/* --- choix de l'IA directement dans le widget (synchronisé avec l'app IA) --- */
+function aiwRefreshSetUI() {
+  const sel = aiw.querySelector('#aiw-prov');
+  const mdl = aiw.querySelector('#aiw-model');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(AI_PROVIDERS).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('');
+  const p = AI_PROVIDERS[aiProvider];
+  mdl.innerHTML = p.models.map(m => `<option value="${m}" ${m === LS.get('ai_model_' + aiProvider, p.models[0]) ? 'selected' : ''}>${m}</option>`).join('');
+  aiw.querySelector('#aiw-keyhint').textContent = (p.free ? 'Gratuit, sans clé' : (apiKeys[aiProvider] ? 'Clé enregistrée ✓' : 'Clé requise (app IA)'));
+}
+
+/* --- requête vers le fournisseur choisi --- */
 async function aiwRequest(messages) {
-  const prov = aiProvider();
+  const prov = aiProvider;
   const key = (apiKeys[prov] || '').trim();
   const model = LS.get('ai_model_' + prov, AI_PROVIDERS[prov].models[0]) || AI_PROVIDERS[prov].models[0];
   if (prov === 'google') {
+    const sys = messages.find(m => m.role === 'system');
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: messages.filter(m => m.role !== 'system').map(x => ({ role: x.role === 'assistant' ? 'model' : 'user', parts: [{ text: x.content }] })) }) });
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemInstruction: sys ? { parts: [{ text: sys.content }] } : undefined, contents: messages.filter(m => m.role !== 'system').map(x => ({ role: x.role === 'assistant' ? 'model' : 'user', parts: [{ text: x.content }] })) }) });
     const j = await r.json();
     if (!r.ok) throw new Error((j.error && j.error.message) || 'Erreur ' + r.status);
     return j.candidates[0].content.parts[0].text;
@@ -3439,7 +3567,7 @@ async function aiwSend() {
     aiwAddMsg('assistant', mdToHtml(parsed.say || 'Voilà.'));
     aiwHist.push({ role: 'assistant', content: text });
     LS.setJSON('aiwhist', aiwHist.slice(-40));
-    aiBumpCount(aiProvider());
+    aiBumpCount(aiProvider);
     for (const a of (parsed.actions || [])) {
       await new Promise(r => setTimeout(r, 350));
       const res = aiwExec(a);
@@ -4246,7 +4374,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v18 — Assistant IA « Contrôle PC » : un widget flottant qui voit votre écran et exécute vos ordres (ouvrir des apps, YouTube, cliquer, thèmes…), Wi-Fi et batterie en direct, grille magnétique des fenêtres (fini les apps en vrac), et correctif de sauvegarde : le thème, la police et le style Minecraft ne sont plus jamais écrasés</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v19 — choix de l'IA directement dans le widget Contrôle PC (fournisseur + modèle), superposition d'applis désormais impossible (grille renforcée + restauration intelligente), agrandir/réduire animé, navigateur coloré par le thème, onglets déplaçables à la souris, et Discord : ouverture dans un vrai onglet via le proxy (fini le crash)</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
