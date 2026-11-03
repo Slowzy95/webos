@@ -560,6 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v20</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -1950,6 +1951,21 @@ function makeResizable(el, rec) {
       /* Taille alignée sur la grille : tout reste carré et bien rangé */
       el.style.width = Math.max(320, wSnap(el.offsetWidth)) + 'px';
       el.style.height = Math.max(220, wSnap(el.offsetHeight)) + 'px';
+      /* ANTI-SUPERPOSITION : si la fenêtre agrandie recouvre une autre appli,
+         elle se range dans la première case libre de la grille */
+      const desk = layer.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const rects = windowRects(el);
+      const overlaps = rects.some(o => !(r.left - desk.left + r.width <= o.l + 4 || r.left - desk.left >= o.r - 4 || r.top - desk.top + r.height <= o.t + 4 || r.top - desk.top >= o.b - 4));
+      if (overlaps) {
+        const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, el, desk);
+        if (drop.x !== r.left - desk.left || drop.y !== r.top - desk.top) {
+          el.style.transition = 'left .16s ease, top .16s ease';
+          el.style.left = drop.x + 'px';
+          el.style.top = drop.y + 'px';
+          setTimeout(() => { el.style.transition = ''; }, 190);
+        }
+      }
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
@@ -2743,7 +2759,18 @@ function initBrowser(body) {
        propose de les ouvrir dans un VRAI onglet via le proxy (plus fluide). */
     let hHost = '';
     try { hHost = ytUrl.hostname.replace(/^www\./, ''); } catch (e) {}
-    if (!skipHeavy && HEAVY_SITES.test(hHost)) { heavyInterstitial(u, hHost); return; }
+    if (!skipHeavy && HEAVY_SITES.test(hHost)) {
+      /* Discord & co : ouverture AUTOMATIQUE dans un vrai onglet via le proxy —
+         plein écran, bien plus fluide et stable qu'un onglet intégré. Si le
+         navigateur bloque le popup, la page intermédiaire propose un bouton. */
+      const real = window.open(WISP_PROXY + encodeURIComponent(u), '_blank');
+      if (real) {
+        try { toast(hHost + ' ouvert dans un vrai onglet (via le proxy)', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (err) {}
+        setStatus(hHost + ' : ouvert dans un vrai onglet');
+        return;
+      }
+      heavyInterstitial(u, hHost); return;
+    }
     const t0 = Date.now();
     /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...) */
     if (mode === 'auto' && !isFrameable(u)) { wispLoad(u); return; }
@@ -3599,7 +3626,7 @@ function renderCursors() {
   const cur = LS.get('cursor', 'default');
   const presetCards = Object.entries(CURSOR_THEMES).map(([k, t]) => `
     <button data-cursorpick="${k}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2 transition-transform hover:scale-105 ${k === cur ? 'ring-2 ring-sky-400' : ''}">
-      <img src="${t.arrow}" alt="" class="w-9 h-9" style="image-rendering:auto">
+      <img src="${_curSvg(t.arrow)}" alt="" class="w-9 h-9" style="image-rendering:auto">
       <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(t.name)}</span>
       ${k === cur ? '<span class="text-[9.5px] text-emerald-400 font-bold">ACTIF</span>' : ''}
     </button>`).join('');
@@ -4374,7 +4401,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v19 — choix de l'IA directement dans le widget Contrôle PC (fournisseur + modèle), superposition d'applis désormais impossible (grille renforcée + restauration intelligente), agrandir/réduire animé, navigateur coloré par le thème, onglets déplaçables à la souris, et Discord : ouverture dans un vrai onglet via le proxy (fini le crash)</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v20 — images des curseurs réparées dans la galerie, badge de version dans le menu Démarrer (vérifie le cache avec Ctrl+Shift+R), anti-superposition aussi au redimensionnement, Discord ouvert automatiquement dans un vrai onglet via le proxy, nouvel onglet (Poki, Wikipédia…) coloré par le thème, choix de l'IA dans le widget Contrôle PC, agrandir/réduire animé, onglets déplaçables</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
