@@ -508,6 +508,25 @@
     body.skin-win10 .tb-icon.open .tb-lbl { color: #dbe4f0; }
   /* icônes SVG dessinées par le skin : pas de cadre CSS ajouté */
   .ic-svg.ic-skin { padding: 0 !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; }
+
+  /* ================= ASSISTANT IA FLOTTANT (contrôle de l'ordinateur) ================= */
+  #aiwidget { position: absolute; z-index: 9600; right: 18px; bottom: 74px; }
+  #aiw-bubble { position: relative; width: 54px; height: 54px; border-radius: 9999px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover)); box-shadow: 0 10px 32px rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.18); transition: transform .15s; touch-action: none; }
+  #aiw-bubble:hover { transform: scale(1.07); }
+  #aiw-bubble .aiw-dot { position: absolute; top: 1px; right: 1px; width: 13px; height: 13px; border-radius: 50%; background: #10b981; border: 2.5px solid #0b1120; }
+  #aiw-panel { position: absolute; right: 0; bottom: 66px; width: 330px; border-radius: 14px; overflow: hidden;
+    background: rgba(15,20,38,.97); border: 1px solid rgba(255,255,255,.13); box-shadow: 0 30px 80px rgba(0,0,0,.7); }
+  #aiw-panel.hidden { display: none; }
+  #aiw-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.09); cursor: grab; font-size: 12.5px; font-weight: 600; color: #f1f5f9; user-select: none; }
+  #aiw-head:active { cursor: grabbing; }
+  #aiw-head .aiw-btn { width: 28px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #cbd5e1; cursor: pointer; font-size: 11px; }
+  #aiw-head .aiw-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+  #aiw-msgs { max-height: 250px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #aiw-msgs .msg-user { margin-left: 10%; }
+  #aiw-msgs .msg-ai { margin-right: 4%; }
+  #aiw-status { font-size: 10px; color: #64748b; padding: 0 10px 6px; min-height: 14px; }
+  #aiw-inputbar { display: flex; gap: 6px; padding: 8px; border-top: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.03); }
   </style>
 </head>
 <body>
@@ -1299,20 +1318,56 @@ function hideTrayPopup() { trayPopup.classList.add('hidden'); }
 document.addEventListener('click', (e) => { if (!e.target.closest('#tray-popup') && !e.target.closest('.tray-btn') && !e.target.closest('#tb-clock')) hideTrayPopup(); });
 
 document.querySelector('.tray-btn[title="Réseau sans fil"]').addEventListener('click', () => {
-  const online = navigator.onLine;
-  const conn = navigator.connection || {};
-  const type = conn.effectiveType ? conn.effectiveType.toUpperCase() : (online ? 'Wi-Fi' : 'Hors ligne');
-  const down = conn.downlink ? conn.downlink + ' Mb/s' : '—';
-  trayPopup.innerHTML = `
-    <div class="tray-popup-title"><i class="fa-solid fa-wifi mr-1.5 text-sky-400"></i>Réseau</div>
-    <div class="tray-row"><i class="fa-solid fa-circle text-[7px] ${online ? 'text-emerald-400' : 'text-red-400'}"></i>${online ? 'Connecté' : 'Hors ligne'}</div>
-    <div class="tray-row"><i class="fa-solid fa-signal"></i>Type : ${type}</div>
-    <div class="tray-row"><i class="fa-solid fa-download"></i>Débit : ${down}</div>
-    <div class="tray-row"><i class="fa-solid fa-shield-halved"></i>Statut : ${online ? 'Sécurisé' : 'Aucune connexion'}</div>`;
+  trayPopup.dataset.live = 'wifi';
+  trayPopup.innerHTML = wifiPopupHtml();
   trayPopup.classList.remove('hidden');
 });
 
+/* ================= WI-FI : VRAI état réseau, mis à jour EN DIRECT =================
+   L'icône reflète la connexion réelle : verte quand c'est connecté, rouge quand
+   c'est coupé, et le popup se rafraîchit tout seul (débit, ping, type de réseau). */
+const wifiBtn = document.querySelector('.tray-btn[title="Réseau sans fil"]');
+const wifiIcon = wifiBtn.querySelector('i');
+function wifiState() {
+  const online = navigator.onLine;
+  const conn = navigator.connection || {};
+  return {
+    online,
+    type: conn.effectiveType ? conn.effectiveType.toUpperCase() : (online ? 'Wi-Fi' : '—'),
+    down: conn.downlink ? Math.round(conn.downlink) : null,
+    rtt: conn.rtt != null ? conn.rtt : null
+  };
+}
+function wifiPopupHtml() {
+  const s = wifiState();
+  return `
+    <div class="tray-popup-title"><i class="fa-solid fa-wifi mr-1.5 text-sky-400"></i>Réseau</div>
+    <div class="tray-row"><i class="fa-solid fa-circle text-[7px] ${s.online ? 'text-emerald-400' : 'text-red-400'}"></i>${s.online ? 'Connecté' : 'Hors ligne'}</div>
+    <div class="tray-row"><i class="fa-solid fa-signal"></i>Type : ${s.type}</div>
+    <div class="tray-row"><i class="fa-solid fa-download"></i>Débit : ${s.down != null ? s.down + ' Mb/s' : '—'}</div>
+    <div class="tray-row"><i class="fa-solid fa-stopwatch"></i>Ping : ${s.rtt != null ? s.rtt + ' ms' : '—'}</div>
+    <div class="tray-row"><i class="fa-solid fa-shield-halved"></i>Statut : ${s.online ? 'Sécurisé' : 'Aucune connexion'}</div>`;
+}
+function refreshWifiUI() {
+  const s = wifiState();
+  wifiIcon.className = 'fa-solid fa-wifi text-[13px]' + (s.online ? '' : ' text-red-400');
+  wifiBtn.title = s.online ? 'Réseau sans fil — connecté (' + s.type + ')' : 'Réseau sans fil — hors ligne';
+  refreshLiveTray();
+}
+/* le popup ouvert se met à jour tout seul quand l'état réseau change */
+function refreshLiveTray() {
+  if (trayPopup.classList.contains('hidden') || !trayPopup.dataset.live) return;
+  if (trayPopup.dataset.live === 'wifi') trayPopup.innerHTML = wifiPopupHtml();
+  else if (trayPopup.dataset.live === 'battery') trayPopup.innerHTML = batPopupHtml();
+}
+window.addEventListener('online', () => { refreshWifiUI(); toast('Connexion internet rétablie', 'fa-wifi', 'text-emerald-400'); });
+window.addEventListener('offline', () => { refreshWifiUI(); toast('Connexion internet perdue', 'fa-wifi', 'text-red-400'); });
+if (navigator.connection && navigator.connection.addEventListener) { try { navigator.connection.addEventListener('change', refreshWifiUI); } catch (e) {} }
+setInterval(refreshWifiUI, 10000);
+refreshWifiUI();
+
 document.querySelector('.tray-btn[title="Volume"]').addEventListener('click', () => {
+  trayPopup.dataset.live = '';
   let muted = trayPopup.dataset.muted === '1';
   const newMuted = !muted;
   trayPopup.dataset.muted = newMuted ? '1' : '0';
@@ -1329,22 +1384,47 @@ document.querySelector('.tray-btn[title="Volume"]').addEventListener('click', ()
 });
 
 document.querySelector('.tray-btn[title="Batterie"]').addEventListener('click', async () => {
-  let level = null, charging = null;
-  try {
-    const bat = await navigator.getBattery();
-    level = Math.round(bat.level * 100);
-    charging = bat.charging;
-  } catch (e) {}
-  const pct = level !== null ? level + '%' : 'N/D';
-  trayPopup.innerHTML = `
-    <div class="tray-popup-title"><i class="fa-solid fa-battery-three-quarters mr-1.5 text-emerald-400"></i>Batterie</div>
-    <div class="tray-row"><i class="fa-solid ${charging ? 'fa-bolt text-amber-400' : 'fa-battery-full'}"></i>${pct}${charging ? ' (en charge)' : ''}</div>
-    ${level !== null ? `<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;margin:8px 0;overflow:hidden"><div style="height:100%;width:${level}%;background:${level > 20 ? '#10b981' : '#ef4444'};border-radius:4px;transition:width .3s"></div></div>` : ''}
-    <div class="tray-row text-[11px] text-slate-400">${level !== null ? (charging ? 'Branche et en charge' : level > 20 ? 'Bonne autonomie' : 'Batterie faible') : 'Infos non disponibles sur cet appareil'}</div>`;
+  trayPopup.dataset.live = 'battery';
+  await refreshBattery();
+  trayPopup.innerHTML = batPopupHtml();
   trayPopup.classList.remove('hidden');
 });
 
+/* ================= BATTERIE : vrai niveau + icône en direct =================
+   L'icône de la barre des tâches montre le VRAI niveau (pleine, 3/4, moitié,
+   quart, vide, éclair si en charge) et se met à jour toute seule. */
+const batBtn = document.querySelector('.tray-btn[title="Batterie"]');
+const batIcon = batBtn.querySelector('i');
+let batInfo = null; /* { level, charging } */
+async function refreshBattery() {
+  try {
+    const bat = await navigator.getBattery();
+    batInfo = { level: Math.round(bat.level * 100), charging: !!bat.charging };
+  } catch (e) { batInfo = null; }
+  if (batInfo) {
+    const l = batInfo.level;
+    const shape = batInfo.charging ? 'fa-bolt' : l > 87 ? 'fa-battery-full' : l > 62 ? 'fa-battery-three-quarters' : l > 37 ? 'fa-battery-half' : l > 12 ? 'fa-battery-quarter' : 'fa-battery-empty';
+    batIcon.className = 'fa-solid ' + shape + ' text-[13px]' + (batInfo.charging ? ' text-amber-400' : (!batInfo.charging && l <= 20 ? ' text-red-400' : ''));
+    batBtn.title = 'Batterie : ' + l + '%' + (batInfo.charging ? ' (en charge)' : '');
+  } else {
+    batIcon.className = 'fa-solid fa-battery-three-quarters text-[13px]';
+    batBtn.title = 'Batterie';
+  }
+  refreshLiveTray();
+}
+function batPopupHtml() {
+  const level = batInfo ? batInfo.level : null, charging = batInfo ? batInfo.charging : false;
+  return `
+    <div class="tray-popup-title"><i class="fa-solid fa-battery-three-quarters mr-1.5 text-emerald-400"></i>Batterie</div>
+    <div class="tray-row"><i class="fa-solid ${charging ? 'fa-bolt text-amber-400' : 'fa-battery-full'}"></i>${level !== null ? level + '%' : 'N/D'}${charging ? ' (en charge)' : ''}</div>
+    ${level !== null ? `<div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;margin:8px 0;overflow:hidden"><div style="height:100%;width:${level}%;background:${level > 20 ? '#10b981' : '#ef4444'};border-radius:4px;transition:width .3s"></div></div>` : ''}
+    <div class="tray-row text-[11px] text-slate-400">${level !== null ? (charging ? 'Branché et en charge' : level > 20 ? 'Bonne autonomie' : 'Batterie faible') : 'Infos non disponibles sur cet appareil'}</div>`;
+}
+setInterval(refreshBattery, 30000);
+refreshBattery();
+
 document.getElementById('tb-clock').addEventListener('click', () => {
+  trayPopup.dataset.live = '';
   const now = new Date();
   const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -1400,12 +1480,21 @@ function applySkin(id, restore = false) {
   document.body.className = document.body.className.replace(/skin-\S+/g, '').replace(/theme-\w+/g, '').trim();
   document.body.classList.remove('mc', 'font-vt323', 'font-silkscreen', 'font-pixelify', 'font-jersey');
   if (s.cls) document.body.classList.add(s.cls);
-  if (s.theme !== 'blue') document.body.classList.add('theme-' + s.theme);
-  if (s.font !== 'normal') { const f = { mc: 'mc', vt323: 'font-vt323', silkscreen: 'font-silkscreen', pixelify: 'font-pixelify', jersey: 'font-jersey' }[s.font]; if (f) document.body.classList.add(f); }
-  LS.set('theme', s.theme);
-  LS.set('font', s.font);
-  LS.set('mcstyle', s.font === 'mc' ? '1' : '0');
-  if (!restore) {
+  if (restore) {
+    /* AU DÉMARRAGE : le skin ne touche PLUS au thème, à la police ni au style
+       Minecraft choisis par l'utilisateur — ils sont restaurés tels quels et
+       ne sont plus jamais écrasés (bug de sauvegarde corrigé). */
+    const savedTheme = LS.get('theme', 'blue');
+    if (savedTheme !== 'blue') document.body.classList.add('theme-' + savedTheme);
+    const savedFont = LS.get('font', 'normal');
+    if (savedFont !== 'normal') { const f = { mc: 'mc', vt323: 'font-vt323', silkscreen: 'font-silkscreen', pixelify: 'font-pixelify', jersey: 'font-jersey' }[savedFont]; if (f) document.body.classList.add(f); }
+  } else {
+    /* changement manuel de skin : le skin impose son ambiance (et le note) */
+    if (s.theme !== 'blue') document.body.classList.add('theme-' + s.theme);
+    if (s.font !== 'normal') { const f = { mc: 'mc', vt323: 'font-vt323', silkscreen: 'font-silkscreen', pixelify: 'font-pixelify', jersey: 'font-jersey' }[s.font]; if (f) document.body.classList.add(f); }
+    LS.set('theme', s.theme);
+    LS.set('font', s.font);
+    LS.set('mcstyle', s.font === 'mc' ? '1' : '0');
     setWallpaperById(s.wall);
     LS.set('skin', id);
     toast('Apparence « ' + s.name + ' » appliquée', 'fa-wand-magic-sparkles', 'text-violet-400');
@@ -1497,6 +1586,10 @@ function focusWindow(appId) {
   renderTaskbar();
 }
 
+/* Grille des fenêtres : tout s'aligne proprement, comme un vrai PC */
+const WGRID = 30;
+const wSnap = (v) => Math.max(0, Math.round(v / WGRID) * WGRID);
+
 /* Rectangles des fenêtres visibles (position relative au bureau) */
 function windowRects(skipEl) {
   const desk = layer.getBoundingClientRect();
@@ -1513,15 +1606,15 @@ function findFreeSpot(w, h) {
   const desk = layer.getBoundingClientRect();
   const rects = windowRects(null);
   const hits = (x, y) => rects.some(o => !(x + w <= o.l + 6 || x >= o.r - 6 || y + h <= o.t + 6 || y >= o.b - 6));
-  /* 1) position en cascade classique */
-  const off = (windows.size % 7) * 26;
-  let x = Math.max(8, Math.min(110 + off, desk.width - w - 8));
-  let y = Math.max(8, Math.min(26 + off, desk.height - h - 8));
+  /* 1) position en cascade classique, alignée sur la grille */
+  const off = (windows.size % 7) * WGRID;
+  let x = wSnap(Math.max(8, Math.min(110 + off, desk.width - w - 8)));
+  let y = wSnap(Math.max(8, Math.min(26 + off, desk.height - h - 8)));
   if (!hits(x, y)) return { x, y };
-  /* 2) balayage du bureau : première case libre trouvée */
-  for (let ty = 8; ty <= desk.height - h - 8; ty += 26) {
-    for (let tx = 8; tx <= desk.width - w - 8; tx += 26) {
-      if (!hits(tx, ty)) return { x: tx, y: ty };
+  /* 2) balayage du bureau : première case libre trouvée, alignée sur la grille */
+  for (let ty = 8; ty <= desk.height - h - 8; ty += WGRID) {
+    for (let tx = 8; tx <= desk.width - w - 8; tx += WGRID) {
+      if (!hits(tx, ty)) return { x: wSnap(tx), y: wSnap(ty) };
     }
   }
   /* 3) écran trop rempli : on accepte la cascade */
@@ -1551,6 +1644,29 @@ function avoidOverlap(x, y, w, h, selfEl, desk) {
   r.l = Math.max(-w + 90, Math.min(r.l, desk.width - 90));
   r.t = Math.max(0, Math.min(r.t, desk.height - 42));
   return r;
+}
+/* DÉPÔT SUR LA GRILLE : au relâchement, la fenêtre s'aligne sur la grille et se
+   range dans la première case libre (spirale autour du point visé). Résultat :
+   les fenêtres forment toujours un carré propre, comme sur un vrai PC. */
+function gridDrop(x, y, w, h, selfEl, desk) {
+  x = Math.max(0, Math.min(wSnap(x), desk.width - 90));
+  y = Math.max(0, Math.min(wSnap(y), desk.height - 42));
+  const rects = windowRects(selfEl);
+  if (!rects.length) return { x, y };
+  const gx = Math.round(x / WGRID), gy = Math.round(y / WGRID);
+  const fits = (cx, cy) => {
+    const px = cx * WGRID, py = cy * WGRID;
+    if (px < -w + 90 || px > desk.width - 90 || py < 0 || py > desk.height - 42) return false;
+    return rects.every(o => px + w <= o.l + 10 || px >= o.r - 10 || py + h <= o.t + 10 || py >= o.b - 10);
+  };
+  if (fits(gx, gy)) return { x: gx * WGRID, y: gy * WGRID };
+  for (let ring = 1; ring < 90; ring++) {
+    for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+      if (fits(gx + dx, gy + dy)) return { x: (gx + dx) * WGRID, y: (gy + dy) * WGRID };
+    }
+  }
+  return { x, y };
 }
 function openApp(appId) {
   if (windows.has(appId)) {
@@ -1771,6 +1887,18 @@ function makeDraggable(el, appId) {
             el.style.width = R[2] + 'px'; el.style.height = R[3] + 'px';
           }
         }
+      } else {
+        /* AIMANTATION À LA GRILLE : la fenêtre s'aligne proprement et se range
+           dans la première case libre (spirale autour du point de dépôt) —
+           fini les fenêtres en vrac décalées n'importe comment. */
+        const r2 = el.getBoundingClientRect();
+        const drop = gridDrop(r2.left - desk.left, r2.top - desk.top, r2.width, r2.height, el, desk);
+        if (Math.abs(drop.x - (r2.left - desk.left)) > 1 || Math.abs(drop.y - (r2.top - desk.top)) > 1) {
+          el.style.transition = 'left .16s ease, top .16s ease';
+          el.style.left = drop.x + 'px';
+          el.style.top = drop.y + 'px';
+          setTimeout(() => { el.style.transition = ''; }, 190);
+        }
       }
     };
     document.addEventListener('pointermove', move);
@@ -1789,7 +1917,13 @@ function makeResizable(el, rec) {
       el.style.width = Math.max(320, start.w + ev.clientX - start.x) + 'px';
       el.style.height = Math.max(220, start.h + ev.clientY - start.y) + 'px';
     };
-    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      /* Taille alignée sur la grille : tout reste carré et bien rangé */
+      el.style.width = Math.max(320, wSnap(el.offsetWidth)) + 'px';
+      el.style.height = Math.max(220, wSnap(el.offsetHeight)) + 'px';
+    };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
   });
@@ -2730,6 +2864,7 @@ function renderAI() {
         </div>
         <button class="btn btn-green !py-1.5" id="ai-savekey"><i class="fa-solid fa-floppy-disk"></i> Clé</button>
         <button class="btn btn-ghost !py-1.5" id="ai-clear" title="Nouvelle conversation"><i class="fa-solid fa-broom"></i></button>
+        <button class="btn ${aiControlOn ? 'btn-green' : 'btn-ghost'} !py-1.5" id="ai-ctrl" title="Contrôle de l'ordinateur : l'IA voit votre écran et peut tout faire (ouvrir des apps, cliquer, naviguer, changer le thème...). Reste actif même après la fermeture de cette app."><i class="fa-solid fa-eye"></i> Contrôle PC</button>
       </div>
       <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3 selectable"></div>
       <div id="ai-imgbar" class="hidden flex-none px-3 pt-2 flex items-center gap-2 bg-white/3">
@@ -3003,7 +3138,331 @@ function initAI(body, rec) {
     aiHistory = []; msgBox.innerHTML = ''; LS.setJSON('aihist', []);
     addMsg('ai', 'Nouvelle conversation. Que puis-je faire pour vous ?');
   });
+  /* Bouton « Contrôle PC » : active l'assistant flottant qui voit l'écran et agit */
+  const ctrlBtn = body.querySelector('#ai-ctrl');
+  if (ctrlBtn) ctrlBtn.addEventListener('click', () => setAIControl(!aiControlOn));
 }
+
+/* ============================================================
+   ASSISTANT IA FLOTTANT — « Contrôle de l'ordinateur »
+   L'utilisateur ouvre l'app IA, active le bouton « Contrôle PC », puis peut
+   FERMER l'app : un petit assistant flottant reste en bas à droite. On lui
+   parle en français, il VOIT l'écran (fenêtres + éléments cliquables) et il
+   peut TOUT faire : ouvrir des apps, naviguer, YouTube, cliquer, écrire,
+   changer le thème ou le fond d'écran… Reste actif tant qu'on ne le
+   désactive pas (même après fermeture de l'app ou rechargement).
+============================================================ */
+let aiControlOn = LS.get('aicontrol', '0') === '1';
+let aiwHist = LS.getJSON('aiwhist', []);
+let aiwBusy = false;
+
+function applyThemeId(id) {
+  id = String(id || 'blue');
+  document.body.className = document.body.className.replace(/theme-\w+/g, '').trim();
+  if (id !== 'blue') document.body.classList.add('theme-' + id);
+  LS.set('theme', id);
+}
+
+/* --- le widget flottant (bulle + panneau) --- */
+const aiw = document.createElement('div');
+aiw.id = 'aiwidget';
+aiw.innerHTML = `
+  <div id="aiw-bubble" title="Assistant IA — contrôle de l'ordinateur">
+    <i class="fa-solid fa-robot"></i><span></span>
+  </div>
+  <div id="aiw-panel" class="hidden">
+    <div id="aiw-head">
+      <i class="fa-solid fa-robot text-emerald-300"></i>
+      <span style="font-weight:600;font-size:12.5px">Assistant IA</span>
+      <button id="aiw-min" title="Réduire en bulle" style="margin-left:auto"><i class="fa-solid fa-chevron-down"></i></button>
+      <button id="aiw-power" title="Désactiver le contrôle de l'ordinateur" style="margin-left:2px;color:#fca5a5"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+    <div id="aiw-msgs"></div>
+    <div id="aiw-status"></div>
+    <div id="aiw-inputbar">
+      <input id="aiw-input" placeholder="Demandez n'importe quoi…" autocomplete="off">
+      <button id="aiw-send"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>`;
+document.getElementById('desktop').appendChild(aiw);
+const aiwBubble = aiw.querySelector('#aiw-bubble');
+const aiwPanel = aiw.querySelector('#aiw-panel');
+const aiwMsgs = aiw.querySelector('#aiw-msgs');
+const aiwStatus = aiw.querySelector('#aiw-status');
+const aiwInput = aiw.querySelector('#aiw-input');
+
+/* position sauvegardée */
+(function () {
+  const p = LS.getJSON('aiwpos', null);
+  if (p && typeof p.x === 'number' && p.x > 0) {
+    aiw.style.left = Math.max(8, Math.min(p.x, innerWidth - 70)) + 'px';
+    aiw.style.top = Math.max(8, Math.min(p.y, innerHeight - 130)) + 'px';
+  }
+})();
+
+function aiwAddMsg(role, html) {
+  const div = document.createElement('div');
+  div.className = 'aiw-msg ' + role;
+  div.innerHTML = role === 'user'
+    ? '<div class="msg aiw-user"><p class="p-0">' + escHtml(html) + '</p></div>'
+    : '<div class="msg aiw-assistant"><p class="p-0">' + (role === 'ai-typing' ? '<span class="typing"><span></span><span></span><span></span></span>' : html) + '</p></div>';
+  aiwMsgs.appendChild(div);
+  aiwMsgs.scrollTop = aiwMsgs.scrollHeight;
+  return div;
+}
+
+function setAIControl(on) {
+  aiControlOn = on;
+  LS.set('aicontrol', on ? '1' : '0');
+  aiw.style.display = on ? '' : 'none';
+  const btn = document.getElementById('ai-ctrl');
+  if (btn) { btn.classList.toggle('btn-green', on); btn.classList.toggle('btn-ghost', !on); }
+  if (on) {
+    aiwPanel.classList.remove('hidden');
+    if (!aiwMsgs.children.length) aiwAddMsg('assistant', "Je contrôle ton ordinateur.<br>Dis-moi par exemple : <b>« ouvre Media Hub »</b>, <b>« va sur YouTube »</b>, <b>« mets le thème rouge »</b>, <b>« minimise tout »</b>… Je vois ton écran et je peux tout faire. Je reste actif même si tu fermes cette app.");
+    setTimeout(() => aiwInput.focus(), 60);
+    toast('Contrôle PC activé', 'fa-robot', 'text-emerald-300');
+  } else {
+    toast('Contrôle PC désactivé', 'fa-power-off', 'text-slate-400');
+  }
+}
+
+/* --- déplacement du widget (bulle ou barre du panneau) --- */
+(function () {
+  let _drag = null, moved = false;
+  const start = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const r = aiw.getBoundingClientRect();
+    _drag = { sx: e.clientX, sy: e.clientY, x: r.left, y: r.top };
+    moved = false;
+  };
+  const move = (e) => {
+    if (!_drag) return;
+    if (Math.abs(e.clientX - _drag.sx) + Math.abs(e.clientY - _drag.sy) > 4) moved = true;
+    aiw.style.left = Math.max(4, Math.min(_drag.x + e.clientX - _drag.sx, innerWidth - 60)) + 'px';
+    aiw.style.top = Math.max(4, Math.min(_drag.y + e.clientY - _drag.sy, innerHeight - 48)) + 'px';
+  };
+  const end = () => {
+    if (_drag) {
+      const r = aiw.getBoundingClientRect();
+      LS.setJSON('aiwpos', { x: Math.round(r.left), y: Math.round(r.top) });
+    }
+    _drag = null;
+  };
+  [aiwBubble, aiw.querySelector('#aiw-head')].forEach(handle => {
+    handle.addEventListener('pointerdown', start);
+    handle.addEventListener('click', (e) => { if (moved) e.stopPropagation(); });
+  });
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', end);
+})();
+
+aiwBubble.addEventListener('click', () => { aiwPanel.classList.toggle('hidden'); setTimeout(() => aiwInput.focus(), 40); });
+aiw.querySelector('#aiw-min').addEventListener('click', () => aiwPanel.classList.add('hidden'));
+aiw.querySelector('#aiw-power').addEventListener('click', (e) => { e.stopPropagation(); setAIControl(false); });
+aiw.querySelector('#aiw-send').addEventListener('click', () => aiwSend());
+
+/* --- « vision » : énumération de ce que l'IA voit (fenêtres + éléments cliquables) --- */
+function aiwItems() {
+  const items = [];
+  const add = (el, desc) => {
+    if (!el || items.length >= 70) return;
+    const txt = (el.textContent || el.value || el.placeholder || el.title || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+    items.push({ desc: desc || txt, el });
+  };
+  document.querySelectorAll('.desk-icon').forEach(el => add(el, 'icône du bureau: ' + (el.textContent || '').trim().slice(0, 26)));
+  add(document.getElementById('start-btn'), 'bouton Démarrer');
+  document.querySelectorAll('.tb-icon').forEach(el => add(el, 'app barre des tâches: ' + (el.title || el.textContent || '').trim().slice(0, 26)));
+  document.querySelectorAll('.tray-btn').forEach(el => add(el, 'zone de notification: ' + (el.title || el.textContent || '').trim().slice(0, 26)));
+  windows.forEach((w, id) => {
+    if (w.minimized) return;
+    const title = (w.el.querySelector('.win-head-title') || {}).textContent || id;
+    items.push({ desc: 'FENÊTRE ouverte « ' + title.trim() + ' » (id=' + id + ')' });
+    w.el.querySelectorAll('button, [role=button], input, textarea, select, a, .chip, .app-icon').forEach(el => {
+      if (el.offsetParent === null) return;
+      const txt = (el.textContent || el.value || el.placeholder || el.title || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+      if (txt) items.push({ desc: 'dans ' + title.trim() + ' → « ' + txt + ' »', el });
+    });
+  });
+  return items;
+}
+
+/* --- clic intelligent sur un élément --- */
+function aiwClickEl(el) {
+  if (!el) return;
+  if (el.classList.contains('tb-icon') || el.id === 'start-btn') {
+    try { el.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true, cancelable: true })); } catch (err) { el.click(); }
+    return;
+  }
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') { el.focus(); return; }
+  el.click();
+}
+
+/* --- prompt système (ce que l'IA « voit ») --- */
+function aiwSysPrompt() {
+  const openWins = [];
+  windows.forEach((w, id) => { if (!w.minimized) openWins.push(((w.el.querySelector('.win-head-title') || {}).textContent || id).trim() + ' (id=' + id + ')'); });
+  let brUrl = 'aucune page chargée';
+  try { const u = document.querySelector('#br-url'); if (u && u.value) brUrl = u.value; } catch (e) {}
+  const themeNames = { blue: 'bleu', cyan: 'cyan', purple: 'violet', green: 'vert', red: 'rouge', orange: 'orange', pink: 'rose', slate: 'gris' };
+  return "Tu es l'assistant qui contrôle l'ordinateur de l'utilisateur (un WebOS dans son navigateur). Tu VOIS son écran, voici l'état actuel.\n" +
+    "- Apps disponibles : " + Object.keys(APPS).map(k => k + ' = ' + APPS[k].title).join(', ') + ". Apps personnalisées : " + (CUSTOM_APPS.map(a => a.title).join(', ') || 'aucune') + ".\n" +
+    "- Fenêtres ouvertes : " + (openWins.join(' | ') || 'aucune') + "\n" +
+    "- Page du navigateur : " + brUrl + "\n" +
+    "- Thème actuel : " + themeNames[LS.get('theme', 'blue')] + " (possibles : bleu, cyan, violet, vert, rouge, orange, rose, gris)\n" +
+    "- Heure : " + new Date().toLocaleString('fr-FR') + "\n" +
+    "- Éléments cliquables visibles (numérotés — le chiffre sert pour l'action click/type) :\n" +
+    aiwItems().map((it, i) => '  ' + (i + 1) + '. ' + it.desc).join('\n') + "\n\n" +
+    "Tu réponds UNIQUEMENT en JSON, sans aucun autre texte : {\"say\":\"réponse courte en français\",\"actions\":[...]}\n" +
+    "Actions possibles (une ou plusieurs, exécutées dans l'ordre) :\n" +
+    '- {"cmd":"open_app","app":"browser"} — ouvre une app (id : ' + Object.keys(APPS).join(', ') + ') ou une app personnalisée (son nom)\n' +
+    '- {"cmd":"close_app","app":"browser"} — ferme une app\n' +
+    '- {"cmd":"navigate","url":"https://..."} — navigue dans le navigateur interne\n' +
+    '- {"cmd":"youtube","query":"recherche"} — ouvre YouTube dans le navigateur et lance la recherche\n' +
+    '- {"cmd":"click","index":12} — clique sur l\'élément n°12 de la liste\n' +
+    '- {"cmd":"type","index":5,"text":"..."} — écrit le texte dans l\'élément n°5\n' +
+    '- {"cmd":"theme","id":"red"} — change le thème (blue, cyan, purple, green, red, orange, pink, slate)\n' +
+    '- {"cmd":"wallpaper","id":2} — change le fond d\'écran (1 à 6)\n' +
+    '- {"cmd":"minimize_all"} ou {"cmd":"close_all"} — minimise ou ferme toutes les fenêtres\n' +
+    '- {"cmd":"toast","message":"..."} — affiche un message à l\'écran\n' +
+    "Explique brièvement ce que tu fais dans \"say\". Si la demande est impossible, mets juste \"actions\":[] et explique dans \"say\".";
+}
+
+/* --- requête vers le fournisseur configuré dans l'app IA --- */
+async function aiwRequest(messages) {
+  const prov = aiProvider();
+  const key = (apiKeys[prov] || '').trim();
+  const model = LS.get('ai_model_' + prov, AI_PROVIDERS[prov].models[0]) || AI_PROVIDERS[prov].models[0];
+  if (prov === 'google') {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: messages.filter(m => m.role !== 'system').map(x => ({ role: x.role === 'assistant' ? 'model' : 'user', parts: [{ text: x.content }] })) }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || 'Erreur ' + r.status);
+    return j.candidates[0].content.parts[0].text;
+  }
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = 'Bearer ' + key;
+  const r = await fetch(AI_PROVIDERS[prov].endpoint, { method: 'POST', headers, body: JSON.stringify({ model, messages }) });
+  const t = await r.text();
+  let j; try { j = JSON.parse(t); } catch (e) { throw new Error(t.slice(0, 200)); }
+  if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || 'Erreur ' + r.status);
+  return j.choices[0].message.content;
+}
+
+function aiwParseJson(text) {
+  const t = String(text || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(t); } catch (e) {}
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch (e) {} }
+  return { say: t, actions: [] };
+}
+
+/* --- exécution des actions --- */
+function aiwExec(a) {
+  const done = [];
+  try {
+    switch (a.cmd) {
+      case 'open_app': {
+        const q = String(a.app || '').toLowerCase().trim();
+        const key = Object.keys(APPS).find(k => k === q || APPS[k].title.toLowerCase() === q || APPS[k].title.toLowerCase().includes(q));
+        const custom = CUSTOM_APPS.find(c => c.title.toLowerCase().includes(q));
+        if (key) { openApp(key); done.push('app « ' + APPS[key].title + ' » ouverte'); }
+        else if (custom) { openApp('browser'); setTimeout(() => openInApp({ url: custom.url, title: custom.title, icon: custom.icon }), 150); done.push('« ' + custom.title + ' » ouverte'); }
+        else done.push('app « ' + q + ' » introuvable');
+        break;
+      }
+      case 'close_app': {
+        const k = Object.keys(APPS).find(k => k === String(a.app || '').toLowerCase() || APPS[k].title.toLowerCase().includes(String(a.app || '').toLowerCase()));
+        if (k && windows.has(k)) { closeApp(k); done.push('app fermée'); } else done.push('rien à fermer');
+        break;
+      }
+      case 'navigate': {
+        let u = String(a.url || '');
+        if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+        openInApp({ url: u, title: 'Web', icon: 'fa-globe' });
+        done.push('navigation vers ' + u);
+        break;
+      }
+      case 'youtube': {
+        const q = String(a.query || a.q || '').trim();
+        openApp('browser');
+        setTimeout(() => {
+          const url = q ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) : 'https://www.youtube.com/';
+          if (window.browserAPI) browserAPI.navigate(url); else openInApp({ url, title: 'YouTube', icon: 'fa-youtube' });
+        }, 150);
+        done.push(q ? 'YouTube : recherche « ' + q + ' »' : 'YouTube ouvert');
+        break;
+      }
+      case 'click': {
+        const items = aiwItems();
+        const it = items[(parseInt(a.index, 10) || 1) - 1];
+        if (it && it.el) { aiwClickEl(it.el); done.push('clic sur « ' + it.desc + ' »'); } else done.push('élément introuvable');
+        break;
+      }
+      case 'type': {
+        const items = aiwItems();
+        const it = items[(parseInt(a.index, 10) || 1) - 1];
+        if (it && it.el && (it.el.tagName === 'INPUT' || it.el.tagName === 'TEXTAREA')) {
+          it.el.focus(); it.el.value = String(a.text || '');
+          it.el.dispatchEvent(new Event('input', { bubbles: true }));
+          done.push('texte écrit dans « ' + it.desc + ' »');
+        } else done.push('champ de texte introuvable');
+        break;
+      }
+      case 'theme': { applyThemeId(a.id || a.theme); done.push('thème « ' + (a.id || a.theme) + ' » appliqué'); break; }
+      case 'wallpaper': { setWallpaperById(parseInt(a.id, 10) || 1); done.push('fond d\'écran changé'); break; }
+      case 'minimize_all': { windows.forEach((w, id) => { if (!w.minimized) toggleMinimize(id); }); done.push('tout est minimisé'); break; }
+      case 'close_all': { [...windows.keys()].forEach(id => closeApp(id)); done.push('tout est fermé'); break; }
+      case 'toast': { toast(String(a.message || 'IA'), 'fa-robot', 'text-emerald-300'); done.push('message affiché'); break; }
+      default: done.push('commande inconnue : ' + a.cmd);
+    }
+  } catch (err) { done.push('erreur : ' + err.message); }
+  return done;
+}
+
+/* --- envoi d'un message au widget --- */
+async function aiwSend() {
+  const q = aiwInput.value.trim();
+  if (!q || aiwBusy) return;
+  aiwBusy = true;
+  aiwInput.value = '';
+  aiwPanel.classList.remove('hidden');
+  aiwAddMsg('user', q);
+  aiwHist.push({ role: 'user', content: q });
+  const typing = aiwAddMsg('ai-typing', '');
+  aiwStatus.textContent = "L'IA observe ton écran…";
+  try {
+    const hist = aiwHist.slice(-6).map(h => ({ role: h.role, content: h.content }));
+    const text = await aiwRequest([{ role: 'system', content: aiwSysPrompt() }, ...hist]);
+    typing.remove();
+    const parsed = aiwParseJson(text);
+    aiwAddMsg('assistant', mdToHtml(parsed.say || 'Voilà.'));
+    aiwHist.push({ role: 'assistant', content: text });
+    LS.setJSON('aiwhist', aiwHist.slice(-40));
+    aiBumpCount(aiProvider());
+    for (const a of (parsed.actions || [])) {
+      await new Promise(r => setTimeout(r, 350));
+      const res = aiwExec(a);
+      if (res.length) aiwAddMsg('assistant', '<span style="color:#86efac">✓ ' + escHtml(res.join(', ')) + '</span>');
+    }
+  } catch (err) {
+    typing.remove();
+    aiwAddMsg('assistant', '<span style="color:#fca5a5">Erreur : ' + escHtml(String(err.message || err)) + '</span>');
+  }
+  aiwStatus.textContent = '';
+  aiwBusy = false;
+  aiwInput.focus();
+}
+aiwInput.addEventListener('keydown', (ev) => {
+  ev.stopPropagation();
+  if (ev.key === 'Enter') aiwSend();
+});
+
+/* restauration de l'historique au démarrage */
+aiwHist.slice(-10).forEach(h => {
+  if (h.role === 'user') aiwAddMsg('user', h.content);
+  else aiwAddMsg('assistant', mdToHtml(aiwParseJson(h.content).say || '…'));
+});
 
 /* ============================================================
    APP : GALERIE DE CURSEURS — tous les curseurs + souris des membres
@@ -3787,7 +4246,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v17 — les thèmes colorent aussi l'intérieur des apps, 13 nouveaux thèmes (3 animés), 11 nouveaux curseurs (persos d'animé), galerie de curseurs + souris de membres, fonds d'écran vidéo, 4 modes d'animations (Windows, Linux, Full)</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v18 — Assistant IA « Contrôle PC » : un widget flottant qui voit votre écran et exécute vos ordres (ouvrir des apps, YouTube, cliquer, thèmes…), Wi-Fi et batterie en direct, grille magnétique des fenêtres (fini les apps en vrac), et correctif de sauvegarde : le thème, la police et le style Minecraft ne sont plus jamais écrasés</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -4266,7 +4725,7 @@ function makeDeskDraggable(b, id) {
 let lassoBox = null, lassoStart = null, lassoMoved = false;
 document.getElementById('desktop').addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
-  if (e.target.closest('.desk-icon') || e.target.closest('button, input, textarea, select, .window, #taskbar, #start-menu, #tray-popup')) return;
+  if (e.target.closest('.desk-icon') || e.target.closest('button, input, textarea, select, .window, #taskbar, #start-menu, #tray-popup, #aiwidget')) return;
   clearSelection();
   lassoStart = { x: e.clientX, y: e.clientY }; lassoMoved = false;
   lassoBox = document.createElement('div');
