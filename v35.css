@@ -1,0 +1,255 @@
+/* ============================================================
+   v35 — Systèmes distincts : macOS, Ubuntu, Fedora (GNOME),
+   Linux Mint, Kali, KDE Plasma, ChromeOS.
+   Chaque système a sa barre, ses fenêtres, ses icônes et
+   ses propres animations d'ouverture / fermeture / réduction.
+============================================================ */
+
+/* ---------- barre supérieure (macOS, Ubuntu, Fedora) ---------- */
+#os-topbar { display: none; position: absolute; left: 0; right: 0; top: 0; height: 28px; z-index: 8990;
+  align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12.5px; user-select: none; gap: 12px; }
+body.has-topbar #os-topbar { display: flex; }
+body.has-topbar #windows-layer { top: 28px; }
+body.has-topbar #desk-icons { top: 40px !important; }
+body.has-topbar #tray-popup { top: 36px; bottom: auto; }
+#os-topbar .tb-l, #os-topbar .tb-c, #os-topbar .tb-r { display: flex; align-items: center; gap: 14px; min-width: 0; }
+#os-topbar .tb-c { position: absolute; left: 50%; transform: translateX(-50%); }
+#os-topbar .tb-item { cursor: pointer; padding: 2px 8px; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+#os-topbar .tb-item:hover { background: rgba(255,255,255,.14); }
+#os-topbar .tb-app { font-weight: 700; }
+#os-topbar .tb-menu { font-weight: 500; opacity: .9; }
+@media (max-width: 719px) { #os-topbar .tb-menu { display: none; } }
+
+/* logo du bouton démarrer remplacé par l'icône propre à chaque système */
+body.skin-macos .win-logo, body.skin-ubuntu .win-logo, body.skin-fedora .win-logo,
+body.skin-mint .win-logo, body.skin-kali .win-logo, body.skin-kde .win-logo, body.skin-chromeos .win-logo { display: block; width: 24px; height: 24px; position: relative; }
+body.skin-macos .win-logo span, body.skin-ubuntu .win-logo span, body.skin-fedora .win-logo span,
+body.skin-mint .win-logo span, body.skin-kali .win-logo span, body.skin-kde .win-logo span, body.skin-chromeos .win-logo span { display: none; }
+body.skin-macos .win-logo::before, body.skin-ubuntu .win-logo::before, body.skin-fedora .win-logo::before,
+body.skin-mint .win-logo::before, body.skin-kali .win-logo::before, body.skin-kde .win-logo::before, body.skin-chromeos .win-logo::before {
+  position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; line-height: 24px; text-align: center; color: #fff; }
+body.skin-macos .win-logo::before { content: '\f00a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; background: linear-gradient(160deg,#e8ecf3,#9fb2d4); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 24px; }
+body.skin-ubuntu .win-logo::before { content: '\f00a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 20px; }
+body.skin-fedora .win-logo::before { content: '\f798'; font-family: 'Font Awesome 6 Brands'; color: #9bc0f5; font-size: 22px; }
+body.skin-mint .win-logo::before { content: '\f17c'; font-family: 'Font Awesome 6 Brands'; color: #1e2a14; font-size: 18px; }
+body.skin-kali .win-logo::before { content: '\f120'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #5b8cff; font-size: 17px; }
+body.skin-kde .win-logo::before { content: '\f17c'; font-family: 'Font Awesome 6 Brands'; color: #3daee9; font-size: 21px; }
+body.skin-chromeos .win-logo::before { content: '\f111'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #4f6bed; font-size: 17px; }
+
+/* ================= macOS : barre de menus + dock flottant ================= */
+body.skin-macos #os-topbar { background: rgba(236,240,247,.55); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px); color: #1d1d1f; height: 26px; border-bottom: 1px solid rgba(0,0,0,.08); }
+body.skin-macos.has-topbar #windows-layer { top: 26px; bottom: 84px; }
+body.skin-macos #os-topbar .tb-item:hover { background: rgba(0,0,0,.1); }
+body.skin-macos #taskbar { left: 50%; right: auto; transform: translateX(-50%); bottom: 8px; width: auto; max-width: calc(100% - 20px); height: 68px; padding: 0 12px; border-radius: 22px;
+  background: rgba(255,255,255,.26); border: 1px solid rgba(255,255,255,.45); box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5); backdrop-filter: blur(24px); }
+body.skin-macos #tb-right { display: none; }
+body.skin-macos #tb-center { gap: 6px; }
+body.skin-macos .tb-sep { background: rgba(0,0,0,.2); height: 40px; }
+body.skin-macos .tb-icon { width: 54px; height: 54px; border-radius: 14px; transition: transform .16s cubic-bezier(.3,1.5,.5,1); transform-origin: 50% 100%; }
+body.skin-macos .tb-icon:hover { background: transparent; transform: scale(1.45) translateY(-7px); z-index: 3; }
+body.skin-macos .tb-icon.active { background: transparent; }
+body.skin-macos .tb-icon .run-dot { width: 4px; height: 4px; background: #1d1d1f; opacity: 0; position: absolute; bottom: -6px; }
+body.skin-macos .tb-icon.open .run-dot, body.skin-macos .tb-icon.active .run-dot { opacity: .75; width: 4px; background: #1d1d1f; }
+body.skin-macos #start-menu { bottom: 96px; border-radius: 22px; }
+body.skin-macos .window { border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12); }
+body.skin-macos .window.maximized { border-radius: 0; }
+body.skin-macos #desk-icons { left: auto !important; right: 16px; align-items: flex-end; }
+
+/* ================= Ubuntu : dock vertical à gauche + barre noire ================= */
+body.skin-ubuntu #os-topbar { background: #0b0b0b; color: #f3f3f3; height: 28px; }
+body.skin-ubuntu #taskbar { left: 0; right: auto; top: 28px; bottom: 0; width: 66px; height: auto; flex-direction: column; justify-content: flex-start; align-items: center; padding: 8px 0;
+  background: rgba(36,14,32,.86); border-top: 0; border-right: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(18px); }
+body.skin-ubuntu #tb-center { flex-direction: column-reverse; justify-content: space-between; height: 100%; width: 100%; gap: 6px; align-items: center; }
+body.skin-ubuntu #tb-pinned { flex-direction: column; gap: 6px; }
+body.skin-ubuntu #tb-right, body.skin-ubuntu .tb-sep { display: none; }
+body.skin-ubuntu .tb-icon { width: 50px; height: 50px; border-radius: 12px; }
+body.skin-ubuntu .tb-icon:hover { background: rgba(255,255,255,.14); }
+body.skin-ubuntu .tb-icon.active { background: rgba(255,255,255,.2); }
+body.skin-ubuntu .tb-icon .run-dot { position: absolute; left: -9px; top: 50%; margin-top: -2px; width: 5px; height: 5px; border-radius: 50%; background: #e95420; }
+body.skin-ubuntu .tb-icon.open .run-dot, body.skin-ubuntu .tb-icon.active .run-dot { opacity: 1; width: 5px; background: #e95420; }
+body.skin-ubuntu #windows-layer { left: 66px; bottom: 0; }
+body.skin-ubuntu #desk-icons { left: 84px !important; bottom: 12px !important; }
+body.skin-ubuntu #start-menu { left: 78px; bottom: 14px; transform: none; border-radius: 12px; }
+body.skin-ubuntu #start-menu.hidden-menu { transform: translateX(-18px); }
+body.skin-ubuntu .window { border-radius: 10px 10px 4px 4px; }
+body.skin-ubuntu .win-header { background: #2c2c2c; height: 36px; }
+body.skin-ubuntu .win-header .wbtn { width: 24px; height: 24px; border-radius: 50%; margin-left: 6px; background: rgba(255,255,255,.1); }
+body.skin-ubuntu .win-header .wbtn.close { background: #e95420; color: #fff; }
+
+/* ================= Fedora (GNOME) : barre + dock flottant sombre ================= */
+body.skin-fedora #os-topbar { background: #000; color: #fff; height: 28px; font-size: 12.5px; }
+body.skin-fedora #os-topbar .tb-act { background: rgba(255,255,255,.16); border-radius: 99px; padding: 2px 14px; font-weight: 600; }
+body.skin-fedora #taskbar { left: 50%; right: auto; transform: translateX(-50%); bottom: 10px; width: auto; height: 62px; padding: 0 12px; border-radius: 18px;
+  background: rgba(34,38,48,.88); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+body.skin-fedora #tb-right { display: none; }
+body.skin-fedora.has-topbar #windows-layer { bottom: 82px; }
+body.skin-fedora .tb-icon { width: 48px; height: 48px; border-radius: 10px; }
+body.skin-fedora .tb-icon .run-dot { position: absolute; bottom: 1px; width: 5px; height: 5px; border-radius: 50%; background: #9bc0f5; }
+body.skin-fedora .tb-icon.open .run-dot { opacity: 1; width: 5px; } body.skin-fedora .tb-icon.active .run-dot { opacity: 1; width: 14px; border-radius: 3px; background: #7ab0f5; }
+body.skin-fedora #start-menu { bottom: 88px; border-radius: 22px; }
+body.skin-fedora .window { border-radius: 14px; }
+body.skin-fedora .window.maximized { border-radius: 0; }
+body.skin-fedora .win-header { position: relative; height: 42px; background: #303236; border-bottom: 1px solid rgba(0,0,0,.4); }
+body.skin-fedora .win-header > div:first-child { position: absolute; left: 0; right: 0; justify-content: center; pointer-events: none; }
+body.skin-fedora .win-header > div:first-child .w-6 { display: none; }
+body.skin-fedora .win-header > div:last-child { margin-left: auto; position: relative; z-index: 2; }
+body.skin-fedora .win-header .wbtn { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.1); margin-left: 6px; }
+body.skin-fedora .win-header .wbtn:hover { background: rgba(255,255,255,.2); }
+
+/* ================= Linux Mint (Cinnamon) : panneau bas vert ================= */
+body.skin-mint #taskbar { height: 44px; justify-content: flex-start; background: linear-gradient(180deg,#3d423c,#262a25); border-top: 2px solid #87cf3e; backdrop-filter: none; }
+body.skin-mint #tb-center { position: absolute; left: 0; gap: 2px; padding-left: 4px; }
+body.skin-mint #windows-layer { bottom: 44px; }
+body.skin-mint #start-btn { background: linear-gradient(160deg,#a6e05a,#6fb02c); border-radius: 8px; width: 40px !important; }
+body.skin-mint .tb-icon { width: 42px; height: 36px; border-radius: 6px; }
+body.skin-mint .tb-icon .run-dot { position: absolute; bottom: 0; left: 6px; right: 6px; width: auto; height: 3px; border-radius: 0; background: #87cf3e; }
+body.skin-mint .tb-icon.open .run-dot { opacity: .9; width: auto; } body.skin-mint .tb-icon.active .run-dot { width: auto; }
+body.skin-mint #tb-right { right: 6px; }
+body.skin-mint #start-menu { left: 8px; transform: none; bottom: 52px; border-radius: 6px; border-top: 3px solid #87cf3e; }
+body.skin-mint #start-menu.hidden-menu { transform: translateY(14px); }
+body.skin-mint .window { border-radius: 6px; border: 1px solid rgba(135,207,62,.35); }
+body.skin-mint .win-header { background: linear-gradient(180deg,#f2f2f0,#dcdcd8); border-bottom: 1px solid #b9bdb4; height: 34px; }
+body.skin-mint .win-header span { color: #2b2f28; font-weight: 600; }
+body.skin-mint .win-header .wbtn { color: #3b4036; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.07); margin-left: 5px; }
+body.skin-mint .win-header .wbtn:hover { background: #87cf3e; color: #fff; }
+body.skin-mint .win-header .wbtn.close:hover { background: #d9534f; color: #fff; }
+
+/* ================= Kali Linux : panneau sombre, bleu dragon, police monospace ================= */
+body.skin-kali { --kali: #2a5bd7; }
+body.skin-kali #taskbar, body.skin-kali .win-header, body.skin-kali #start-menu { font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Menlo, monospace; }
+body.skin-kali #taskbar { height: 40px; justify-content: flex-start; background: #07090e; border-top: 1px solid #2a5bd7; box-shadow: 0 -4px 18px rgba(42,91,215,.25); backdrop-filter: none; }
+body.skin-kali #tb-center { position: absolute; left: 0; padding-left: 6px; }
+body.skin-kali #windows-layer { bottom: 40px; }
+body.skin-kali .tb-icon { width: 38px; height: 32px; border-radius: 3px; }
+body.skin-kali .tb-icon .run-dot { background: #5b8cff; height: 2px; width: 18px; }
+body.skin-kali .tb-icon.active { background: rgba(42,91,215,.28); box-shadow: inset 0 -2px 0 #5b8cff; }
+body.skin-kali #start-menu { left: 8px; transform: none; bottom: 48px; border-radius: 3px; border: 1px solid #2a5bd7; background: rgba(7,9,14,.96); box-shadow: 0 0 30px rgba(42,91,215,.35); }
+body.skin-kali #start-menu.hidden-menu { transform: translateY(14px); }
+body.skin-kali .window { border-radius: 3px; border: 1px solid #2a5bd7; box-shadow: 0 0 0 1px rgba(91,140,255,.25), 0 0 26px rgba(42,91,215,.35), 0 20px 50px rgba(0,0,0,.7); background: rgba(8,10,16,.95); }
+body.skin-kali .win-header { background: linear-gradient(90deg,#0a0e18,#111a33); height: 30px; border-bottom: 1px solid #2a5bd7; }
+body.skin-kali .win-header span { color: #8fb0ff; font-size: 12px; font-weight: 500; }
+body.skin-kali .win-header span::before { content: '$ '; color: #5b8cff; }
+body.skin-kali .win-header .wbtn { color: #8fb0ff; width: 24px; height: 22px; border-radius: 2px; }
+body.skin-kali .win-header .wbtn:hover { background: #2a5bd7; color: #fff; }
+body.skin-kali .btn, body.skin-kali .field, body.skin-kali .chip { border-radius: 2px !important; }
+body.skin-kali .win-body { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+
+/* ================= KDE Plasma : panneau flottant arrondi, Breeze ================= */
+body.skin-kde #taskbar { left: 8px; right: 8px; bottom: 8px; width: auto; height: 46px; border-radius: 12px; justify-content: flex-start;
+  background: rgba(30,36,46,.86); border: 1px solid rgba(61,174,233,.25); box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+body.skin-kde #tb-center { position: absolute; left: 6px; gap: 2px; }
+body.skin-kde #windows-layer { bottom: 64px; }
+body.skin-kde .tb-icon { width: 44px; height: 38px; border-radius: 8px; }
+body.skin-kde .tb-icon .run-dot { position: absolute; bottom: 0; width: 22px; height: 3px; background: #3daee9; border-radius: 3px 3px 0 0; }
+body.skin-kde .tb-icon.active { background: rgba(61,174,233,.2); }
+body.skin-kde #start-menu { left: 14px; transform: none; bottom: 66px; border-radius: 10px; border: 1px solid rgba(61,174,233,.4); }
+body.skin-kde #start-menu.hidden-menu { transform: translateY(16px); }
+body.skin-kde .window { border-radius: 8px; border: 1px solid rgba(61,174,233,.35); }
+body.skin-kde .window.maximized { border-radius: 0; }
+body.skin-kde .win-header { background: linear-gradient(180deg,#3b4452,#2c333e); border-bottom: 2px solid #3daee9; height: 34px; }
+body.skin-kde .win-header .wbtn { width: 24px; height: 24px; border-radius: 50%; margin-left: 4px; color: #e6eef7; }
+body.skin-kde .win-header .wbtn:hover { background: rgba(61,174,233,.4); }
+body.skin-kde .win-header .wbtn.close:hover { background: #da4453; }
+
+/* ================= ChromeOS : étagère claire, fenêtres arrondies ================= */
+body.skin-chromeos #taskbar { height: 54px; justify-content: flex-start; background: rgba(250,251,255,.78); border-top: 0; box-shadow: 0 -1px 0 rgba(0,0,0,.06); backdrop-filter: blur(28px); }
+body.skin-chromeos #tb-center { position: absolute; left: 10px; gap: 4px; }
+body.skin-chromeos #windows-layer { bottom: 54px; }
+body.skin-chromeos .tb-icon { width: 44px; height: 44px; border-radius: 50%; }
+body.skin-chromeos .tb-icon:hover { background: rgba(60,64,67,.1); }
+body.skin-chromeos .tb-icon.active { background: rgba(26,115,232,.15); }
+body.skin-chromeos .tb-icon .fa-solid, body.skin-chromeos .tb-icon .fa-brands { color: #3c4043; }
+body.skin-chromeos .tb-icon .run-dot { position: absolute; bottom: 2px; width: 5px; height: 5px; border-radius: 50%; background: #1a73e8; }
+body.skin-chromeos .tb-icon.open .run-dot, body.skin-chromeos .tb-icon.active .run-dot { opacity: 1; width: 5px; }
+body.skin-chromeos #start-btn { background: rgba(60,64,67,.08); }
+body.skin-chromeos #tb-right { right: 10px; background: rgba(60,64,67,.08); border-radius: 99px; padding: 0 8px; top: 7px; bottom: 7px; }
+body.skin-chromeos .tray-btn, body.skin-chromeos #clock-time { color: #3c4043 !important; }
+body.skin-chromeos #clock-date { color: #5f6368 !important; }
+body.skin-chromeos #start-menu { left: 10px; transform: none; bottom: 62px; border-radius: 24px; background: rgba(245,247,252,.96); color: #202124; }
+body.skin-chromeos #start-menu .lbl, body.skin-chromeos #start-menu .text-slate-200, body.skin-chromeos #start-menu .text-slate-300 { color: #202124 !important; }
+body.skin-chromeos #start-menu.hidden-menu { transform: translateY(18px) scale(.97); }
+body.skin-chromeos .window { border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+body.skin-chromeos .window.maximized { border-radius: 0; }
+body.skin-chromeos .win-header { background: #f1f3f4; border-bottom: 1px solid #dadce0; height: 40px; }
+body.skin-chromeos .win-header span { color: #202124; font-weight: 500; }
+body.skin-chromeos .win-header .wbtn { color: #3c4043; width: 32px; height: 32px; border-radius: 50%; }
+body.skin-chromeos .win-header .wbtn:hover { background: rgba(60,64,67,.12); }
+body.skin-chromeos .win-header .wbtn.close:hover { background: #d93025; color: #fff; }
+
+/* ============================================================
+   ANIMATIONS PROPRES À CHAQUE SYSTÈME (désactivables : mode « aucune »)
+============================================================ */
+/* macOS — ressort + effet « génie » vers le dock */
+body:not([data-anim="none"]).skin-macos .window.win-open { transform-origin: 50% 100%; animation: osMacOpen .38s cubic-bezier(.2,.9,.25,1.2); }
+body:not([data-anim="none"]).skin-macos .window.win-close { animation: osMacClose .18s ease-in forwards; }
+body:not([data-anim="none"]).skin-macos .window.win-min { transform-origin: 50% 100%; animation: osMacGenie .42s cubic-bezier(.5,0,.8,.4) forwards; }
+body:not([data-anim="none"]).skin-macos .window.win-unmin { transform-origin: 50% 100%; animation: osMacUnGenie .38s cubic-bezier(.2,.9,.3,1.1); }
+@keyframes osMacOpen { from { opacity: 0; transform: scale(.72) translateY(40px); } 65% { transform: scale(1.025); } }
+@keyframes osMacClose { to { opacity: 0; transform: scale(.86); } }
+@keyframes osMacGenie { 60% { transform: scale(.45,.35) translateY(30%); border-radius: 40%; } to { opacity: 0; transform: scale(.04,.02) translateY(90%); border-radius: 50%; } }
+@keyframes osMacUnGenie { from { opacity: 0; transform: scale(.04,.02) translateY(90%); } 50% { opacity: 1; transform: scale(.5,.4) translateY(30%); } }
+/* Ubuntu — fondu doux, réduction vers le dock de gauche */
+body:not([data-anim="none"]).skin-ubuntu .window.win-open { animation: osUbOpen .22s ease-out; }
+body:not([data-anim="none"]).skin-ubuntu .window.win-close { animation: osUbClose .16s ease-in forwards; }
+body:not([data-anim="none"]).skin-ubuntu .window.win-min { transform-origin: 0 60%; animation: osUbMin .24s ease-in forwards; }
+body:not([data-anim="none"]).skin-ubuntu .window.win-unmin { transform-origin: 0 60%; animation: osUbUnmin .26s ease-out; }
+@keyframes osUbOpen { from { opacity: 0; transform: scale(.95); } }
+@keyframes osUbClose { to { opacity: 0; transform: scale(.95); } }
+@keyframes osUbMin { to { opacity: 0; transform: translateX(-55%) scale(.2); } }
+@keyframes osUbUnmin { from { opacity: 0; transform: translateX(-55%) scale(.2); } }
+/* Fedora (GNOME) — zoom depuis le centre type « Activités » */
+body:not([data-anim="none"]).skin-fedora .window.win-open { animation: osGnOpen .26s cubic-bezier(.2,.8,.2,1); }
+body:not([data-anim="none"]).skin-fedora .window.win-close { animation: osGnClose .2s ease-in forwards; }
+body:not([data-anim="none"]).skin-fedora .window.win-min { transform-origin: 50% 100%; animation: osGnMin .26s ease-in forwards; }
+body:not([data-anim="none"]).skin-fedora .window.win-unmin { transform-origin: 50% 100%; animation: osGnUnmin .28s ease-out; }
+@keyframes osGnOpen { from { opacity: 0; transform: scale(.82); filter: blur(4px); } }
+@keyframes osGnClose { to { opacity: 0; transform: scale(.88); filter: blur(3px); } }
+@keyframes osGnMin { to { opacity: 0; transform: translateY(45%) scale(.4); } }
+@keyframes osGnUnmin { from { opacity: 0; transform: translateY(45%) scale(.4); } }
+/* Linux Mint — fondu pur, réduction vers le coin du panneau */
+body:not([data-anim="none"]).skin-mint .window.win-open { animation: osMintOpen .3s ease; }
+body:not([data-anim="none"]).skin-mint .window.win-close { animation: osMintClose .22s ease forwards; }
+body:not([data-anim="none"]).skin-mint .window.win-min { transform-origin: 0 100%; animation: osMintMin .26s ease-in forwards; }
+body:not([data-anim="none"]).skin-mint .window.win-unmin { transform-origin: 0 100%; animation: osMintUnmin .28s ease-out; }
+@keyframes osMintOpen { from { opacity: 0; } }
+@keyframes osMintClose { to { opacity: 0; } }
+@keyframes osMintMin { to { opacity: 0; transform: translate(-30%,40%) scale(.3); } }
+@keyframes osMintUnmin { from { opacity: 0; transform: translate(-30%,40%) scale(.3); } }
+/* Kali — apparition « glitch », fermeture façon écran cathodique */
+body:not([data-anim="none"]).skin-kali .window.win-open { animation: osKaliOpen .42s steps(1,end) both, osKaliSettle .01s .42s both; }
+body:not([data-anim="none"]).skin-kali .window.win-close { animation: osKaliClose .26s ease-in forwards; }
+body:not([data-anim="none"]).skin-kali .window.win-min { animation: osKaliClose .22s ease-in forwards; }
+body:not([data-anim="none"]).skin-kali .window.win-unmin { animation: osKaliOpen .36s steps(1,end) both; }
+@keyframes osKaliOpen { 0% { opacity: 0; transform: translateX(-16px) skewX(8deg); } 15% { opacity: 1; transform: translateX(12px) skewX(-6deg); } 30% { opacity: .35; transform: translateX(-6px); } 45% { opacity: 1; transform: translateX(4px) skewX(2deg); } 60% { opacity: .7; transform: translateX(-2px); } 100% { opacity: 1; transform: none; } }
+@keyframes osKaliSettle { to { transform: none; opacity: 1; } }
+@keyframes osKaliClose { 0% { filter: brightness(1.6); } 60% { transform: scaleY(.02) scaleX(1.02); opacity: 1; filter: brightness(3); } 100% { transform: scale(0,.02); opacity: 0; } }
+/* KDE Plasma — « lampe magique » et glissement en perspective */
+body:not([data-anim="none"]).skin-kde .window.win-open { transform-origin: 50% 100%; animation: osKdeOpen .32s cubic-bezier(.2,.8,.25,1); }
+body:not([data-anim="none"]).skin-kde .window.win-close { animation: osKdeClose .2s ease-in forwards; }
+body:not([data-anim="none"]).skin-kde .window.win-min { transform-origin: 20% 100%; animation: osKdeLamp .38s cubic-bezier(.6,0,.9,.5) forwards; }
+body:not([data-anim="none"]).skin-kde .window.win-unmin { transform-origin: 20% 100%; animation: osKdeUnlamp .36s cubic-bezier(.2,.8,.3,1); }
+@keyframes osKdeOpen { from { opacity: 0; transform: perspective(900px) rotateX(12deg) translateY(36px) scale(.94); } }
+@keyframes osKdeClose { to { opacity: 0; transform: perspective(900px) rotateX(-8deg) scale(.92); } }
+@keyframes osKdeLamp { 50% { transform: scale(.5,.55) skewX(-12deg) translateY(25%); } to { opacity: 0; transform: scale(.06,.02) skewX(-24deg) translateY(110%); } }
+@keyframes osKdeUnlamp { from { opacity: 0; transform: scale(.06,.02) skewX(-24deg) translateY(110%); } 50% { opacity: 1; transform: scale(.5,.55) skewX(-12deg) translateY(25%); } }
+/* ChromeOS — Material : agrandissement net, courbe standard */
+body:not([data-anim="none"]).skin-chromeos .window.win-open { animation: osChrOpen .26s cubic-bezier(.4,0,.2,1); }
+body:not([data-anim="none"]).skin-chromeos .window.win-close { animation: osChrClose .18s cubic-bezier(.4,0,1,1) forwards; }
+body:not([data-anim="none"]).skin-chromeos .window.win-min { transform-origin: 50% 100%; animation: osChrMin .24s cubic-bezier(.4,0,1,1) forwards; }
+body:not([data-anim="none"]).skin-chromeos .window.win-unmin { transform-origin: 50% 100%; animation: osChrUnmin .26s cubic-bezier(0,0,.2,1); }
+@keyframes osChrOpen { from { opacity: 0; transform: scale(.8); } }
+@keyframes osChrClose { to { opacity: 0; transform: scale(.9); } }
+@keyframes osChrMin { to { opacity: 0; transform: translateY(70%) scale(.5); } }
+@keyframes osChrUnmin { from { opacity: 0; transform: translateY(70%) scale(.5); } }
+
+/* ============================================================
+   ÉCRAN DE CHANGEMENT DE SYSTÈME (logo + nom + barre de chargement)
+============================================================ */
+#os-splash { position: fixed; inset: 0; z-index: 99990; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #fff; opacity: 1; transition: opacity .45s ease; }
+#os-splash.out { opacity: 0; pointer-events: none; }
+#os-splash .os-logo { font-size: 74px; line-height: 1; filter: drop-shadow(0 6px 24px rgba(0,0,0,.4)); animation: osSplashPop .6s cubic-bezier(.2,.9,.3,1.3); }
+#os-splash .os-name { font-size: 20px; font-weight: 600; letter-spacing: .02em; }
+#os-splash .os-bar { width: 190px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.22); overflow: hidden; }
+#os-splash .os-bar i { display: block; height: 100%; width: 0; background: #fff; border-radius: 4px; animation: osSplashBar 1.15s ease-out forwards; }
+@keyframes osSplashPop { from { transform: scale(.5); opacity: 0; } }
+@keyframes osSplashBar { to { width: 100%; } }

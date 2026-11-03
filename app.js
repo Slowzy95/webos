@@ -543,7 +543,13 @@ const WALLPAPERS = [
   { id: 'os-winxp', name: 'Windows XP · Bliss', cat: 'OS', type: 'image', url: 'walls/original-winxp.webp', preview: '#78ad3f' },
   { id: 'os-win98', name: 'Windows 98', cat: 'OS', type: 'css', css: '#008080', preview: '#008080' },
   { id: 'os-ubuntu', name: 'Ubuntu',    cat: 'OS', type: 'css', css: 'linear-gradient(160deg,#2c001e 0%,#772953 70%,#5e2750 100%)', preview: 'linear-gradient(160deg,#2c001e,#772953)' },
-  { id: 'os-macos', name: 'macOS',     cat: 'OS', type: 'css', css: 'linear-gradient(180deg,#0f2b46 0%,#2c5d8f 55%,#e8a87c 100%)', preview: 'linear-gradient(180deg,#0f2b46,#e8a87c)' }
+  { id: 'os-macos', name: 'macOS',     cat: 'OS', type: 'css', css: 'linear-gradient(180deg,#0f2b46 0%,#2c5d8f 55%,#e8a87c 100%)', preview: 'linear-gradient(180deg,#0f2b46,#e8a87c)' },
+  /* v35 : fonds des nouveaux systèmes */
+  { id: 'os-fedora', name: 'Fedora (GNOME)', cat: 'OS', type: 'css', css: 'radial-gradient(circle at 70% 20%,#4f7cc2 0%,#294172 45%,#0b1e3f 100%)', preview: 'linear-gradient(135deg,#0b1e3f,#3c6eb4)' },
+  { id: 'os-mint', name: 'Linux Mint', cat: 'OS', type: 'css', css: 'linear-gradient(160deg,#0d2b14 0%,#1f5a2a 50%,#87cf3e 130%)', preview: 'linear-gradient(135deg,#0d2b14,#87cf3e)' },
+  { id: 'os-kali', name: 'Kali Linux', cat: 'OS', type: 'css', css: 'radial-gradient(circle at 20% 80%,#1b3a8a 0%,#0a1020 45%,#05070d 100%)', preview: 'linear-gradient(135deg,#05070d,#2a5bd7)' },
+  { id: 'os-kde', name: 'KDE Plasma', cat: 'OS', type: 'css', css: 'linear-gradient(135deg,#0f2740 0%,#1d6fa5 55%,#3daee9 100%)', preview: 'linear-gradient(135deg,#0f2740,#3daee9)' },
+  { id: 'os-chromeos', name: 'ChromeOS', cat: 'OS', type: 'css', css: 'linear-gradient(135deg,#dbe8ff 0%,#c7d8fb 40%,#f3d4ee 100%)', preview: 'linear-gradient(135deg,#dbe8ff,#f3d4ee)' }
 ];
 const WALL_CATS = [...new Set(WALLPAPERS.map(w => w.cat))];
 /* ---- Fonds d'écran partagés par la communauté (catégorie « Membres ») ----
@@ -1117,6 +1123,11 @@ const OS_SKINS = {
   winxp:   { name: 'Windows XP', icon: 'fab fa-windows', wall: 'os-winxp', theme: 'green', font: 'normal', cls: 'skin-winxp' },
   win98:   { name: 'Windows 98', icon: 'fab fa-windows', wall: 'os-win98', theme: 'blue', font: 'normal', cls: 'skin-win98' },
   ubuntu:  { name: 'Ubuntu Linux', icon: 'fab fa-ubuntu', wall: 'os-ubuntu', theme: 'orange', font: 'normal', cls: 'skin-ubuntu' },
+  fedora:  { name: 'Fedora (GNOME)', icon: 'fab fa-fedora', wall: 'os-fedora', theme: 'blue', font: 'normal', cls: 'skin-fedora' },
+  mint:    { name: 'Linux Mint', icon: 'fab fa-linux', wall: 'os-mint', theme: 'green', font: 'normal', cls: 'skin-mint' },
+  kali:    { name: 'Kali Linux', icon: 'fab fa-linux', wall: 'os-kali', theme: 'indigo', font: 'normal', cls: 'skin-kali' },
+  kde:     { name: 'KDE Plasma', icon: 'fab fa-linux', wall: 'os-kde', theme: 'cyan', font: 'normal', cls: 'skin-kde' },
+  chromeos:{ name: 'ChromeOS', icon: 'fab fa-chrome', wall: 'os-chromeos', theme: 'blue', font: 'normal', cls: 'skin-chromeos' },
   macos:   { name: 'macOS', icon: 'fab fa-apple', wall: 'os-macos', theme: 'cyan', font: 'normal', cls: 'skin-macos' }
 };
 function applySkin(id, restore = false) {
@@ -1148,6 +1159,7 @@ function applySkin(id, restore = false) {
   }
   /* les onglets de la barre des tâches et les logos d'apps s'adaptent au skin */
   try { renderTaskbar(); refreshSkinIcons(); } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('webos:skin', { detail: { id, restore } })); } catch (e) {}
 }
 /* restaure le skin sauvegardé au démarrage (sans écraser le fond choisi) */
 const savedSkin = LS.get('skin', '');
@@ -1171,6 +1183,11 @@ const SKIN_FRAMES = {
   winxp: `<rect x="1" y="1" width="22" height="22" rx="4.5" fill="#2f7fd0" stroke="#0d3a8f"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.4)"/>`,
   win7: `<rect x="1" y="1" width="22" height="22" rx="5" fill="#d6ecfa" stroke="#7ba7cc" stroke-width="1.4"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.65)"/>`,
   ubuntu: `<circle cx="12" cy="12" r="11" fill="#e95420"/>`,
+  fedora: `<rect x="1" y="1" width="22" height="22" rx="6" fill="#3c6eb4"/><rect x="1.8" y="1.8" width="20.4" height="20.4" rx="5.4" fill="none" stroke="rgba(255,255,255,.25)"/>`,
+  mint: `<rect x="1" y="1" width="22" height="22" rx="4" fill="#e9ecea" stroke="#9aa59d"/><path d="M1.6 15.5h20.8V19a3 3 0 0 1-3 3H4.6a3 3 0 0 1-3-3z" fill="#87cf3e"/>`,
+  kali: `<rect x="1" y="1" width="22" height="22" rx="3" fill="#10151f" stroke="#2a5bd7"/><path d="M1.5 21.4h21" stroke="#2a5bd7" stroke-width="1.6"/>`,
+  kde: `<circle cx="12" cy="12" r="11" fill="#3daee9"/><circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,.35)"/>`,
+  chromeos: `<circle cx="12" cy="12" r="11" fill="#ffffff" stroke="#dadce0"/>`,
   macos: `<rect x="1" y="1" width="22" height="22" rx="5.8" fill="#3b82f6"/><path d="M2.5 2.5c5-2 14-2 19 0v3.5c-6 1.6-13 1.6-19 0z" fill="rgba(255,255,255,.3)"/>`
 };
 const SKIN_COLORS = {
@@ -1178,10 +1195,15 @@ const SKIN_COLORS = {
   winxp: { M: '#ffffff', D: '#0d3a8f' },
   win7: { M: '#0d4f8a', D: '#ffffff' },
   ubuntu: { M: '#ffffff', D: '#772953' },
+  fedora: { M: '#ffffff', D: '#294172' },
+  mint: { M: '#2f6f2a', D: '#e9ecea' },
+  kali: { M: '#5b8cff', D: '#10151f' },
+  kde: { M: '#ffffff', D: '#1d6fa5' },
+  chromeos: { M: '#1a73e8', D: '#ffffff' },
   macos: { M: '#ffffff', D: '#1d4ed8' }
 };
 const SKIN_APP_ICONS = {};
-['win98', 'winxp', 'win7', 'ubuntu', 'macos'].forEach(sk => {
+['win98', 'winxp', 'win7', 'ubuntu', 'fedora', 'mint', 'kali', 'kde', 'chromeos', 'macos'].forEach(sk => {
   SKIN_APP_ICONS[sk] = {};
   Object.entries(SKIN_GLYPHS).forEach(([app, g]) => {
     SKIN_APP_ICONS[sk][app] = `<svg viewBox="0 0 24 24">${SKIN_FRAMES[sk]}<g transform="translate(0,1.2)">${g(SKIN_COLORS[sk].M, SKIN_COLORS[sk].D)}</g></svg>`;
@@ -1813,6 +1835,48 @@ const FRAMEABLE = ['wikipedia.org', 'wiktionary.org', 'bing.com', 'google.com', 
 const HEAVY_SITES = /^(discord\.com|canary\.discord\.com|ptb\.discord\.com|discord\.gg)$/;
 // Vrai proxy Ultraviolet (type service worker, comme les gros proxys) — hébergé sur ton GitHub, sans pub
 const WISP_PROXY = 'https://slowzy95.github.io/proxy/?url=';
+const SJ_PROXY = 'https://slowzy95.github.io/proxy/sj/go.html?url=';
+/* v35 — Moteurs de proxy : Scramjet (« SJ ») et Ultraviolet (« UV »), transports
+   libcurl ou Epoxy. Réglables dans Paramètres › Navigateur ; sinon plan automatique
+   avec repli sur les autres combinaisons (plus jamais « ouvre un vrai onglet »). */
+const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
+const PROXY_TRANSPORTS = { libcurl: 'libcurl', epoxy: 'Epoxy' };
+/* Sites qui ne fonctionnent bien qu'avec Ultraviolet (constaté en test) */
+const UV_ONLY_SITES = /^(bloxd\.io)$/;
+function proxyPrefs() {
+  const engine = LS.get('proxy_engine', 'sj');
+  const transport = LS.get('proxy_transport', 'libcurl');
+  return { engine: PROXY_ENGINES[engine] ? engine : 'sj', transport: PROXY_TRANSPORTS[transport] ? transport : 'libcurl' };
+}
+/* Liste ordonnée des tentatives pour une adresse : choix de l'utilisateur (ou
+   dernière combinaison qui a marché pour ce site), puis les autres serveurs
+   Wisp, puis l'autre moteur et l'autre transport. */
+function proxyPlan(u) {
+  let host = '';
+  try { host = new URL(u).hostname.replace(/^www\./, ''); } catch (e) {}
+  const p = proxyPrefs();
+  let first = { engine: p.engine, transport: p.transport, wisp: 0 };
+  const remembered = LS.getJSON('proxy_ok', {})[host];
+  if (LS.get('proxy_auto', '1') === '1') {
+    if (remembered && PROXY_ENGINES[remembered.engine] && PROXY_TRANSPORTS[remembered.transport]) first = { ...remembered, wisp: 0 };
+    else if (UV_ONLY_SITES.test(host)) first = { engine: 'uv', transport: 'epoxy', wisp: 0 };
+  }
+  const oEng = first.engine === 'sj' ? 'uv' : 'sj';
+  const oTr = first.transport === 'libcurl' ? 'epoxy' : 'libcurl';
+  const plan = [
+    first,
+    { engine: first.engine, transport: first.transport, wisp: 1 },
+    { engine: first.engine, transport: oTr, wisp: 0 },
+    { engine: oEng, transport: oEng === 'uv' ? 'epoxy' : 'libcurl', wisp: 0 },
+    { engine: oEng, transport: oEng === 'uv' ? 'libcurl' : 'epoxy', wisp: 1 }
+  ];
+  const seen = new Set();
+  return plan.filter(a => { const k = a.engine + a.transport + a.wisp; if (seen.has(k)) return false; seen.add(k); return true; });
+}
+function proxyFrameURL(u, a) {
+  const q = '&clean=1&wisp=' + a.wisp + '&transport=' + a.transport;
+  return (a.engine === 'sj' ? SJ_PROXY : WISP_PROXY) + encodeURIComponent(u) + q;
+}
 const PROXIES = [
   { make: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), headers: {} },
   { make: u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), headers: {} },
@@ -1866,6 +1930,18 @@ window.addEventListener('message', (e) => {
   if (e.data && e.data.wosNav && browserAPI) {
     try { browserAPI.navigate(browserAddress(e.data.wosNav), true, null, !!e.data.wosHeavy); }
     catch (err) { toast(err.message, 'fa-triangle-exclamation', 'text-amber-400'); }
+  }
+  if (e.data && e.data.wosRetry) {
+    try {
+      if (e.data.engine) LS.set('proxy_engine', e.data.engine === 'uv' ? 'uv' : 'sj');
+      if (e.data.engine) LS.set('proxy_auto', '0');
+      browserAPI.navigate(browserAddress(e.data.wosRetry), true, null, true);
+    } catch (err) {}
+    return;
+  }
+  if (e.data && e.data.wosSjUrl) {
+    try { browserAPI.syncUrl(e.data.wosSjUrl, e.data.title, e.source); } catch (err) {}
+    return;
   }
   /* « Ouvrir dans un vrai onglet » (sites lourds : Discord…) : on ouvre le proxy
      en plein écran dans un vrai onglet — plus fluide et plus stable. */
@@ -2156,6 +2232,7 @@ function initBrowser(body, rec) {
     google:    { name: 'Google', url: 'https://www.google.com/search?igu=1&q=' },
     ddglite:   { name: 'DuckDuckGo Lite', url: 'https://lite.duckduckgo.com/lite/?q=' },
     ddg:       { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
+    brave:     { name: 'Brave Search', url: 'https://search.brave.com/search?q=' },
     bing:      { name: 'Bing', url: 'https://www.bing.com/search?q=' },
     qwant:     { name: 'Qwant', url: 'https://www.qwant.com/?q=' },
     ecosia:    { name: 'Ecosia', url: 'https://www.ecosia.org/search?q=' }
@@ -2164,8 +2241,13 @@ function initBrowser(body, rec) {
     LS.set('engine', 'webos');
     LS.set('search_route_v31', '1');
   }
-  let curEngine = LS.get('engine', 'webos');
-  if (!SEARCH_ENGINES[curEngine]) curEngine = 'webos';
+  /* v35 : par défaut, DuckDuckGo via le proxy (vraies pages de résultats) */
+  if (LS.get('search_route_v35', '') !== '1') {
+    LS.set('engine', 'ddg');
+    LS.set('search_route_v35', '1');
+  }
+  let curEngine = LS.get('engine', 'ddg');
+  if (!SEARCH_ENGINES[curEngine]) curEngine = 'ddg';
 
   const normalize = (u) => {
     u = browserAddress(u);
@@ -2689,11 +2771,11 @@ function initBrowser(body, rec) {
       loadWebSearch(new URL(u).searchParams.get('q') || '', u);
       return;
     }
-    if (/(^|\.)(accounts\.google\.com|login\.microsoftonline\.com|login\.live\.com)$/.test(searchHost) || /\/(login|signin|oauth|authorize)(\/|$)/i.test(new URL(u).pathname)) {
+    if (!skipHeavy && /(^|\.)(accounts\.google\.com|login\.microsoftonline\.com|login\.live\.com)$/.test(searchHost)) {
       accountNotice(u);
       return;
     }
-    if (/^(google\.[a-z.]+|startpage\.com|(?:lite\.|html\.)?duckduckgo\.com|bing\.com|qwant\.com|ecosia\.[a-z.]+)$/.test(searchHost)) {
+    if (/^(google\.[a-z.]+|startpage\.com|(?:lite\.|html\.)?duckduckgo\.com|bing\.com|qwant\.com|ecosia\.[a-z.]+|search\.brave\.com)$/.test(searchHost)) {
       showYT(false);
       serviceNotice.querySelector('span').textContent = 'Si ce moteur reste bloqué, essaie la recherche simplifiée.';
       serviceNotice.hidden = false;
@@ -2847,15 +2929,22 @@ function initBrowser(body, rec) {
     stopButton.hidden = true;
     frame.onload = null;
     frame.removeAttribute('src');
-    frame.srcdoc = browserNoticeHTML('Le service distant ne répond pas',
-      'Les tentatives automatiques sont terminées. Le serveur, le site ou le réseau peut refuser la connexion. Réessaie avec Recharger ou ouvre le site dans un onglet réel. Un filtre réseau ne peut pas être réparé par cette page.', u);
+    const pl = proxyPlan(u);
+    frame.srcdoc = browserNoticeHTML('Ce site ne répond pas via le proxy',
+      pl.length + ' combinaisons (Scramjet / Ultraviolet, libcurl / Epoxy, 2 serveurs) ont été essayées automatiquement. Le site refuse peut-être les proxys, ou le réseau bloque les serveurs Wisp. Tu peux relancer les essais ou choisir une combinaison précise.', u, {
+        actions: [
+          { label: 'Réessayer depuis le début', msg: { wosRetry: u } },
+          { label: 'Forcer Scramjet', msg: { wosRetry: u, engine: 'sj' } },
+          { label: 'Forcer Ultraviolet', msg: { wosRetry: u, engine: 'uv' } }
+        ]
+      });
     setStatus('Échec du chargement — tentatives arrêtées');
   }
   function retryProxy(u, seq, targetFrame) {
     if (seq !== navSeq || frame !== targetFrame || !body.isConnected) return;
-    if (wispRetries >= 2) { proxyFailed(u); return; }
+    if (wispRetries >= proxyPlan(u).length - 1) { proxyFailed(u); return; }
     wispRetries++;
-    wispLoad(u, wispCurIdx === 0 ? 1 : 0);
+    wispLoad(u, wispRetries);
   }
   /* La page proxy signale la fin du chargement (postMessage 'loaded') : le
      serveur wisp répond. En cas d'échec ('error'), on bascule vite sur
@@ -2864,6 +2953,17 @@ function initBrowser(body, rec) {
     if (ev.source !== frame.contentWindow || ev.origin !== new URL(WISP_PROXY).origin || !ev.data || !ev.data.wosProxy) return;
     if (ev.data.url && ev.data.url !== wispCurUrl) return;
     if (ev.data.wosProxy === 'loaded') {
+      /* On retient la combinaison qui a marché pour ce site */
+      try {
+        const a = proxyPlan(wispCurUrl)[wispRetries] || proxyPlan(wispCurUrl)[0];
+        const h = new URL(wispCurUrl).hostname.replace(/^www\./, '');
+        const ok = LS.getJSON('proxy_ok', {});
+        if (!ok[h] || ok[h].engine !== a.engine || ok[h].transport !== a.transport) {
+          ok[h] = { engine: a.engine, transport: a.transport };
+          const keys = Object.keys(ok); if (keys.length > 80) delete ok[keys[0]];
+          LS.setJSON('proxy_ok', ok);
+        }
+      } catch (e) {}
       if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
       stopButton.hidden = true;
       setStatus('Le proxy signale un chargement terminé — contenu distant non vérifiable');
@@ -2887,24 +2987,28 @@ function initBrowser(body, rec) {
           setStatus('Vérification ou accès refusé : utiliser le site officiel ou changer de moteur');
         }
       }, delay)));
-    } else if (ev.data.wosProxy === 'error' && ev.data.url && wispWatch) {
-      clearTimeout(wispWatch); wispWatch = null;
+    } else if (ev.data.wosProxy === 'error' && ev.data.url) {
+      if (wispWatch) clearTimeout(wispWatch);
+      wispWatch = null;
       retryProxy(wispCurUrl, navSeq, frame);
     }
   };
   window.addEventListener('message', onProxyMessage);
-  function wispLoad(u, wispIdx = 0) {
+  function wispLoad(u, attempt = 0) {
     frame.onload = null;
     navSeq++;
-    wispCurIdx = wispIdx; wispCurUrl = u;
+    if (attempt === 0) wispRetries = 0;
+    const plan = proxyPlan(u);
+    const att = plan[Math.min(attempt, plan.length - 1)];
+    wispCurIdx = att.wisp; wispCurUrl = u;
     if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
     frame.removeAttribute('srcdoc');
     /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran
        &wisp=N : force un serveur wisp précis (0 ou 1) — utilisé par le minuteur de secours ci-dessous */
-    frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1&wisp=' + wispIdx;
+    frame.src = proxyFrameURL(u, att);
     stopButton.hidden = false;
-    setStatus('Connexion au proxy intégré… tentative ' + (wispRetries + 1) + '/3');
-    if (!wispIdx && !wispLoad._toastShown) { wispLoad._toastShown = true; try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {} }
+    setStatus('Connexion au proxy intégré (' + PROXY_ENGINES[att.engine] + ' · ' + PROXY_TRANSPORTS[att.transport] + ') — essai ' + (attempt + 1) + '/' + plan.length);
+    if (!attempt && !wispLoad._toastShown) { wispLoad._toastShown = true; try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via ' + PROXY_ENGINES[att.engine], 'fa-cloud', 'text-sky-400'); } catch (e) {} }
     /* MINUTEUR DE SECOURS : si le site charge à l'infini (serveur wisp
        lent ou bloqué — ex: Poki), on relance automatiquement le
        chargement sur l'AUTRE serveur wisp au bout de 20 s. */
@@ -2914,7 +3018,7 @@ function initBrowser(body, rec) {
       if (navSeq !== seq) return;
       wispWatch = null;
       retryProxy(u, seq, targetFrame);
-    }, 20000);
+    }, attempt === 0 ? 22000 : 16000);
   }
 
   async function proxyLoad(u, t0, fallback) {
@@ -3104,8 +3208,13 @@ function initBrowser(body, rec) {
     showYT(false);
     frame.onload = null;
     frame.removeAttribute('src');
-    frame.srcdoc = browserNoticeHTML('Connexion sur le site officiel',
-      'Pour protéger ton compte, connecte-toi dans un vrai onglet. Ce navigateur conserve lui-même la session selon les règles du service. WebOS ne copie ni mot de passe ni cookie de connexion.', u);
+    frame.srcdoc = browserNoticeHTML('Connexion à un compte',
+      'Les pages de connexion Google et Microsoft refusent souvent les proxys. Tu peux essayer ici, dans la fenêtre, via le proxy, ou te connecter sur le site officiel. WebOS ne copie ni mot de passe ni cookie de connexion.', u, {
+        actions: [
+          { label: 'Essayer ici (proxy)', msg: { wosRetry: u } },
+          { label: 'Site officiel (nouvel onglet)', msg: { wosReal: u } }
+        ]
+      });
     setStatus('Connexion : utiliser le site officiel');
   }
   const browserKeys = e => {
@@ -3119,6 +3228,19 @@ function initBrowser(body, rec) {
     navigate, openURL, newTab: u => { createTab(); if (u) navigate(u); }, accountNotice, currentUrl: () => history[hIndex],
     videoResults: () => tabs.find(t => t.id === activeTabId)?.youtube.results(),
     ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source),
+    setEngine: id => { if (SEARCH_ENGINES[id]) { curEngine = id; LS.set('engine', id); } },
+    /* Le proxy Scramjet signale une navigation interne (lien cliqué dans la page) :
+       on met à jour l'adresse et le titre de l'onglet sans recharger. */
+    syncUrl: (url, title, source) => {
+      const tab = tabs.find(t => t.frame.contentWindow === source);
+      if (!tab || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
+      tab.url = url;
+      let host = url;
+      try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) {}
+      tab.title = (typeof title === 'string' && title.trim() ? title.trim() : host).slice(0, 60);
+      if (tab.id === activeTabId) { urlInput.value = url; history[hIndex] = url; tab.history = history; }
+      renderTabs(); saveSession();
+    },
     readerDocument: () => {
       try {
         const u = new URL(history[hIndex]);
@@ -3154,7 +3276,13 @@ function initBrowser(body, rec) {
   };
 }
 
-function browserNoticeHTML(title, message, url) {
+function browserNoticeHTML(title, message, url, opts) {
+  if (opts && opts.actions) {
+    const btns = opts.actions.map((a, i) => '<button data-i="' + i + '" style="display:inline-block;margin:4px 6px 0 0;background:#2563eb;color:white;padding:10px 16px;border:0;border-radius:8px;font:inherit;cursor:pointer">' + escHtml(a.label) + '</button>').join('');
+    const data = JSON.stringify(opts.actions.map(a => a.msg)).replace(/</g, '\\u003c');
+    return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="margin:0;padding:24px;box-sizing:border-box;min-height:100vh;display:grid;place-content:center;background:#0f172a;color:#e2e8f0;font:14px/1.6 system-ui"><main style="max-width:560px"><h1 style="font-size:20px;margin:0 0 8px">' +
+      escHtml(title) + '</h1><p>' + escHtml(message) + '</p><p style="overflow-wrap:anywhere;color:#94a3b8">' + escHtml(url) + '</p><div>' + btns + '</div></main><scr' + 'ipt>var M=' + data + ';document.querySelectorAll("button").forEach(function(b){b.onclick=function(){parent.postMessage(M[+b.dataset.i],"*")}})</scr' + 'ipt></body></html>';
+  }
   return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="margin:0;padding:24px;box-sizing:border-box;min-height:100vh;display:grid;place-content:center;background:#0f172a;color:#e2e8f0;font:14px/1.6 system-ui"><main style="max-width:540px"><h1 style="font-size:22px">' +
     escHtml(title) + '</h1><p>' + escHtml(message) + '</p><p style="overflow-wrap:anywhere;color:#cbd5e1">' +
     escHtml(url) + '</p><a target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#2563eb;color:white;padding:10px 16px;border-radius:8px;text-decoration:none" href="' +
@@ -4077,13 +4205,13 @@ aiwHist.slice(-10).forEach(h => {
 function renderCursors() {
   const cur = LS.get('cursor', 'default');
   const presetCards = Object.entries(CURSOR_THEMES).map(([k, t]) => `
-    <button data-cursorpick="${k}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2 transition-transform hover:scale-105 ${k === cur ? 'ring-2 ring-sky-400' : ''}">
+    <button data-cursorpick="${k}" data-sname="${escHtml(t.name)}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2 transition-transform hover:scale-105 ${k === cur ? 'ring-2 ring-sky-400' : ''}">
       <img src="${_curSvg(t.arrow)}" alt="" class="w-9 h-9" style="image-rendering:auto">
       <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(t.name)}</span>
       ${k === cur ? '<span class="text-[9.5px] text-emerald-400 font-bold">ACTIF</span>' : ''}
     </button>`).join('');
   const memberCards = (MEMBER_CURSORS || []).map((c, i) => `
-    <div class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
+    <div data-sname="${escHtml(c.name || 'Souris')}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
       <img src="${escHtml(c.arrow)}" alt="" class="w-9 h-9" style="object-fit:contain">
       <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(c.name || 'Souris')}</span>
       <div class="flex gap-1.5">
@@ -4093,6 +4221,8 @@ function renderCursors() {
     </div>`).join('');
   return `
     <div class="overflow-y-auto h-full p-4 space-y-5">
+      <div class="relative"><input id="cur-q" class="field w-full" placeholder="Rechercher un curseur ou la souris d'un membre… (tape une lettre)" autocomplete="off" spellcheck="false" /></div>
+      <p id="cur-noresult" class="hidden text-slate-500 text-[11px] italic">Aucun curseur ne correspond à cette recherche.</p>
       <div>
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-wand-magic-sparkles mr-2 text-violet-400"></i>Curseurs proposés — cliquez pour appliquer</h3>
         <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">${presetCards}</div>
@@ -4125,11 +4255,25 @@ function renderCursors() {
 }
 function initCursors(body) {
   webos32.cursorPanel(body);
+  /* Recherche en direct (presets + souris des membres) */
+  const curQ = body.querySelector('#cur-q');
+  const applyCurFilter = () => {
+    const q = wosNorm(curQ ? curQ.value : '');
+    let shown = 0;
+    body.querySelectorAll('[data-sname]').forEach(el => {
+      const ok = !q || wosRankName(el.dataset.sname, q) < 9;
+      el.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    const nr = body.querySelector('#cur-noresult');
+    if (nr) nr.classList.toggle('hidden', !q || shown > 0);
+  };
+  if (curQ) wosSuggest(curQ, () => [...Object.values(CURSOR_THEMES).map(t => t.name), ...(MEMBER_CURSORS || []).map(c => c.name || '')], applyCurFilter);
   const refreshMembers = () => {
     const box = body.querySelector('#cursor-members');
     if (!box) return;
     box.innerHTML = (MEMBER_CURSORS || []).map((c, i) => `
-      <div class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
+      <div data-sname="${escHtml(c.name || 'Souris')}" class="glass-card rounded-xl p-3 flex flex-col items-center gap-2">
         <img src="${escHtml(c.arrow)}" alt="" class="w-9 h-9" style="object-fit:contain">
         <span class="text-[11px] text-slate-300 text-center leading-tight">${escHtml(c.name || 'Souris')}</span>
         <div class="flex gap-1.5">
@@ -4138,6 +4282,7 @@ function initCursors(body) {
         </div>
       </div>`).join('') || '<p class="text-slate-500 text-[11px]">Aucune souris de membre pour l\u2019instant — soyez le premier à en publier une !</p>';
     bindMemberBtns();
+    applyCurFilter();
   };
   const bindMemberBtns = () => {
     body.querySelectorAll('[data-membercur-apply]').forEach(b => b.addEventListener('click', () => {
@@ -4732,10 +4877,83 @@ function initMedia(body) {
 /* ============================================================
    APP : PARAMÈTRES
 ============================================================ */
+/* ============================================================
+   v35 — Recherche avec suggestions en direct (préfixe d'abord)
+============================================================ */
+function wosNorm(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function wosRankName(name, q) {
+  const x = wosNorm(name);
+  if (x.startsWith(q)) return 0;
+  if (x.split(/[^a-z0-9]+/).some(t => t && t.startsWith(q))) return 1;
+  return x.includes(q) ? 2 : 9;
+}
+/* Attache une liste de suggestions à un champ : « D » propose « DARK »… */
+function wosSuggest(input, getNames, onChange) {
+  if (!input || input._wosSuggest) return;
+  input._wosSuggest = true;
+  const host = input.parentElement;
+  if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const box = document.createElement('div');
+  box.className = 'wos-suggest';
+  box.style.cssText = 'position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:60;max-height:220px;overflow-y:auto;border-radius:12px;background:rgba(15,23,42,.98);border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 36px rgba(0,0,0,.5);display:none;padding:4px';
+  host.appendChild(box);
+  let items = [], sel = -1;
+  const hide = () => { box.style.display = 'none'; sel = -1; };
+  const paint = () => {
+    box.innerHTML = items.map((n, i) => `<div data-i="${i}" style="padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12px;${i === sel ? 'background:rgba(56,189,248,.25)' : ''}">${n.html}</div>`).join('');
+    box.style.display = items.length ? 'block' : 'none';
+  };
+  const compute = () => {
+    const q = wosNorm(input.value);
+    if (!q) { items = []; hide(); return; }
+    const seen = new Set();
+    const ranked = getNames().filter(n => n && !seen.has(n) && seen.add(n))
+      .map(n => ({ n, r: wosRankName(n, q) })).filter(o => o.r < 9)
+      .sort((a, b) => a.r - b.r || a.n.length - b.n.length || a.n.localeCompare(b.n)).slice(0, 8);
+    items = ranked.map(o => {
+      const k = wosNorm(o.n).indexOf(q);
+      const html = k >= 0 && wosNorm(o.n).length === o.n.length
+        ? escHtml(o.n.slice(0, k)) + '<b style="color:#7dd3fc">' + escHtml(o.n.slice(k, k + q.length)) + '</b>' + escHtml(o.n.slice(k + q.length))
+        : escHtml(o.n);
+      return { text: o.n, html };
+    });
+    sel = -1; paint();
+  };
+  const pick = i => { if (!items[i]) return; input.value = items[i].text; hide(); onChange(); };
+  input.addEventListener('input', () => { compute(); onChange(); });
+  input.addEventListener('focus', compute);
+  input.addEventListener('blur', () => setTimeout(hide, 160));
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); sel = (sel + 1) % items.length; paint(); }
+    else if (e.key === 'ArrowUp' && items.length) { e.preventDefault(); sel = (sel - 1 + items.length) % items.length; paint(); }
+    else if ((e.key === 'Tab' || e.key === 'Enter') && items.length && box.style.display !== 'none') { e.preventDefault(); pick(sel >= 0 ? sel : 0); }
+    else if (e.key === 'Escape') hide();
+  });
+  box.addEventListener('mousedown', e => {
+    const d = e.target.closest('[data-i]');
+    if (d) { e.preventDefault(); pick(+d.dataset.i); }
+  });
+}
+
 function renderSettings() {
   return `
     <div class="h-full overflow-y-auto p-5 space-y-6 text-[12.5px]">
       <section>
+        <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-globe mr-2 text-sky-400"></i>Navigateur &amp; proxy</h3>
+        <p class="text-slate-400 text-[11px] mb-3">Moteur du proxy, transport réseau et moteur de recherche. En mode automatique, le navigateur essaie tout seul les autres combinaisons si un site ne charge pas.</p>
+        <div class="text-[11px] text-slate-400 mb-1">Moteur du proxy</div>
+        <div class="flex flex-wrap gap-2 mb-3" id="st-px-engine"></div>
+        <div class="text-[11px] text-slate-400 mb-1">Transport</div>
+        <div class="flex flex-wrap gap-2 mb-3" id="st-px-transport"></div>
+        <div class="text-[11px] text-slate-400 mb-1">Moteur de recherche</div>
+        <div class="flex flex-wrap gap-2 mb-3" id="st-px-search"></div>
+        <label class="flex items-center gap-2 text-[11.5px] text-slate-300"><input type="checkbox" id="st-px-auto" class="accent-sky-500 w-4 h-4" /> Automatique : retenir ce qui marche pour chaque site et changer de combinaison en cas d'échec</label>
+      </section>
+
+      <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-mask mr-2 text-amber-400"></i>Camouflage d'onglet</h3>
         <p class="text-slate-400 text-[11px] mb-3">Change instantanément le titre et le favicon de l'onglet. Sauvegardé automatiquement.</p>
         <div class="flex flex-wrap gap-2 mb-3">
@@ -4797,6 +5015,7 @@ function renderSettings() {
       <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-image mr-2 text-sky-400"></i>Fond d'écran</h3>
         <p class="text-slate-400 text-[11px] mb-3">Fonds animés et images classés par catégorie — les images sont préchargées pour un changement instantané.</p>
+        <div class="relative mb-3"><input id="st-wall-q" class="field w-full" placeholder="Rechercher un fond ou le fond d'un membre… (tape « D » pour voir DARK)" autocomplete="off" spellcheck="false" /></div>
         <div class="flex flex-wrap gap-1.5 mb-3" id="st-wallcats"></div>
         <div class="grid grid-cols-3 gap-2.5 mb-3" id="st-walls"></div>
         <div class="flex gap-2">
@@ -4867,7 +5086,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v34 : publication fiable (file d’attente), onglets détachables en fenêtres, YouTube FR/EN, disposition du bureau sauvegardée.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v35 : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -4876,6 +5095,38 @@ function renderSettings() {
 
 function initSettings(body) {
   webos32.settings(body);
+  /* v35 — Navigateur & proxy */
+  (function initProxySettings() {
+    const engBox = body.querySelector('#st-px-engine'), trBox = body.querySelector('#st-px-transport');
+    const seBox = body.querySelector('#st-px-search'), autoBox = body.querySelector('#st-px-auto');
+    if (!engBox) return;
+    const SEARCH_CHOICES = { ddg: 'DuckDuckGo', brave: 'Brave', google: 'Google', ecosia: 'Ecosia', bing: 'Bing', startpage: 'Startpage', webos: 'Recherche simplifiée' };
+    const chips = (box, items, current, attr) => {
+      box.innerHTML = Object.entries(items).map(([id, name]) => `<button data-${attr}="${id}" class="chip ${id === current ? 'chip-on' : ''}">${name}</button>`).join('');
+    };
+    const render = () => {
+      const p = proxyPrefs();
+      chips(engBox, PROXY_ENGINES, p.engine, 'pxe');
+      chips(trBox, PROXY_TRANSPORTS, p.transport, 'pxt');
+      chips(seBox, SEARCH_CHOICES, LS.get('engine', 'ddg'), 'pxs');
+      autoBox.checked = LS.get('proxy_auto', '1') === '1';
+    };
+    body.addEventListener('click', e => {
+      const b = e.target.closest('[data-pxe],[data-pxt],[data-pxs]');
+      if (!b || !engBox.contains(b) && !trBox.contains(b) && !seBox.contains(b)) return;
+      if (b.dataset.pxe || b.dataset.pxt) LS.setJSON('proxy_ok', {});
+      if (b.dataset.pxe) { LS.set('proxy_engine', b.dataset.pxe); toast('Moteur du proxy : ' + PROXY_ENGINES[b.dataset.pxe], 'fa-cloud', 'text-sky-400'); }
+      if (b.dataset.pxt) { LS.set('proxy_transport', b.dataset.pxt); toast('Transport : ' + PROXY_TRANSPORTS[b.dataset.pxt], 'fa-network-wired', 'text-sky-400'); }
+      if (b.dataset.pxs) {
+        LS.set('engine', b.dataset.pxs);
+        try { browserAPI && browserAPI.setEngine(b.dataset.pxs); } catch (err) {}
+        toast('Moteur de recherche : ' + SEARCH_CHOICES[b.dataset.pxs], 'fa-magnifying-glass', 'text-sky-400');
+      }
+      render();
+    });
+    autoBox.addEventListener('change', () => { LS.set('proxy_auto', autoBox.checked ? '1' : '0'); });
+    render();
+  })();
   body.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     const p = CLOAK_PRESETS[+b.dataset.preset];
     applyCloak(p.title, p.icon);
@@ -4907,26 +5158,22 @@ function initSettings(body) {
     catsEl.innerHTML = ['Tous', ...WALL_CATS, 'Membres'].map(c => `<button data-cat="${c}" class="chip ${c === activeCat ? '!bg-sky-500 !text-white' : ''}">${c === 'Membres' ? '<i class="fa-solid fa-users text-[10px] mr-1"></i>' : ''}${c}</button>`).join('');
     catsEl.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => { activeCat = b.dataset.cat; renderWalls(); renderCats(); }));
   };
-  const renderWalls = () => {
-    /* Catégorie Membres : fonds publiés par la communauté, visibles par tous */
-    if (activeCat === 'Membres') {
-      wallsEl.innerHTML = MEMBER_WALLS.length ? MEMBER_WALLS.map(w => `
+  const wallsInput = body.querySelector('#st-wall-q');
+  const memberCard = w => `
         <button data-memberwall="${escHtml(w.url)}" class="rounded-xl overflow-hidden border-2 transition-all text-left border-white/10 hover:border-white/30">
           <div class="relative">
             <img src="${escHtml(w.url)}" class="w-full h-16 object-cover bg-slate-800" loading="lazy" alt="" onerror="this.style.display='none';var b=this.parentElement.querySelector('.wexp');if(b)b.classList.remove('hidden')">
             <span class="wexp hidden absolute top-1 right-1 text-[9px] font-bold bg-red-500/90 text-white px-1.5 py-0.5 rounded">expiré</span>
           </div>
           <div class="px-2 py-1.5 text-[10.5px] font-medium truncate"><i class="fa-solid fa-user text-[9px] text-slate-500 mr-1"></i>${escHtml(w.name || 'Fond de membre')}</div>
-        </button>`).join('') : '<div class="col-span-3 text-[11px] text-slate-500 italic py-4">Aucun fond partagé pour le moment — publiez le premier avec le bouton « Publier ».</div>';
-      wallsEl.querySelectorAll('[data-memberwall]').forEach(b => b.addEventListener('click', () => applyMemberWall(b.dataset.memberwall)));
-      return;
-    }
-    const list = activeCat === 'Tous' ? WALLPAPERS : WALLPAPERS.filter(w => w.cat === activeCat);
-    wallsEl.innerHTML = list.map(w => `
+        </button>`;
+  const builtinCard = w => `
       <button data-wall="${w.id}" class="rounded-xl overflow-hidden border-2 transition-all text-left ${w.id === current ? 'border-sky-400' : 'border-white/10 hover:border-white/30'}">
         ${w.type === 'image' ? `<img src="${w.url}" class="w-full h-16 object-cover" loading="lazy" alt="${w.name}">` : `<div class="w-full h-16" style="background:${w.preview || '#1e293b'}"></div>`}
         <div class="px-2 py-1.5 text-[10.5px] font-medium truncate">${w.name}</div>
-      </button>`).join('');
+      </button>`;
+  const bindWalls = () => {
+    wallsEl.querySelectorAll('[data-memberwall]').forEach(b => b.addEventListener('click', () => applyMemberWall(b.dataset.memberwall)));
     wallsEl.querySelectorAll('[data-wall]').forEach(b => b.addEventListener('click', () => {
       setWallpaperById(b.dataset.wall);
       toast('Fond d\u2019écran appliqué', 'fa-image', 'text-pink-400');
@@ -4935,6 +5182,29 @@ function initSettings(body) {
         : 'rounded-xl overflow-hidden border-2 transition-all text-left border-white/10 hover:border-white/30');
     }));
   };
+  const wallNames = () => [...WALLPAPERS.map(w => w.name), ...MEMBER_WALLS.map(w => w.name || '').filter(Boolean)];
+  const renderWalls = () => {
+    /* Recherche : fonds intégrés ET fonds des membres, par nom (préfixe d'abord) */
+    const q = wosNorm(wallsInput ? wallsInput.value : '');
+    if (q) {
+      const rank = n => { const x = wosNorm(n); return x.startsWith(q) ? 0 : x.split(/\s+/).some(t => t.startsWith(q)) ? 1 : x.includes(q) ? 2 : 9; };
+      const b = WALLPAPERS.filter(w => rank(w.name) < 9 || wosNorm(w.cat) === q).sort((x, y) => rank(x.name) - rank(y.name));
+      const m = MEMBER_WALLS.filter(w => rank(w.name || '') < 9).sort((x, y) => rank(x.name || '') - rank(y.name || ''));
+      wallsEl.innerHTML = (b.map(builtinCard).join('') + m.map(memberCard).join('')) || '<div class="col-span-3 text-[11px] text-slate-500 italic py-4">Aucun fond ne correspond à « ' + escHtml(wallsInput.value) + ' ».</div>';
+      bindWalls();
+      return;
+    }
+    /* Catégorie Membres : fonds publiés par la communauté, visibles par tous */
+    if (activeCat === 'Membres') {
+      wallsEl.innerHTML = MEMBER_WALLS.length ? MEMBER_WALLS.map(memberCard).join('') : '<div class="col-span-3 text-[11px] text-slate-500 italic py-4">Aucun fond partagé pour le moment — publiez le premier avec le bouton « Publier ».</div>';
+      bindWalls();
+      return;
+    }
+    const list = activeCat === 'Tous' ? WALLPAPERS : WALLPAPERS.filter(w => w.cat === activeCat);
+    wallsEl.innerHTML = list.map(builtinCard).join('');
+    bindWalls();
+  };
+  if (wallsInput) wosSuggest(wallsInput, wallNames, renderWalls);
   renderCats();
   renderWalls();
   /* Récupère les fonds partagés par la communauté + retire ceux dont le
