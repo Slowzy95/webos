@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v20</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v21</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -1602,7 +1602,9 @@ function windowRects(skipEl) {
   const desk = layer.getBoundingClientRect();
   const out = [];
   windows.forEach((w2) => {
-    if (w2.el === skipEl || w2.minimized || w2.maximized) return;
+    /* une fenêtre maximisée OCCUPE tout l'écran : elle doit bloquer les autres
+       (sinon sur mobile tout s'empile dessus en plein écran) */
+    if (w2.el === skipEl || w2.minimized) return;
     const r = w2.el.getBoundingClientRect();
     out.push({ l: r.left - desk.left, t: r.top - desk.top, r: r.right - desk.left, b: r.bottom - desk.top });
   });
@@ -1624,8 +1626,9 @@ function findFreeSpot(w, h) {
       if (!hits(tx, ty)) return { x: wSnap(tx), y: wSnap(ty) };
     }
   }
-  /* 3) écran trop rempli : on accepte la cascade */
-  return { x, y };
+  /* 3) écran trop rempli (ou trop petit, téléphone) : PAS de superposition —
+     l'appelant rangera tout en carrés (retileAll) */
+  return null;
 }
 /* ANTI-SUPERPOSITION pendant le déplacement : la fenêtre glisse autour des autres
    au lieu de les recouvrir (poussée sur le côté le plus proche) */
@@ -1673,7 +1676,43 @@ function gridDrop(x, y, w, h, selfEl, desk) {
       if (fits(gx + dx, gy + dy)) return { x: (gx + dx) * WGRID, y: (gy + dy) * WGRID };
     }
   }
-  return { x, y };
+  /* AUCUNE case libre : l'appelant rangera tout en carrés (retileAll) */
+  return null;
+}
+/* MISE EN CARRÉS (tiling) : quand l'écran est trop petit (téléphone) ou trop
+   rempli pour placer une fenêtre sans en recouvrir une autre, TOUTES les
+   fenêtres se rangent en grille — chaque appli a son carré, comme le demande
+   l'utilisateur : « si y a une app sur ce carré, pas possible d'en mettre une
+   autre ici ». */
+function retileAll() {
+  const desk = layer.getBoundingClientRect();
+  const vis = [...windows.values()].filter(w => !w.minimized);
+  if (!vis.length) return;
+  const n = vis.length;
+  /* colonnes selon la largeur ; les rangées s'étendent autant que nécessaire :
+     chaque appli garde SON carré, même si les carrés deviennent petits */
+  const maxCols = Math.max(1, Math.floor((desk.width - 16) / 340));
+  const cols = Math.min(Math.ceil(Math.sqrt(n)), maxCols);
+  const rows = Math.ceil(n / cols);
+  const cw = desk.width / cols, ch = desk.height / rows;
+  vis.forEach((w, i) => {
+    const c = i % cols, r = Math.floor(i / cols);
+    /* une fenêtre agrandie redevient normale : sinon elle garde tout l'écran */
+    if (w.maximized) {
+      w.el.classList.remove('maximized');
+      w.maximized = false;
+      const bi = w.el.querySelector('[data-act="max"] i');
+      if (bi) bi.className = 'fa-regular fa-square';
+    }
+    const ww = Math.max(240, Math.floor(cw) - 8), hh = Math.max(70, Math.floor(ch) - 8);
+    w.el.style.transition = 'left .18s ease, top .18s ease, width .18s ease, height .18s ease';
+    w.el.style.left = Math.floor(c * cw + 4) + 'px';
+    w.el.style.top = Math.floor(r * ch + 4) + 'px';
+    w.el.style.width = ww + 'px';
+    w.el.style.height = hh + 'px';
+    w.el.style.display = 'flex';
+    setTimeout(() => { w.el.style.transition = ''; }, 200);
+  });
 }
 function openApp(appId) {
   if (windows.has(appId)) {
@@ -1686,7 +1725,9 @@ function openApp(appId) {
   const desk = layer.getBoundingClientRect();
   const w = Math.min(app.w, desk.width - 24);
   const h = Math.min(app.h, desk.height - 24);
-  const spot = findFreeSpot(w, h);
+  let spot = findFreeSpot(w, h);
+  const needsTile = !spot; /* écran trop petit/rempli : tout se rangera en carrés */
+  if (!spot) spot = { x: wSnap(8), y: wSnap(8) };
   const x = spot.x;
   const y = spot.y;
 
@@ -1743,8 +1784,11 @@ function openApp(appId) {
       if (ic.title === app.title) { ic.classList.add('launch'); setTimeout(() => ic.classList.remove('launch'), 550); }
     });
   }
-  // Sur petit écran (mobile), les fenêtres s'ouvrent maximisées pour rester utilisables
-  if (desk.width < 720) toggleMaximize(appId);
+  // Sur petit écran (mobile) : la fenêtre s'ouvre maximisée SI elle est seule.
+  // Dès qu'une autre appli est déjà ouverte, on range TOUT en carrés (tiling) :
+  // chaque appli a son carré, impossible d'en recouvrir une autre.
+  if (desk.width < 720 && !needsTile) toggleMaximize(appId);
+  if (needsTile) retileAll();
 }
 
 /* Recharge une application en conservant sa position et sa taille */
@@ -1806,7 +1850,8 @@ function toggleMinimize(appId) {
     const desk = layer.getBoundingClientRect();
     const r = w.el.getBoundingClientRect();
     const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
-    w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px';
+    if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
+    else retileAll(); /* aucune case libre : tout se range en carrés */
     if (animated) { w.el.classList.add('win-unmin'); setTimeout(() => w.el.classList.remove('win-unmin'), 260); }
     focusWindow(appId);
   }
@@ -1840,7 +1885,8 @@ function toggleMaximize(appId) {
       if (!w.maximized) {
         const r = w.el.getBoundingClientRect();
         const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
-        w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px';
+        if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
+        else retileAll(); /* aucune case libre : tout se range en carrés */
       }
     }, 210);
   }
@@ -1923,10 +1969,14 @@ function makeDraggable(el, appId) {
            appliqué : impossible de superposer deux applis. */
         const r2 = el.getBoundingClientRect();
         const drop = gridDrop(r2.left - desk.left, r2.top - desk.top, r2.width, r2.height, el, desk);
-        el.style.transition = 'left .16s ease, top .16s ease';
-        el.style.left = drop.x + 'px';
-        el.style.top = drop.y + 'px';
-        setTimeout(() => { el.style.transition = ''; }, 190);
+        if (drop) {
+          el.style.transition = 'left .16s ease, top .16s ease';
+          el.style.left = drop.x + 'px';
+          el.style.top = drop.y + 'px';
+          setTimeout(() => { el.style.transition = ''; }, 190);
+        } else {
+          retileAll(); /* aucune case libre : tout se range en carrés */
+        }
       }
     };
     document.addEventListener('pointermove', move);
@@ -1959,11 +2009,13 @@ function makeResizable(el, rec) {
       const overlaps = rects.some(o => !(r.left - desk.left + r.width <= o.l + 4 || r.left - desk.left >= o.r - 4 || r.top - desk.top + r.height <= o.t + 4 || r.top - desk.top >= o.b - 4));
       if (overlaps) {
         const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, el, desk);
-        if (drop.x !== r.left - desk.left || drop.y !== r.top - desk.top) {
+        if (drop && (drop.x !== r.left - desk.left || drop.y !== r.top - desk.top)) {
           el.style.transition = 'left .16s ease, top .16s ease';
           el.style.left = drop.x + 'px';
           el.style.top = drop.y + 'px';
           setTimeout(() => { el.style.transition = ''; }, 190);
+        } else if (!drop) {
+          retileAll(); /* aucune case libre : tout se range en carrés */
         }
       }
     };
@@ -3479,29 +3531,47 @@ function aiwRefreshSetUI() {
   sel.innerHTML = Object.entries(AI_PROVIDERS).map(([k, p]) => `<option value="${k}" ${k === aiProvider ? 'selected' : ''}>${p.label}</option>`).join('');
   const p = AI_PROVIDERS[aiProvider];
   mdl.innerHTML = p.models.map(m => `<option value="${m}" ${m === LS.get('ai_model_' + aiProvider, p.models[0]) ? 'selected' : ''}>${m}</option>`).join('');
-  aiw.querySelector('#aiw-keyhint').textContent = (p.free ? 'Gratuit, sans clé' : (apiKeys[aiProvider] ? 'Clé enregistrée ✓' : 'Clé requise (app IA)'));
+  aiw.querySelector('#aiw-keyhint').textContent = (p.nokey ? 'Gratuit, sans clé' : (apiKeys[aiProvider] ? 'Clé enregistrée ✓' : 'Clé requise (voir app IA)'));
 }
 
-/* --- requête vers le fournisseur choisi --- */
+/* --- requête vers le fournisseur choisi (même logique que l'app IA, qui
+   fonctionne avec les clés enregistrées : Google via x-goog-api-key,
+   OpenRouter sur son endpoint dédié, les autres en format OpenAI) --- */
 async function aiwRequest(messages) {
   const prov = aiProvider;
   const key = (apiKeys[prov] || '').trim();
   const model = LS.get('ai_model_' + prov, AI_PROVIDERS[prov].models[0]) || AI_PROVIDERS[prov].models[0];
   if (prov === 'google') {
     const sys = messages.find(m => m.role === 'system');
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemInstruction: sys ? { parts: [{ text: sys.content }] } : undefined, contents: messages.filter(m => m.role !== 'system').map(x => ({ role: x.role === 'assistant' ? 'model' : 'user', parts: [{ text: x.content }] })) }) });
-    const j = await r.json();
-    if (!r.ok) throw new Error((j.error && j.error.message) || 'Erreur ' + r.status);
-    return j.candidates[0].content.parts[0].text;
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: sys ? { parts: [{ text: sys.content }] } : undefined,
+        contents: messages.filter(m => m.role !== 'system').map(x => ({ role: x.role === 'assistant' ? 'model' : 'user', parts: [{ text: x.content }] }))
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
+    return (data.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('\n') || '(réponse vide)';
+  }
+  if (prov === 'openrouter') {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, models: [model, ...AI_PROVIDERS.openrouter.models.filter(m => m !== model)].slice(0, 3), messages })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
+    return data.choices?.[0]?.message?.content || '(réponse vide)';
   }
   const headers = { 'Content-Type': 'application/json' };
   if (key) headers.Authorization = 'Bearer ' + key;
-  const r = await fetch(AI_PROVIDERS[prov].endpoint, { method: 'POST', headers, body: JSON.stringify({ model, messages }) });
-  const t = await r.text();
-  let j; try { j = JSON.parse(t); } catch (e) { throw new Error(t.slice(0, 200)); }
-  if (!r.ok) throw new Error((j.error && (j.error.message || j.error)) || 'Erreur ' + r.status);
-  return j.choices[0].message.content;
+  const res = await fetch(AI_PROVIDERS[prov].endpoint, { method: 'POST', headers, body: JSON.stringify({ model, messages }) });
+  const t = await res.text();
+  let data; try { data = JSON.parse(t); } catch (e) { throw new Error(t.slice(0, 200)); }
+  if (!res.ok) throw new Error(data.error?.message || 'Erreur ' + res.status);
+  return data.choices[0].message.content;
 }
 
 function aiwParseJson(text) {
@@ -4401,7 +4471,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v20 — images des curseurs réparées dans la galerie, badge de version dans le menu Démarrer (vérifie le cache avec Ctrl+Shift+R), anti-superposition aussi au redimensionnement, Discord ouvert automatiquement dans un vrai onglet via le proxy, nouvel onglet (Poki, Wikipédia…) coloré par le thème, choix de l'IA dans le widget Contrôle PC, agrandir/réduire animé, onglets déplaçables</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v21 — FINI la superposition : sur téléphone les applis s'ouvrent en PLEIN ÉCRAN si elles sont seules, sinon TOUT se range en carrés (chaque appli a son carré) ; correctif du widget Contrôle PC (mêmes endpoints et clés que l'app IA, OpenRouter et Gemini réparés)</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
