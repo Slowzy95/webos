@@ -110,6 +110,7 @@ body[class*="skin-"] #desktop-welcome { display:none; }
   #br-boost,#br-fs { display:none; }
   #br-pin-current { height:28px; width:25px; }
   #gh-root>.grid,#gh-root>div>.grid,#mh-grid,#mh-free-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #gh-platforms,#mh-grid,#mh-free-grid { grid-template-columns:minmax(0,1fr)!important; }
   .has-shortcut { padding-left:10px!important; }
   .has-shortcut .btn { font-size:10px; padding-left:7px!important; padding-right:7px!important; }
   #start-menu { padding:16px; }
