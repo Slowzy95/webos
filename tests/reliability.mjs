@@ -71,7 +71,7 @@ try {
   assert.equal(await page.locator('#aiwidget').isVisible(), false);
   await open('Navigateur');
   assert.match(await page.locator('#br-frames > iframe').first().getAttribute('srcdoc'), /Nouvel onglet/);
-  await page.locator('#br-url').fill('Google');
+  await page.locator('#br-url').fill('https://www.google.com/search?q=fixture');
   await page.locator('#br-url').press('Enter');
   assert.match(await page.locator('#br-frames > iframe').first().getAttribute('src'), /\/proxy\/\?url=/);
   const popupPromise = page.waitForEvent('popup');

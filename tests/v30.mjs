@@ -16,6 +16,7 @@ await context.addInitScript(origin => {
   localStorage.setItem('webos_customapps', JSON.stringify([{ id: 'legacy-test', title: 'Mon ancien raccourci', url: 'https://example.org/', emoji: '' }]));
 }, new URL(url).origin);
 let proxyRequests = [];
+await context.route('https://r.jina.ai/**', route => route.fulfill({contentType:'text/plain', body:'### [Search fixture](https://example.org/)\n\nA deterministic result for the new default reader.\n\n[https://example.org/](https://example.org/)'}));
 await context.route('https://slowzy95.github.io/proxy/**', async route => {
   const requested = new URL(route.request().url());
   proxyRequests.push(requested.searchParams.get('url'));
@@ -67,11 +68,11 @@ try {
   await home.getByRole('textbox', { name: 'Rechercher ou saisir une adresse' }).fill('test recherche');
   await home.getByRole('button', { name: 'Lancer la recherche' }).click();
   await page.waitForFunction(() => document.querySelector('#br-url').value.includes('test%20recherche'));
-  assert.match(await page.locator('#br-frames>iframe').first().getAttribute('src'), /\/proxy\/\?url=/);
+  await page.frameLocator('#br-frames>iframe').locator('.result').first().waitFor();
   const popupEvent = page.waitForEvent('popup');
   await page.locator('#br-official').click();
   const official = await popupEvent;
-  assert.match(official.url(), /startpage/);
+  assert.match(official.url(), /bing\.com/);
   await official.close();
   console.log('PASS new-tab search, app shortcuts, dual pinning, menu keyboard and official tab');
 
@@ -144,7 +145,7 @@ try {
   await page.locator('#st-export').click();
   const download = await downloadEvent;
   const data = JSON.parse(await fs.readFile(await download.path(), 'utf8'));
-  assert.equal(data.version, 30);
+  assert.equal(data.version, 31);
   assert.equal(data.data.webos_keys, undefined);
   assert.ok(data.data.webos_shortcuts_v30);
   await page.locator('#st-forget-tabs').click();

@@ -333,7 +333,7 @@
       <p>Le thème, les fonds d’écran, tes raccourcis et les clés déjà saisies restent dans ce navigateur. Les clés ne sont pas ajoutées au code du site.</p>
       <label><input id="st-remember-tabs" type="checkbox" ${LS.get('remember_tabs', '1') === '1' ? 'checked' : ''}> Retrouver mes onglets à la réouverture du navigateur WebOS</label>
       <p class="storage-note">Comptes YouTube, TikTok, Discord : utilise le site officiel pour te connecter. Dans le menu + d’un raccourci, active « Mes raccourcis en onglet officiel » pour retrouver ce même site à chaque ouverture. Leur session dépend du navigateur, des cookies et des règles du service. Une session du proxy n’est pas la même que celle de l’onglet officiel. WebOS ne sauvegarde pas les mots de passe et ne copie pas les cookies.</p>
-      <div class="storage-actions"><button class="btn btn-ghost" id="st-forget-tabs"><i class="fa-solid fa-clock-rotate-left"></i> Oublier les onglets enregistrés</button><button class="btn btn-blue" id="st-fluent-wall"><i class="fa-solid fa-wand-magic-sparkles"></i> Appliquer le style v30</button></div>
+      <div class="storage-actions"><button class="btn btn-ghost" id="st-forget-tabs"><i class="fa-solid fa-clock-rotate-left"></i> Oublier les onglets enregistrés</button><button class="btn btn-blue" id="st-fluent-wall"><i class="fa-solid fa-wand-magic-sparkles"></i> Appliquer le style Windows 11</button></div>
       <small>La navigation privée, l’effacement des données ou un autre appareil ne conservent pas forcément ces réglages. La sauvegarde exportée n’inclut pas les clés API.</small>`;
     root.firstElementChild.prepend(panel);
     panel.querySelector('#st-remember-tabs').onchange = e => {
@@ -348,8 +348,8 @@
     };
     panel.querySelector('#st-fluent-wall').onclick = () => {
       applySkin('win11');
-      setWallpaperById('fluent-v30');
-      toast('Style Windows 11 et fond v30 appliqués', 'fab fa-windows', 'text-sky-400');
+      setWallpaperById('bloom');
+      toast('Style Windows 11 et fond Bloom appliqués', 'fab fa-windows', 'text-sky-400');
     };
   }
 
@@ -362,7 +362,7 @@
       </style></head><body><main><div class="eyebrow"><span class="dot"></span> Navigateur WebOS</div><h1>Qu’est-ce qu’on explore ?</h1><p>Une recherche, un jeu, une vidéo. Tout commence ici.</p><form id="home-search"><span aria-hidden="true" style="font-size:20px;color:#8ea5bf">⌕</span><input id="home-query" aria-label="Rechercher ou saisir une adresse" placeholder="Rechercher sur le Web ou saisir une adresse" autocomplete="off"><button aria-label="Lancer la recherche" title="Rechercher">→</button></form><div class="section"><span>À portée de clic</span><span>Le + ajoute une app à ton espace</span></div><div class="grid">${links.map(s => {
       const host = new URL(s.url).hostname;
       return `<div class="tile"><button class="open" data-open="${escHtml(s.url)}"><span class="logo"><span>${escHtml(s.title[0])}</span><img src="${escHtml(brandImg(host, 64))}" alt="" onerror="this.remove()"></span><span>${escHtml(s.title)}</span></button><button class="pin" data-pin="${escHtml(s.url)}" data-title="${escHtml(s.title)}" aria-label="Épingler ${escHtml(s.title)}" title="Ajouter au bureau ou à la barre des tâches">+</button></div>`;
-    }).join('')}</div><div class="note"><div><strong>Ton navigateur, tes repères.</strong><br>Les onglets et raccourcis sont mémorisés si le stockage local est autorisé.</div><div class="route"><span class="key">Ctrl</span> + <span class="key">L</span> adresse &nbsp; <span class="key">Ctrl</span> + <span class="key">T</span> onglet</div></div><p style="font-size:9px;margin-top:18px;color:#75899f">Le proxy ne garantit pas l’absence de CAPTCHA. Pour ton compte, utilise le bouton « Site officiel ».</p></main><scr` + `ipt>${script}</scr` + 'ipt></body></html>';
+    }).join('')}</div><div class="note"><div><strong>Ton navigateur, tes repères.</strong><br>Les onglets et raccourcis sont mémorisés si le stockage local est autorisé.</div><div class="route"><span class="key">Ctrl</span> + <span class="key">L</span> adresse &nbsp; <span class="key">Ctrl</span> + <span class="key">T</span> onglet</div></div><p style="font-size:11px;margin-top:18px;color:#a5b6cb">Par défaut, recherche simplifiée : ta requête est envoyée à Bing via Jina Reader, sans compte ni clé API. Les autres moteurs restent au choix. Le proxy ne garantit pas l’absence de CAPTCHA ; utilise « Site officiel » pour tes comptes.</p></main><scr` + `ipt>${script}</scr` + 'ipt></body></html>';
   };
 
   const searchButton = document.createElement('button');

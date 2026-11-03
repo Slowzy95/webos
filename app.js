@@ -129,7 +129,7 @@ function toast(msg, icon = 'fa-circle-check', color = 'text-emerald-400') {
   t.className = 'toast';
   t.innerHTML = `<i class="fa-solid ${icon} ${color}"></i><span>${msg}</span>`;
   document.getElementById('toasts').appendChild(t);
-  setTimeout(() => { t.style.transition = 'opacity .3s, transform .3s'; t.style.opacity = '0'; t.style.transform = 'translateX(30px)'; }, 2600);
+  setTimeout(() => { t.style.transition = 'opacity .3s, transform .3s'; t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; }, 2600);
   setTimeout(() => t.remove(), 3000);
 }
 
@@ -485,7 +485,7 @@ const WINXP_SVG = `<svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid sl
 
 const WALLPAPERS = [
   { id: 'fluent-v30', name: 'Fluent v30', cat: 'Système', type: 'image', url: 'walls/fluent-v30.webp', preview: 'linear-gradient(125deg,#071126,#174aa1,#4fbdff)' },
-  { id: 'bloom',   name: 'Bloom (Windows 11)', cat: 'Système', type: 'svg',    svg: BLOOM_SVG, preview: 'radial-gradient(circle at 50% 45%, #123a7e, #040b22)' },
+  { id: 'bloom',   name: 'Bloom (Windows 11)', cat: 'Système', type: 'image', url: 'walls/original-win11.webp', preview: 'radial-gradient(circle at 50% 45%, #123a7e, #040b22)' },
   { id: 'aurora',  name: 'Aurora (animé)',   cat: 'Système', type: 'css',    css: 'linear-gradient(140deg,#0b1120 0%,#101a33 55%,#0b1120 100%)', blobs: true,  preview: 'linear-gradient(140deg,#0b1120,#1e3a8a)' },
   { id: 'neon',    name: 'Néon (animé)',     cat: 'Système', type: 'css',    css: 'linear-gradient(270deg,#0f172a,#312e81,#0f172a,#4c1d95,#0f172a)', anim: true, preview: 'linear-gradient(135deg,#312e81,#4c1d95)' },
   { id: 'stars',   name: 'Étoiles (animé)',  cat: 'Espace', type: 'canvas', anim: 'stars',  preview: 'radial-gradient(circle at 30% 30%, #1e293b, #020617)' },
@@ -538,9 +538,9 @@ const WALLPAPERS = [
   { id: 'day-arc',    name: 'Arc-en-ciel doux (animé)', cat: 'Clair', type: 'css', css: 'linear-gradient(270deg,#fbcfe8,#fed7aa,#fef3c7,#d1fae5,#bfdbfe,#fbcfe8)', anim: true, preview: 'linear-gradient(135deg,#fed7aa,#d1fae5)' },
   { id: 'day-blueprint', name: 'Bleu papier',   cat: 'Clair', type: 'css', css: 'linear-gradient(160deg,#dbeafe 0%,#e0f2fe 60%,#f0f9ff 100%)', preview: 'linear-gradient(160deg,#dbeafe,#f0f9ff)' },
   /* ---- Fonds des skins système (catégorie OS) ---- */
-  { id: 'os-win10', name: 'Windows 10', cat: 'OS', type: 'css', css: 'radial-gradient(circle at 50% 35%, #2a6fb5 0%, #0f3a6d 55%, #081c33 100%)', preview: 'radial-gradient(circle at 50% 35%, #2a6fb5, #081c33)' },
-  { id: 'os-win7',  name: 'Windows 7',  cat: 'OS', type: 'css', css: 'linear-gradient(180deg,#0e4a72 0%,#2f86b0 55%,#bfe3f2 100%)', preview: 'linear-gradient(180deg,#0e4a72,#bfe3f2)' },
-  { id: 'os-winxp', name: 'Windows XP', cat: 'OS', type: 'svg', svg: WINXP_SVG, preview: 'linear-gradient(180deg,#2f82d4,#5da944)' },
+  { id: 'os-win10', name: 'Windows 10 · Hero', cat: 'OS', type: 'image', url: 'walls/original-win10.webp', preview: '#0a3b76' },
+  { id: 'os-win7',  name: 'Windows 7 · Harmony', cat: 'OS', type: 'image', url: 'walls/original-win7.webp', preview: '#1b7ac0' },
+  { id: 'os-winxp', name: 'Windows XP · Bliss', cat: 'OS', type: 'image', url: 'walls/original-winxp.webp', preview: '#78ad3f' },
   { id: 'os-win98', name: 'Windows 98', cat: 'OS', type: 'css', css: '#008080', preview: '#008080' },
   { id: 'os-ubuntu', name: 'Ubuntu',    cat: 'OS', type: 'css', css: 'linear-gradient(160deg,#2c001e 0%,#772953 70%,#5e2750 100%)', preview: 'linear-gradient(160deg,#2c001e,#772953)' },
   { id: 'os-macos', name: 'macOS',     cat: 'OS', type: 'css', css: 'linear-gradient(180deg,#0f2b46 0%,#2c5d8f 55%,#e8a87c 100%)', preview: 'linear-gradient(180deg,#0f2b46,#e8a87c)' }
@@ -1025,7 +1025,12 @@ document.getElementById('tb-clock').addEventListener('click', () => {
   }, 1000);
 });
 
-setWallpaperById(LS.get('wall', 'fluent-v30'));
+if (LS.get('windows_assets_v31', '') !== '1') {
+  if (!LS.get('wall', '') || (LS.get('wall', '') === 'fluent-v30' && LS.get('skin', 'win11') === 'win11')) LS.set('wall', 'bloom');
+  LS.set('windows_assets_v31', '1');
+}
+document.body.dataset.os = LS.get('skin', 'win11') || 'win11';
+setWallpaperById(LS.get('wall', 'bloom'));
 if (LS.get('mcstyle', '0') === '1') document.body.classList.add('mc');
 const savedFont = LS.get('font', 'normal');
 if (savedFont !== 'normal') { const f = { mc: 'mc', vt323: 'font-vt323', silkscreen: 'font-silkscreen', pixelify: 'font-pixelify', jersey: 'font-jersey' }[savedFont]; if (f) document.body.classList.add(f); }
@@ -1037,11 +1042,11 @@ if (savedTheme !== 'blue') document.body.classList.add('theme-' + savedTheme);
    fond d'écran, couleurs, police) — Windows 10/7/XP/98, Ubuntu, macOS.
 ============================================================ */
 const OS_SKINS = {
-  win11:   { name: 'Windows 11', icon: 'fab fa-windows', wall: 'fluent-v30', theme: 'blue', font: 'normal', cls: '' },
+  win11:   { name: 'Windows 11', icon: 'fab fa-windows', wall: 'bloom', theme: 'blue', font: 'normal', cls: '' },
   win10:   { name: 'Windows 10', icon: 'fab fa-windows', wall: 'os-win10', theme: 'blue', font: 'normal', cls: 'skin-win10' },
   win7:    { name: 'Windows 7', icon: 'fab fa-windows', wall: 'os-win7', theme: 'cyan', font: 'normal', cls: 'skin-win7' },
   winxp:   { name: 'Windows XP', icon: 'fab fa-windows', wall: 'os-winxp', theme: 'green', font: 'normal', cls: 'skin-winxp' },
-  win98:   { name: 'Windows 98', icon: 'fab fa-windows', wall: 'os-win98', theme: 'blue', font: 'vt323', cls: 'skin-win98' },
+  win98:   { name: 'Windows 98', icon: 'fab fa-windows', wall: 'os-win98', theme: 'blue', font: 'normal', cls: 'skin-win98' },
   ubuntu:  { name: 'Ubuntu Linux', icon: 'fab fa-ubuntu', wall: 'os-ubuntu', theme: 'orange', font: 'normal', cls: 'skin-ubuntu' },
   macos:   { name: 'macOS', icon: 'fab fa-apple', wall: 'os-macos', theme: 'cyan', font: 'normal', cls: 'skin-macos' }
 };
@@ -1052,6 +1057,7 @@ function applySkin(id, restore = false) {
   document.body.className = document.body.className.replace(/skin-\S+/g, '').replace(/theme-\w+/g, '').trim();
   document.body.classList.remove('mc', 'font-vt323', 'font-silkscreen', 'font-pixelify', 'font-jersey');
   if (s.cls) document.body.classList.add(s.cls);
+  document.body.dataset.os = id;
   if (restore) {
     /* AU DÉMARRAGE : le skin ne touche PLUS au thème, à la police ni au style
        Minecraft choisis par l'utilisateur — ils sont restaurés tels quels et
@@ -1113,9 +1119,24 @@ const SKIN_APP_ICONS = {};
   });
 });
 function skinIconFor(id, fallback) {
+  const original = windowsIconPath(id);
+  if (original) return `<div class="ic-svg ic-original"><img src="${original}" alt="" draggable="false"></div>`;
+  if ((document.body.dataset.os || LS.get('skin', 'win11')).startsWith('win')) return fallback || null;
   const skin = (document.body.className.match(/skin-(\w+)/) || [])[1];
   if (skin && SKIN_APP_ICONS[skin] && SKIN_APP_ICONS[skin][id]) return `<div class="ic-svg ic-skin">${SKIN_APP_ICONS[skin][id]}</div>`;
   return fallback || null;
+}
+function windowsIconPath(id) {
+  const skin = document.body.dataset.os || LS.get('skin', 'win11');
+  if (id === 'browser' && ['win11', 'win10'].includes(skin)) return 'icons/windows/edge.svg';
+  if (skin === 'win7' && ['settings', 'trash'].includes(id)) return 'icons/windows/win7/imageres-' + (id === 'settings' ? '27' : '55') + '.ico';
+  const original = { settings: '22', trash: '32', addapp: '4' };
+  if (['win11', 'win10', 'win7', 'winxp'].includes(skin) && original[id]) return 'icons/windows/' + skin + '/' + original[id] + '.ico';
+  if (skin === 'win98') {
+    const classic = {browser:'msie1-0',settings:'directory_control_panel-0',games:'joystick-0',media:'media_player-0',cursors:'mouse-0',trash:'recycle_bin_empty-0',addapp:'directory_open_file_mydocs-0'};
+    if (classic[id]) return 'icons/windows/win98/' + classic[id] + '.png';
+  }
+  return null;
 }
 /* re-rend les logos du bureau et du menu Démarrer quand le skin change */
 function refreshSkinIcons() {
@@ -1137,6 +1158,10 @@ function refreshSkinIcons() {
     const holder = t.querySelector('.ic, .ic-svg');
     if (!holder) return;
     holder.outerHTML = appIconHtml(app, id);
+  });
+  windows.forEach((rec, id) => {
+    const holder = rec.el.querySelector('.win-header .w-6');
+    if (holder && APPS[id]) holder.innerHTML = appGlyph(APPS[id]);
   });
 }
 
@@ -1301,11 +1326,12 @@ function openApp(appId) {
 
   const el = document.createElement('div');
   el.className = 'window';
+  el.dataset.app = appId;
   el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${++zTop};`;
   el.innerHTML = `
     <div class="win-header">
       <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-6 h-6 flex-none">${app.svg ? app.svg : `<div class="w-6 h-6 rounded-md bg-gradient-to-br ${app.color} flex items-center justify-center"><i class="fa-solid ${app.icon} text-[11px] text-white"></i></div>`}</div>
+        <div class="w-6 h-6 flex-none">${appGlyph(app)}</div>
         <span class="text-[12.5px] font-semibold text-slate-100 truncate">${app.title}</span>
       </div>
       <div class="flex items-center gap-0.5">
@@ -1820,7 +1846,7 @@ function renderBrowser() {
         <span class="chip" data-url="https://poki.com"><i class="fa-solid fa-gamepad"></i> Poki</span>
         <span class="chip" data-url="https://play.geforcenow.com"><i class="fa-solid fa-cloud"></i> GeForce NOW</span>
       </div>
-      <div id="br-service-notice" class="br-service-notice" hidden><span>Ce site demande une vérification ou refuse la connexion.</span><button id="br-change-engine">Changer de moteur</button></div>
+      <div id="br-service-notice" class="br-service-notice" hidden><span>Ce site demande une vérification ou refuse la connexion.</span><button id="br-reader">Recherche simplifiée</button><button id="br-change-engine">Changer de moteur</button></div>
       <div class="relative flex-1 min-h-0" id="br-frames">
         <div id="br-load" class="br-load hidden">
           <div class="spinner"></div>
@@ -1876,6 +1902,8 @@ function initBrowser(body, rec) {
   let mode = LS.get('browser_mode', 'auto'); // auto | direct | proxy
   if (!['auto', 'direct', 'proxy'].includes(mode)) mode = 'auto';
   let navSeq = 0;
+  var readerAbort = null;
+  const readerCache = new Map();
   /* Sites que l'utilisateur a passé manuellement par le proxy une fois :
      ils y repassent automatiquement (page de blocage du lycée…). */
   const ALWAYS_PROXY = LS.getJSON('alwaysproxy', []);
@@ -1989,10 +2017,10 @@ function initBrowser(body, rec) {
   }
   createTab(BROWSER_HOME);
 
-  /* ---------- Moteur de recherche au choix ----------
-     Startpage = les résultats GOOGLE mais servi par un autre domaine : si le
-     réseau du lycée bloque Google, la recherche passe quand même. */
+  /* Official engines remain available, without promises about remote CAPTCHAs.
+     The default reader does not load a search-provider page through Wisp. */
   const SEARCH_ENGINES = {
+    webos:     { name: 'WebOS · recherche simplifiée', url: 'https://www.bing.com/search?wos_reader=1&q=' },
     startpage: { name: 'Startpage — résultats Google', url: 'https://www.startpage.com/sp/search?query=' },
     google:    { name: 'Google', url: 'https://www.google.com/search?igu=1&q=' },
     ddglite:   { name: 'DuckDuckGo Lite', url: 'https://lite.duckduckgo.com/lite/?q=' },
@@ -2001,15 +2029,19 @@ function initBrowser(body, rec) {
     qwant:     { name: 'Qwant', url: 'https://www.qwant.com/?q=' },
     ecosia:    { name: 'Ecosia', url: 'https://www.ecosia.org/search?q=' }
   };
-  let curEngine = LS.get('engine', 'startpage');
-  if (!SEARCH_ENGINES[curEngine]) curEngine = 'startpage';
+  if (LS.get('search_route_v31', '') !== '1') {
+    LS.set('engine', 'webos');
+    LS.set('search_route_v31', '1');
+  }
+  let curEngine = LS.get('engine', 'webos');
+  if (!SEARCH_ENGINES[curEngine]) curEngine = 'webos';
 
   const normalize = (u) => {
     u = browserAddress(u);
     const aliases = { google: 'https://www.google.com/', youtube: 'https://www.youtube.com/', bing: 'https://www.bing.com/' };
     if (aliases[u.toLowerCase()]) return aliases[u.toLowerCase()];
     const looksUrl = /^https?:\/\//i.test(u) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(u);
-    if (!looksUrl) return (SEARCH_ENGINES[curEngine] || SEARCH_ENGINES.startpage).url + encodeURIComponent(u);
+    if (!looksUrl) return (SEARCH_ENGINES[curEngine] || SEARCH_ENGINES.webos).url + encodeURIComponent(u);
     if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
     return u;
   };
@@ -2462,6 +2494,11 @@ function initBrowser(body, rec) {
       return;
     }
     u = normalize(u); if (!u) return;
+    if (curEngine === 'webos') {
+      const destination = new URL(u);
+      if (/^(www\.)?google\.[a-z.]+$/.test(destination.hostname) && destination.pathname === '/' && !destination.search)
+        u = SEARCH_ENGINES.webos.url;
+    }
     /* CrazyGames : les pages de jeu (crazygames.com/game/X) chargent un
        chargeur v2.13 incompatible avec le proxy (jeux bloqués) — on ouvre
        directement le cadre du jeu, qui fonctionne. */
@@ -2472,6 +2509,7 @@ function initBrowser(body, rec) {
     /* Mise à jour de l'onglet actif */
     const activeTab = tabs.find(t => t.id === activeTabId);
     if (activeTab) {
+      activeTab.suspended = false;
       activeTab.url = u;
       try { activeTab.title = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { activeTab.title = u.slice(0, 30); }
       activeTab.ytActive = /youtube\.com|youtu\.be/.test(u);
@@ -2483,12 +2521,19 @@ function initBrowser(body, rec) {
     if (activeTab) { activeTab.history = history; activeTab.hIndex = hIndex; }
     saveSession();
     const searchHost = new URL(u).hostname.replace(/^www\./, '');
+    if (searchHost === 'bing.com' && new URL(u).searchParams.get('wos_reader') === '1') {
+      showYT(false);
+      loadWebSearch(new URL(u).searchParams.get('q') || '', u);
+      return;
+    }
     if (/(^|\.)(accounts\.google\.com|login\.microsoftonline\.com|login\.live\.com)$/.test(searchHost) || /\/(login|signin|oauth|authorize)(\/|$)/i.test(new URL(u).pathname)) {
       accountNotice(u);
       return;
     }
     if (/^(google\.[a-z.]+|startpage\.com|(?:lite\.|html\.)?duckduckgo\.com|bing\.com|qwant\.com|ecosia\.[a-z.]+)$/.test(searchHost)) {
       showYT(false);
+      serviceNotice.querySelector('span').textContent = 'Si ce moteur reste bloqué, essaie la recherche simplifiée.';
+      serviceNotice.hidden = false;
       if (mode !== 'direct') { wispLoad(u); return; }
     }
     // Mode YouTube spécial : youtube.com s'affiche dans une interface intégrée
@@ -2574,6 +2619,12 @@ function initBrowser(body, rec) {
   /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
   var wispWatch = null, wispCurIdx = 0, wispRetries = 0, wispCurUrl = '';
   function cancelBrowserLoad() {
+    if (readerAbort) {
+      readerAbort.abort();
+      readerAbort = null;
+      const interrupted = tabs.find(t => t.id === activeTabId);
+      if (interrupted) interrupted.suspended = true;
+    }
     navSeq++;
     inspectionTimers.forEach(clearTimeout);
     inspectionTimers = [];
@@ -2583,6 +2634,48 @@ function initBrowser(body, rec) {
     wispWatch = null;
     wispRetries = 0;
     loadOv.classList.add('hidden');
+  }
+  async function loadWebSearch(query, u) {
+    const q = query.trim().slice(0, 1000);
+    const seq = navSeq, target = frame;
+    frame.onload = null;
+    frame.removeAttribute('src');
+    frame.srcdoc = window.webosSearchHTML(q, {loading: !!q, retryURL: u});
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab) { tab.title = q ? q.slice(0, 35) + ' · Recherche' : 'Recherche WebOS'; renderTabs(); saveSession(); }
+    showLoad(false);
+    if (!q) { setStatus('Recherche simplifiée · Bing / Jina Reader'); return; }
+    const cached = readerCache.get(q);
+    if (cached && Date.now() - cached.time < 120000) {
+      target.srcdoc = window.webosSearchHTML(q, {results: cached.results, retryURL: u});
+      setStatus('Résultats récents · Bing / Jina Reader');
+      return;
+    }
+    const abort = new AbortController();
+    readerAbort = abort;
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; abort.abort(); }, 18000);
+    stopButton.hidden = false;
+    setStatus('Recherche simplifiée en cours · maximum 18 s');
+    try {
+      const feed = 'https://www.bing.com/search?format=rss&q=' + encodeURIComponent(q);
+      const response = await fetch('https://r.jina.ai/' + feed, {signal:abort.signal, credentials:'omit', referrerPolicy:'no-referrer'});
+      if (!response.ok) throw new Error(response.status === 429 ? 'Le service public limite les recherches. Attends un peu avant de réessayer.' : 'Le service de lecture est indisponible (HTTP ' + response.status + ').');
+      const results = window.webosParseSearch(await response.text());
+      if (!results.length) throw new Error('Aucun résultat lisible reçu. Essaie une recherche plus courte ou ouvre le moteur officiel.');
+      if (seq !== navSeq || frame !== target || !body.isConnected || abort.signal.aborted) return;
+      readerCache.set(q, {time:Date.now(), results});
+      if (readerCache.size > 20) readerCache.delete(readerCache.keys().next().value);
+      target.srcdoc = window.webosSearchHTML(q, {results, retryURL:u});
+      setStatus(results.length + ' résultats · Bing / Jina Reader');
+    } catch (e) {
+      if (seq !== navSeq || frame !== target || !body.isConnected || (abort.signal.aborted && !timedOut)) return;
+      target.srcdoc = window.webosSearchHTML(q, {error:timedOut ? 'Le délai de 18 secondes est dépassé. La tentative a été arrêtée ; aucune boucle de chargement ne continue.' : e.message || 'Connexion au service impossible.', retryURL:u});
+      setStatus('Recherche arrêtée · réessai manuel ou moteur officiel');
+    } finally {
+      clearTimeout(timeout);
+      if (readerAbort === abort) { readerAbort = null; stopButton.hidden = true; }
+    }
   }
   function proxyFailed(u) {
     if (wispWatch) clearTimeout(wispWatch);
@@ -2626,6 +2719,7 @@ function initBrowser(body, rec) {
         };
         inspect(target.contentWindow);
         if (/unusual traffic|not a robot|access temporarily suspended|verify you are human|vérifiez que vous êtes|vérification de sécurité/i.test(text)) {
+          serviceNotice.querySelector('span').textContent = 'Vérification ou accès refusé. Essaie la recherche simplifiée.';
           serviceNotice.hidden = false;
           setStatus('Vérification ou accès refusé : utiliser le site officiel ou changer de moteur');
         }
@@ -2828,6 +2922,12 @@ function initBrowser(body, rec) {
   });
   body.querySelector('#br-change-engine').addEventListener('click', e => {
     e.stopPropagation(); renderEngMenu(); engMenu.classList.remove('hidden');
+  });
+  body.querySelector('#br-reader').addEventListener('click', () => {
+    let q = '';
+    try { const current = new URL(history[hIndex]); q = current.searchParams.get('q') || current.searchParams.get('query') || ''; } catch (e) {}
+    curEngine = 'webos'; LS.set('engine', 'webos');
+    navigate(SEARCH_ENGINES.webos.url + encodeURIComponent(q));
   });
   const dismissEngineMenu = e => { if (!engMenu.contains(e.target)) engMenu.classList.add('hidden'); };
   document.addEventListener('click', dismissEngineMenu);
@@ -4570,7 +4670,7 @@ function initSettings(body) {
   }));
   body.querySelector('#st-skin-off').addEventListener('click', () => {
     applySkin('win11');
-    LS.set('skin', '');
+    LS.set('skin', 'win11');
     skinsEl.querySelectorAll('[data-skin]').forEach(x => x.className = 'btn ' + (x.dataset.skin === 'win11' ? 'btn-blue' : 'btn-ghost') + ' !justify-start');
     toast('Apparence Windows 11 personnalisée restaurée', 'fa-desktop', 'text-sky-400');
   });
@@ -4803,7 +4903,7 @@ function initSettings(body) {
   body.querySelector('#st-export').addEventListener('click', () => {
     const dump = LS.entries();
     delete dump.webos_keys;
-    const blob = new Blob([JSON.stringify({ app: 'webos', version: 30, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ app: 'webos', version: 31, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'webos-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
@@ -4838,6 +4938,9 @@ const EDGE_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display
 
 /* Renvoie le HTML d'une icône d'app (SVG custom, image de logo ou Font Awesome) */
 function appGlyph(app) {
+  const id = Object.keys(APPS).find(id => APPS[id] === app);
+  const original = windowsIconPath(id);
+  if (original) return `<img src="${original}" alt="" style="width:100%;height:100%;object-fit:contain;display:block">`;
   if (app.svg) return app.svg;
   if (app.img) return `<img src="${app.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:10px" onerror="this.outerHTML='<i class=\\'fa-solid ${app.icon}\\'></i>'">`;
   return `<i class="fa-solid ${app.icon}"></i>`;

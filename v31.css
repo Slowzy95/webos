@@ -1,0 +1,111 @@
+/* Version-specific Windows chrome. WebOS apps remain web applications. */
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.toast { max-width:calc(100vw - 28px); }
+.toast>span { min-width:0; overflow-wrap:anywhere; }
+.ic-original { background:none!important; border:0!important; box-shadow:none!important; }
+.ic-original img { width:100%; height:100%; object-fit:contain; }
+body[data-os^="win"] .desk-icon>.ic,body[data-os^="win"] .sm-tile>.ic { background:none; box-shadow:none; border:0; }
+body[data-os^="win"] #desktop-welcome { display:none; }
+body[data-os="win11"] #taskbar { background:rgba(238,245,255,.92); border-top:1px solid #fff9; box-shadow:0 -1px 12px #16324f0d; }
+body[data-os="win11"] #taskbar .tray-btn,body[data-os="win11"] #taskbar #clock-time,body[data-os="win11"] #taskbar #clock-date,body[data-os="win11"] #tb-search-v30 { color:#19314f!important; }
+body[data-os="win11"] #taskbar .win-logo span { background:#0078d4; border-radius:0; }
+body[data-os="win11"] #taskbar .tb-icon:hover,body[data-os="win11"] #taskbar .tb-icon.active { background:#fff9; }
+body[data-os="win11"] #start-menu { background:rgba(242,247,255,.97); color:#172b45; border-color:#fff; box-shadow:0 12px 44px #001e4c44; }
+body[data-os="win11"] #start-menu .sm-tile,body[data-os="win11"] #start-menu .sm-reco,body[data-os="win11"] #start-menu .tray-btn,body[data-os="win11"] #start-menu span,body[data-os="win11"] #start-menu .text-slate-200 { color:#213b59; }
+body[data-os="win11"] #sm-search { background:#fff; border-color:#b5c7de; color:#172b45; border-bottom:2px solid #0078d4; }
+body[data-os="win11"] #sm-apps { grid-template-columns:repeat(6,minmax(0,1fr)); }
+#sm-search { padding-left:36px!important; }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #sm-search { border-radius:3px!important; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu button { color:#2b4766; }
+body[data-os="win11"] #start-menu .sm-tile:hover,body[data-os="win11"] #start-menu .sm-reco:hover { background:#fff; }
+body[data-os="win11"] #start-menu .text-slate-400 { color:#48617c; }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #taskbar { justify-content:flex-start; padding-left:8px; }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #tb-center { max-width:calc(100vw - 345px); }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #start-menu { left:8px; transform:none; transform-origin:bottom left; }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #start-menu.hidden-menu { transform:translateY(12px); }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .tb-sep,body:is(.skin-win7,.skin-winxp,.skin-win98) #tb-search-v30 { display:none; }
+body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) .window { border-radius:0; }
+body.skin-win10 { font-family:"Segoe UI","Inter",sans-serif; }
+body.skin-win10 #taskbar { background:#101010eb; }
+body.skin-win10 #start-menu { background:#202020f5; border:1px solid #646464; border-radius:0; }
+body.skin-win10 #start-btn .win-logo { transform:perspective(55px) rotateY(-13deg); gap:2px; }
+body.skin-win10 .win-logo span { background:#f2f2f2; border-radius:0; }
+body.skin-win10 .window { border:1px solid #606060; }
+body.skin-win10 .win-header { background:#252525; height:32px; padding-right:0; }
+body.skin-win10 .wbtn { border-radius:0; width:40px; }
+body.skin-win7 { font-family:"Segoe UI","Inter",sans-serif; }
+body.skin-win7 #taskbar { background:linear-gradient(#7ca5ceaa,#27547dcc); box-shadow:inset 0 1px #ffffff88; border-top:1px solid #172f54; backdrop-filter:blur(13px); }
+body.skin-win7 #taskbar .tray-btn,body.skin-win7 #clock-time,body.skin-win7 #clock-date { color:white!important; text-shadow:0 1px 2px #000; }
+body.skin-win7 #start-btn { border-radius:50%; background:radial-gradient(circle at 50% 25%,#a5e8fb,#136cb7 40%,#082a55 65%,#d2f0fc 90%); width:42px; height:42px; box-shadow:inset 0 0 3px #fff,0 0 4px #162c4f; margin:0 8px 0 0; }
+body.skin-win7 .window { border-radius:7px 7px 3px 3px; border:5px solid #94c5e3b3!important; box-shadow:0 10px 30px #0008,inset 0 0 0 1px #fff8; }
+body.skin-win7 .win-header { background:linear-gradient(#c8eaffcc,#94bddde6); height:34px; border:0; }
+body.skin-win7 .win-header span { text-shadow:0 0 7px white; }
+body.skin-win7 .wbtn { border-radius:0 0 4px 4px; height:23px; width:29px; border:1px solid #577394; box-shadow:inset 0 0 0 1px #ffffff55; background:linear-gradient(#ffffff6b,#92b7d694); }
+body.skin-win7 .wbtn.close { width:44px; background:linear-gradient(#e2ac9e,#b8462a); color:white; }
+body.skin-win7 #start-menu { border-radius:5px; border:6px solid #54799dcc; background:#f7fbff; color:#14293c; width:420px; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #sm-apps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-tile { flex-direction:row; text-align:left; justify-content:flex-start; border-radius:3px; padding:9px; gap:10px; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-tile>.ic,body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-tile>.ic-svg { width:32px; height:32px; flex:none; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-reco,body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu span,body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .text-slate-200 { color:#142b45; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .text-slate-400 { color:#41556f; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #sm-search { background:white; color:#172b45; border-color:#8aadc6; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-tile:hover,body:is(.skin-win7,.skin-winxp,.skin-win98) #start-menu .sm-reco:hover { background:#cbe2f8; }
+body.skin-winxp { font-family:Tahoma,"Inter",sans-serif; }
+body.skin-winxp #taskbar { background:linear-gradient(#3889f8 0%,#245edc 15%,#245edc 80%,#1744a2); box-shadow:inset 0 1px #9cbfff; padding-left:0; backdrop-filter:none; }
+body.skin-winxp #start-btn { border-radius:0 15px 15px 0; width:112px; height:48px; display:flex; flex-direction:row; gap:8px; font-weight:700; font-style:italic; box-shadow:inset 0 3px 4px #b5d6a9,inset 0 -3px 4px #236026; text-shadow:1px 2px #1d5727; }
+body.skin-winxp #start-btn::after,body.skin-win98 #start-btn::after { content:"démarrer"; color:white; font-size:17px; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo { transform:skewY(-8deg) rotate(-6deg); gap:1.5px; grid-template-columns:9px 9px; grid-template-rows:9px 9px; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo span { border-radius:1px; box-shadow:0 0 1px #0008; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo span:nth-child(1) { background:#ef4e25; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo span:nth-child(2) { background:#76bb31; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo span:nth-child(3) { background:#1b8de5; }
+body:is(.skin-winxp,.skin-win7,.skin-win98) .win-logo span:nth-child(4) { background:#ffc42b; }
+body.skin-winxp .window { border:3px solid #0754e7!important; border-radius:8px 8px 0 0; }
+body.skin-winxp .win-header { height:32px; background:linear-gradient(#4b9eff,#1762ec 12%,#0052dc 87%,#0040ba); padding-right:3px; }
+body.skin-winxp .win-header span { font-weight:700; text-shadow:1px 1px #123b85; }
+body.skin-winxp .wbtn { height:23px; width:25px; border:1px solid #fff; border-radius:3px; background:linear-gradient(135deg,#7cb1fc,#0752d0); box-shadow:inset 0 0 2px #c6e3ff; }
+body.skin-winxp .wbtn.close { background:linear-gradient(135deg,#eea18b,#d13913 65%,#a82d0c); }
+body.skin-winxp #start-menu { background:#fff; border:3px solid #1b60d9; border-radius:6px 6px 0 0; width:440px; padding:14px; }
+body.skin-winxp #start-menu::before { content:"Utilisateur"; display:block; margin:-14px -14px 14px; padding:16px; color:white; background:linear-gradient(#277ddd,#0b53be); font-size:18px; font-weight:700; }
+body.skin-winxp #tb-clock { background:#168cec; padding:12px 16px; box-shadow:inset 1px 0 #6fbdff; }
+body.skin-win98 { font-family:Tahoma,"Inter",sans-serif; }
+body.skin-win98 #taskbar { border-top:2px solid #fff; background:#c0c0c0; padding-left:4px; backdrop-filter:none; }
+body.skin-win98 #start-btn { width:95px; height:32px; display:flex; flex-direction:row; gap:6px; border:2px outset #eee; border-radius:0; }
+body.skin-win98 #start-btn::after { color:#000; font-size:12px; font-weight:700; }
+body.skin-win98 .window { background:#c0c0c0; border:3px outset #dcdcdc!important; border-radius:0; }
+body.skin-win98 .win-header { height:27px; padding:1px 2px 1px 5px; background:linear-gradient(90deg,#000080,#1084d0); border:0; }
+body.skin-win98 .win-header span { font-family:Tahoma,"Inter",sans-serif; font-size:12px; }
+body.skin-win98 .wbtn { color:#000; background:#c0c0c0; border:2px outset #eee; border-radius:0; width:20px; height:19px; font-size:10px; }
+body.skin-win98 #start-menu { background:#c0c0c0; border:3px outset #eee; border-radius:0; width:300px; }
+body.skin-win98 #sm-apps { grid-template-columns:1fr; gap:0; }
+body.skin-win98 #sm-search { border:2px inset #ddd; border-radius:0; }
+body.skin-win98 #tb-clock { border:2px inset #ddd; padding:5px 10px; }
+.br-service-notice { flex-wrap:wrap; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] .win-body { background:#f4f7fb; color:#172b45; }
+body.skin-winxp .window[data-app="settings"] .win-body { background:#ece9d8; color:#172b45; }
+body.skin-win98 .window[data-app="settings"] .win-body { background:#c0c0c0; color:#000; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] .win-body :is(.text-slate-400,.text-slate-500,.text-slate-300) { color:#41536d!important; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] :is(.btn-ghost,.chip:not(.chip-on)) { background:#fff9; color:#172b45; border-color:#8e9fae; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] :is(input,textarea,.select-dark) { background:#fff; color:#172b45; border-color:#8e9fae; }
+body.skin-win98 .window[data-app="settings"] .btn-ghost { border:2px outset #eee; border-radius:0; background:#c0c0c0; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] hr { border-color:#9eacb8; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] .storage-panel { background:#fff6; border-color:#8e9fae; }
+body:is(.skin-win7,.skin-winxp,.skin-win98) .window[data-app="settings"] .storage-panel :is(p,small,label) { color:#41536d; }
+#br-engine-menu { max-height:min(390px,60dvh); overflow-y:auto; }
+@media(max-width:1050px) { body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #tb-center { max-width:calc(100vw - 200px); } }
+@media(max-width:719px) {
+  .window { left:0!important; top:0!important; width:100%!important; height:calc(100dvh - 56px)!important; max-width:100vw!important; min-width:0!important; border-radius:0!important; }
+  .window .resize-handle { display:none; }
+  body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #tb-center { max-width:calc(100vw - 86px); }
+  body.skin-winxp #start-btn { width:82px!important; flex-shrink:0; }
+  body.skin-winxp #start-btn::after { font-size:12px; }
+  body.skin-win98 #start-btn { width:84px!important; flex-shrink:0; }
+  body.skin-winxp #tb-clock { padding:12px 8px; }
+  body:is(.skin-win10,.skin-win7,.skin-winxp,.skin-win98) #start-menu { width:calc(100vw - 16px); padding:14px; }
+  body.skin-winxp #start-menu::before { margin:-14px -14px 14px; }
+  body:is(.skin-win7,.skin-winxp,.skin-win98) #sm-apps { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body[data-os="win11"] #sm-apps { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .br-chrome .relative:has(>#br-engine) { display:block; }
+  .br-chrome>#br-engine,.br-chrome #br-engine { display:block; }
+  .br-service-notice { font-size:10px; padding:5px 8px; }
+}
