@@ -1417,6 +1417,8 @@ if (LS.get('boost', '0') === '1') document.body.classList.add('boost');
 function closeApp(appId) {
   const w = windows.get(appId);
   if (!w) return;
+  clearTimeout(w.minTimer); clearTimeout(w.geometryTimer);
+  w.el.dispatchEvent(new Event('webos:cleanup'));
   if (w.cleanup) try { w.cleanup(); } catch (e) {}
   windows.delete(appId);
   if (focusedApp === appId) focusedApp = null;
@@ -1462,6 +1464,7 @@ function toggleMinimize(appId) {
 function toggleMaximize(appId) {
   const w = windows.get(appId);
   if (!w) return;
+  if (w.geometryTimer) { clearTimeout(w.geometryTimer); w.geometryTimer = null; }
   const desk = layer.getBoundingClientRect();
   const animated = (document.body.dataset.anim || 'windows') !== 'none';
   if (!w.maximized) {
@@ -1471,7 +1474,7 @@ function toggleMaximize(appId) {
     w.el.classList.add('maximized');
     w.maximized = true;
     w.el.querySelector('[data-act="max"] i').className = 'fa-solid fa-clone text-[10px]';
-    setTimeout(() => { w.el.style.transition = ''; }, 200);
+    w.geometryTimer = setTimeout(() => { w.el.style.transition = ''; w.geometryTimer = null; }, 200);
   } else {
     const p = w.prevRect || { l: '60px', t: '40px', w: '800px', h: '520px' };
     if (animated) w.el.style.transition = 'left .18s cubic-bezier(.16,1,.3,1), top .18s cubic-bezier(.16,1,.3,1), width .18s cubic-bezier(.16,1,.3,1), height .18s cubic-bezier(.16,1,.3,1)';
@@ -1479,8 +1482,9 @@ function toggleMaximize(appId) {
     w.el.classList.remove('maximized');
     w.maximized = false;
     w.el.querySelector('[data-act="max"] i').className = 'fa-regular fa-square';
-    setTimeout(() => {
+    w.geometryTimer = setTimeout(() => {
       w.el.style.transition = '';
+      w.geometryTimer = null;
       if (!w.maximized) webos32.clampWindow(w.el, layer.getBoundingClientRect());
     }, 210);
   }

@@ -64,6 +64,13 @@ try {
     await page.locator('.window [data-act=max]').click(); await page.waitForFunction(() => !document.querySelector('.window').style.transition);
     assert.deepEqual(await page.locator('.window').evaluate(n => [n.style.left, n.style.top, n.style.width, n.style.height]), original);
   }
+  await page.locator('.window').evaluate(el => {
+    Object.defineProperty(el, 'offsetWidth', { configurable: true, value: 1440 });
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: 900 });
+    webos32.clampWindow(el, document.querySelector('#windows-layer').getBoundingClientRect());
+    delete el.offsetWidth; delete el.offsetHeight;
+  });
+  assert.deepEqual(await page.locator('.window').evaluate(n => [n.style.left, n.style.top, n.style.width, n.style.height]), original);
   console.log('PASS stable geometry after 25 restore cycles and 4 maximize cycles');
   await page.locator('[data-category=system]').click(); await page.locator('#st-storage-v30').waitFor();
   assert.equal(await page.locator('#st-themes').isVisible(), false);

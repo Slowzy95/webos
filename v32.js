@@ -68,10 +68,13 @@ window.webos32 = {
   },
   clampWindow(el, desk) {
     if (desk.width < 720) return;
-    const width = Math.min(el.offsetWidth, desk.width);
-    const height = Math.min(el.offsetHeight, desk.height);
-    if (el.offsetWidth > desk.width) el.style.width = width + 'px';
-    if (el.offsetHeight > desk.height) el.style.height = height + 'px';
+    // offsetWidth/Height can still contain the interpolated maximize size.
+    const logicalWidth = parseFloat(el.style.width) || el.offsetWidth;
+    const logicalHeight = parseFloat(el.style.height) || el.offsetHeight;
+    const width = Math.min(logicalWidth, desk.width);
+    const height = Math.min(logicalHeight, desk.height);
+    if (logicalWidth > desk.width) el.style.width = width + 'px';
+    if (logicalHeight > desk.height) el.style.height = height + 'px';
     const left = parseFloat(el.style.left) || 0, top = parseFloat(el.style.top) || 0;
     el.style.left = Math.max(0, Math.min(left, desk.width - width)) + 'px';
     el.style.top = Math.max(0, Math.min(top, desk.height - height)) + 'px';
