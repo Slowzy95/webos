@@ -125,7 +125,8 @@ let CUSTOM_APPS = LS.getJSON('customapps', []);
    HIDDEN_APPS = apps intégrées retirées du bureau (restent dans APPS, juste cachées). */
 let TRASH = LS.getJSON('wos_trash', []);
 let HIDDEN_APPS = LS.getJSON('wos_hiddenapps', []);
-function saveTrash() { LS.setJSON('wos_trash', TRASH); LS.setJSON('wos_hiddenapps', HIDDEN_APPS); }
+let HIDDEN_HUB = LS.getJSON('wos_hidden_hub', []); /* v39.2 : cartes Game Hub / Media Hub mises à la corbeille */
+function saveTrash() { LS.setJSON('wos_trash', TRASH); LS.setJSON('wos_hiddenapps', HIDDEN_APPS); LS.setJSON('wos_hidden_hub', HIDDEN_HUB); }
 
 function triggerPanic() { window.location.replace(panicUrl); }
 
@@ -4455,13 +4456,19 @@ function backToHub(body, rec) {
 
 function initGames(body, rec) {
   const plat = body.querySelector('#gh-platforms');
-  if (plat) plat.innerHTML = GAME_PLATFORMS.map(p => `
+  if (plat) plat.innerHTML = GAME_PLATFORMS.filter(p => !HIDDEN_HUB.includes('game:' + p.url)).map(p => `
     <div class="glass-card p-4 flex items-center gap-3">
       <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${p.color}26">${p.domain ? `<img src="${brandImg(p.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('${`<i class=\\'fa-solid ${p.icon}\\' style=\\'color:${p.color}\\'></i>`}')">` : `<i class="fa-solid ${p.icon}" style="color:${p.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${p.name}</div><div class="text-[11px] text-slate-400 truncate">${p.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${p.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${p.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+      <button class="btn btn-ghost !py-1.5 !px-3 hover:!bg-red-500/20" data-hubdel="game|${p.url}" title="Mettre à la corbeille"><i class="fa-solid fa-trash-can text-[12px] text-red-400/80"></i></button>
     </div>`).join('');
+  body.querySelectorAll('[data-hubdel]').forEach(b => b.addEventListener('click', () => {
+    const [kind, ...rest] = b.dataset.hubdel.split('|');
+    const item = GAME_PLATFORMS.find(x => x.url === rest.join('|'));
+    if (item) trashHub(kind, item);
+  }));
   body.querySelectorAll('[data-inapp]').forEach(b => b.addEventListener('click', () => openInApp(b.dataset.inapp)));
   body.querySelectorAll('[data-game]').forEach(btn => btn.addEventListener('click', () => {
     const g = btn.dataset.game;
@@ -4892,22 +4899,35 @@ const FREE_STREAMING = [
 
 function initMedia(body) {
   const freeGrid = body.querySelector('#mh-free-grid');
-  freeGrid.innerHTML = FREE_STREAMING.map(m => `
+  freeGrid.innerHTML = FREE_STREAMING.filter(m => !HIDDEN_HUB.includes('free:' + m.url)).map(m => `
     <div class="glass-card p-4 flex items-center gap-3">
       <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${m.color}26">${m.domain ? `<img src="${brandImg(m.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('<i class=\\'fa-solid ${m.icon}\\' style=\\'color:${m.color}\\'></i>')">` : `<i class="fa-solid ${m.icon}" style="color:${m.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${m.name}</div><div class="text-[11px] text-slate-400 truncate">${m.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${m.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${m.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+      <button class="btn btn-ghost !py-1.5 !px-3 hover:!bg-red-500/20" data-hubdel="free|${m.url}" title="Mettre à la corbeille"><i class="fa-solid fa-trash-can text-[12px] text-red-400/80"></i></button>
     </div>`).join('');
+  freeGrid.querySelectorAll('[data-hubdel]').forEach(b => b.addEventListener('click', () => {
+    const [kind, ...rest] = b.dataset.hubdel.split('|');
+    const item = FREE_STREAMING.find(x => x.url === rest.join('|'));
+    if (item) trashHub(kind, item);
+  }));
   freeGrid.querySelectorAll('[data-inapp]').forEach(b => b.addEventListener('click', () => openInApp(b.dataset.inapp)));
   const grid = body.querySelector('#mh-grid');
-  grid.innerHTML = MEDIA_LINKS.map(m => `
+  grid.innerHTML = MEDIA_LINKS.filter(m => !HIDDEN_HUB.includes('media:' + m.url)).map(m => `
     <div class="glass-card p-4 flex items-center gap-3">
       <div class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-none overflow-hidden" style="background:${m.color}26">${m.domain ? `<img src="${brandImg(m.domain)}" alt="" style="width:26px;height:26px;object-fit:contain" onerror="this.replaceWith('<i class=\\'${m.brand ? 'fa-brands' : 'fa-solid'} ${m.icon}\\' style=\\'color:${m.color}\\'></i>')">` : `<i class="${m.brand ? 'fa-brands' : 'fa-solid'} ${m.icon}" style="color:${m.color}"></i>`}</div>
       <div class="flex-1 min-w-0"><div class="font-bold text-[13px]">${m.name}</div><div class="text-[11px] text-slate-400 truncate">${m.desc}</div></div>
       <button class="btn btn-blue !py-1.5 !px-3" data-inapp="${m.url}" title="Ouvrir dans l'app"><i class="fa-solid fa-display"></i></button>
       <a href="${m.url}" target="_blank" rel="noopener" class="btn btn-ghost !py-1.5 !px-3" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+      <button class="btn btn-ghost !py-1.5 !px-3 hover:!bg-red-500/20" data-hubdel="media|${m.url}" title="Mettre à la corbeille"><i class="fa-solid fa-trash-can text-[12px] text-red-400/80"></i></button>
     </div>`).join('');
+  body.querySelectorAll('[data-hubdel]').forEach(b => b.addEventListener('click', () => {
+    const [kind, ...rest] = b.dataset.hubdel.split('|');
+    const list = kind === 'media' ? MEDIA_LINKS : FREE_STREAMING;
+    const item = list.find(x => x.url === rest.join('|'));
+    if (item) trashHub(kind, item);
+  }));
   body.querySelectorAll('[data-inapp]').forEach(b => b.addEventListener('click', () => openInApp(b.dataset.inapp)));
   const ytUrl = body.querySelector('#yt-url'), ytFrame = body.querySelector('#yt-frame');
   const play = () => {
@@ -5627,6 +5647,26 @@ function moveToTrash(el) {
   toast('« ' + (APPS[id] ? APPS[id].title : id) + ' » à la corbeille — clique sur la corbeille pour restaurer', 'fa-trash-can', 'text-slate-400');
 }
 function trashAdd(item) { TRASH.unshift({ ...item, when: Date.now() }); }
+/* v39.2 — Mettre une carte du Game Hub / Media Hub à la corbeille */
+function trashHub(kind, item) {
+  const key = kind + ':' + item.url;
+  if (HIDDEN_HUB.includes(key)) return;
+  HIDDEN_HUB.push(key);
+  trashAdd({ kind: 'hub', hub: kind, key, title: item.name, url: item.url, icon: item.icon, brand: !!item.brand, color: item.color, domain: item.domain || '' });
+  saveTrash();
+  refreshHubWindow(kind === 'game' ? 'games' : 'media');
+  refreshTrashWin();
+  toast('« ' + item.name + ' » à la corbeille — clique sur la corbeille pour restaurer', 'fa-trash-can', 'text-slate-400');
+}
+/* Recharge une fenêtre hub en place (sans voler le focus) */
+function refreshHubWindow(appId) {
+  const winEl = document.querySelector('.window[data-app="' + appId + '"]');
+  if (!winEl) return;
+  const body = winEl.querySelector('.win-body');
+  if (!body) return;
+  if (appId === 'games') { body.innerHTML = renderGames(); initGames(body, {}); }
+  else if (appId === 'media') { body.innerHTML = renderMedia(); initMedia(body); }
+}
 /* Fenêtre Corbeille : liste + Restaurer + Vider */
 function renderTrashWin() {
   return `
@@ -5659,8 +5699,10 @@ function renderTrashList(body) {
   list.innerHTML = TRASH.map((t, i) => {
     const ico = t.kind === 'custom'
       ? `<span class="text-lg">${escHtml(t.emoji || '🔗')}</span>`
+      : t.kind === 'hub'
+      ? `<div class="w-5 h-5"><i class="${t.brand ? 'fa-brands' : 'fa-solid'} ${t.icon}" style="color:${t.color}"></i></div>`
       : `<div class="w-5 h-5">${appGlyph(APPS[t.id]) || '<i class="fa-solid fa-cube"></i>'}</div>`;
-    const sub = t.kind === 'custom' ? escHtml(t.url || '') : 'Application intégrée';
+    const sub = t.kind === 'custom' ? escHtml(t.url || '') : t.kind === 'hub' ? (t.hub === 'game' ? 'Game Hub' : t.hub === 'media' ? 'Media Hub' : 'Streaming gratuit') : 'Application intégrée';
     return `
     <div class="flex items-center gap-2 glass-card !rounded-lg px-3 py-2">
       ${ico}
@@ -5676,6 +5718,9 @@ function renderTrashList(body) {
       CUSTOM_APPS.push({ id: t.id, title: t.title, url: t.url, emoji: t.emoji || '🔗' });
       LS.setJSON('customapps', CUSTOM_APPS);
       renderCustomIcons();
+    } else if (t.kind === 'hub') {
+      HIDDEN_HUB = HIDDEN_HUB.filter(x => x !== t.key);
+      refreshHubWindow(t.hub === 'game' ? 'games' : 'media');
     } else {
       HIDDEN_APPS = HIDDEN_APPS.filter(x => x !== t.id);
       if (!di.querySelector('.desk-icon[data-icon-id="' + t.id + '"]')) deskIconCreate(t.id);
