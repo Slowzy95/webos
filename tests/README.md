@@ -35,10 +35,16 @@ La suite n’utilise que des clés fictives, intercepte les requêtes IA et le p
 - Actualisation du catalogue, exclusion des modèles audio/classification, tests séquentiels et retrait d’un modèle définitivement absent.
 - Conservation des modèles après erreur temporaire de quota ; résultats explicites.
 - Exclusion des clés API de l’observation DOM, même lorsque leur champ est révélé.
-- Nouvel onglet local, recherche dans un onglet réel, historique, ajout et fermeture d’onglets.
+- Nouvel onglet local, recherche via le proxy intégré avec accès à l’onglet officiel, historique, ajout et fermeture d’onglets.
 - Fin des tentatives proxy après trois essais ; absence de redirection tardive après retour à l’accueil.
 - Ouverture des apps principales sans nouvelle exception JavaScript.
 - Widget à 1440 × 900, 375 × 812 et 1280 × 480.
+
+## Régressions v30
+
+Exécuter `node tests/v30.mjs` pour les raccourcis bureau/barre des tâches, le mode officiel pour les comptes, les préférences existantes, la restauration différée des onglets, les six jeux locaux, les hubs, les sept habillages, la sauvegarde sans clés et le mobile 375 px. Les réponses du proxy sont simulées pour ce scénario, comme dans le test de fiabilité. Aucun compte utilisateur réel n’est connecté par les tests.
+
+Le test couvre aussi un navigateur dans lequel `localStorage` est refusé : les réglages fonctionnent en mémoire et l’interface indique que leur persistance n’est pas disponible.
 
 ## Vérification réelle des modèles
 

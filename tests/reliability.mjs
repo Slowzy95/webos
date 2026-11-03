@@ -73,23 +73,22 @@ try {
   assert.match(await page.locator('#br-frames > iframe').first().getAttribute('srcdoc'), /Nouvel onglet/);
   await page.locator('#br-url').fill('Google');
   await page.locator('#br-url').press('Enter');
-  assert.match(await page.locator('#br-status').textContent(), /onglet réel nécessaire/);
-  const searchFrame = page.frameLocator('#br-frames > iframe');
+  assert.match(await page.locator('#br-frames > iframe').first().getAttribute('src'), /\/proxy\/\?url=/);
   const popupPromise = page.waitForEvent('popup');
-  await searchFrame.getByRole('link', { name: 'Ouvrir dans un onglet réel' }).click();
+  await page.locator('#br-official').click();
   const popup = await popupPromise;
   assert.match(popup.url(), /google\.com/);
   await popup.close();
   await page.locator('#br-home').click();
   await page.locator('#br-back').click();
-  assert.match(await page.locator('#br-status').textContent(), /onglet réel nécessaire/);
+  assert.match(await page.locator('#br-frames > iframe').first().getAttribute('src'), /\/proxy\/\?url=/);
   await page.locator('#br-fwd').click();
   assert.match(await page.locator('#br-status').textContent(), /Nouvel onglet/);
   await page.locator('#br-tab-add').click();
   assert.equal(await page.locator('[data-tab]').count(), 2);
   await page.locator('[data-close]').last().click();
   assert.equal(await page.locator('[data-tab]').count(), 1);
-  console.log('PASS browser home, search notice, real-tab click, add/close tab');
+  console.log('PASS browser home, integrated proxy search, official-tab click, add/close tab');
 
   await open('Assistant IA');
   await page.locator('#ai-provider').selectOption('groq');

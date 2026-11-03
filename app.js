@@ -16,7 +16,11 @@ const LS = {
   },
   getJSON: (k, d) => { try { return JSON.parse(LS.get(k, null)) ?? d; } catch (e) { return d; } },
   setJSON: (k, v) => LS.set(k, JSON.stringify(v)),
-  persistent: () => { try { return typeof localStorage.length === 'number'; } catch (e) { return false; } },
+  persistent: () => {
+    const probe = '__webos_probe_' + Math.random().toString(36).slice(2);
+    try { localStorage.setItem(probe, '1'); const ok = localStorage.getItem(probe) === '1'; localStorage.removeItem(probe); return ok; }
+    catch (e) { return false; }
+  },
   entries: () => {
     const dump = Object.fromEntries([...LS_MEMORY].map(([k, v]) => ['webos_' + k, v]));
     try {
@@ -480,6 +484,7 @@ const WINXP_SVG = `<svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid sl
 </svg>`;
 
 const WALLPAPERS = [
+  { id: 'fluent-v30', name: 'Fluent v30', cat: 'Système', type: 'image', url: 'walls/fluent-v30.webp', preview: 'linear-gradient(125deg,#071126,#174aa1,#4fbdff)' },
   { id: 'bloom',   name: 'Bloom (Windows 11)', cat: 'Système', type: 'svg',    svg: BLOOM_SVG, preview: 'radial-gradient(circle at 50% 45%, #123a7e, #040b22)' },
   { id: 'aurora',  name: 'Aurora (animé)',   cat: 'Système', type: 'css',    css: 'linear-gradient(140deg,#0b1120 0%,#101a33 55%,#0b1120 100%)', blobs: true,  preview: 'linear-gradient(140deg,#0b1120,#1e3a8a)' },
   { id: 'neon',    name: 'Néon (animé)',     cat: 'Système', type: 'css',    css: 'linear-gradient(270deg,#0f172a,#312e81,#0f172a,#4c1d95,#0f172a)', anim: true, preview: 'linear-gradient(135deg,#312e81,#4c1d95)' },
@@ -1020,7 +1025,7 @@ document.getElementById('tb-clock').addEventListener('click', () => {
   }, 1000);
 });
 
-setWallpaperById(LS.get('wall', 'bloom'));
+setWallpaperById(LS.get('wall', 'fluent-v30'));
 if (LS.get('mcstyle', '0') === '1') document.body.classList.add('mc');
 const savedFont = LS.get('font', 'normal');
 if (savedFont !== 'normal') { const f = { mc: 'mc', vt323: 'font-vt323', silkscreen: 'font-silkscreen', pixelify: 'font-pixelify', jersey: 'font-jersey' }[savedFont]; if (f) document.body.classList.add(f); }
@@ -1032,7 +1037,7 @@ if (savedTheme !== 'blue') document.body.classList.add('theme-' + savedTheme);
    fond d'écran, couleurs, police) — Windows 10/7/XP/98, Ubuntu, macOS.
 ============================================================ */
 const OS_SKINS = {
-  win11:   { name: 'Windows 11', icon: 'fab fa-windows', wall: 'bloom', theme: 'blue', font: 'normal', cls: '' },
+  win11:   { name: 'Windows 11', icon: 'fab fa-windows', wall: 'fluent-v30', theme: 'blue', font: 'normal', cls: '' },
   win10:   { name: 'Windows 10', icon: 'fab fa-windows', wall: 'os-win10', theme: 'blue', font: 'normal', cls: 'skin-win10' },
   win7:    { name: 'Windows 7', icon: 'fab fa-windows', wall: 'os-win7', theme: 'cyan', font: 'normal', cls: 'skin-win7' },
   winxp:   { name: 'Windows XP', icon: 'fab fa-windows', wall: 'os-winxp', theme: 'green', font: 'normal', cls: 'skin-winxp' },
@@ -1146,8 +1151,10 @@ let focusedApp = null;
 function focusWindow(appId) {
   const w = windows.get(appId);
   if (!w) return;
+  if (layer.clientWidth < 720) windows.forEach((other, id) => { if (id !== appId && !other.minimized) toggleMinimize(id); });
   w.el.style.zIndex = ++zTop;
   focusedApp = appId;
+  windows.forEach((o, id) => o.el.classList.toggle('focused', id === appId));
   w.el.style.borderColor = 'rgba(255,255,255,.16)';
   windows.forEach((o, id) => { if (id !== appId) o.el.style.borderColor = 'rgba(255,255,255,.10)'; });
   renderTaskbar();
@@ -1348,8 +1355,8 @@ function openApp(appId) {
   // Sur petit écran (mobile) : la fenêtre s'ouvre maximisée SI elle est seule.
   // Dès qu'une autre appli est déjà ouverte, on range TOUT en carrés (tiling) :
   // chaque appli a son carré, impossible d'en recouvrir une autre.
-  if (desk.width < 720 && !needsTile) toggleMaximize(appId);
-  if (needsTile) retileAll();
+  if (desk.width < 720) toggleMaximize(appId);
+  else if (needsTile) retileAll();
 }
 
 /* Recharge une application en conservant sa position et sa taille */
@@ -1410,9 +1417,14 @@ function toggleMinimize(appId) {
        range dans la première case libre de la grille */
     const desk = layer.getBoundingClientRect();
     const r = w.el.getBoundingClientRect();
-    const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
-    if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
-    else retileAll(); /* aucune case libre : tout se range en carrés */
+    if (desk.width < 720) {
+      windows.forEach((other, id) => { if (id !== appId && !other.minimized) toggleMinimize(id); });
+      if (!w.maximized) toggleMaximize(appId);
+    } else {
+      const drop = gridDrop(r.left - desk.left, r.top - desk.top, r.width, r.height, w.el, desk);
+      if (drop) { w.el.style.left = drop.x + 'px'; w.el.style.top = drop.y + 'px'; }
+      else retileAll();
+    }
     if (animated) { w.el.classList.add('win-unmin'); setTimeout(() => w.el.classList.remove('win-unmin'), 260); }
     focusWindow(appId);
   }
@@ -1601,7 +1613,9 @@ function makeResizable(el, rec) {
 }
 
 /* Barre des tâches : icônes épinglées + fenêtres ouvertes */
-const PINNED = ['browser', 'games', 'media', 'ai', 'settings'];
+const DEFAULT_PINNED = ['browser', 'games', 'media', 'ai', 'settings'];
+const savedPins = LS.getJSON('taskbarpins', DEFAULT_PINNED);
+const PINNED = [...new Set((Array.isArray(savedPins) ? savedPins : DEFAULT_PINNED).filter(id => ['browser','games','media','ai','settings','cursors'].includes(id)))];
 function renderTaskbar() {
   const pin = document.getElementById('tb-pinned');
   if (!pin) return;
@@ -1609,10 +1623,15 @@ function renderTaskbar() {
   const list = [...new Set([...PINNED, ...windows.keys()])].filter(id => windows.has(id) || layer.clientWidth >= 720);
   list.forEach(id => {
     const app = APPS[id];
+    if (!app) return;
     const w = windows.get(id);
     const b = document.createElement('div');
     b.className = 'tb-icon' + (w ? ' open' : '') + (focusedApp === id && w && !w.minimized ? ' active' : '');
     b.title = app.title;
+    b.dataset.appPin = id;
+    b.setAttribute('role', 'button');
+    b.tabIndex = 0;
+    b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openApp(id); } });
     b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><span class="tb-lbl">${escHtml(app.title)}</span><div class="run-dot"></div>`;
     b.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
@@ -1625,6 +1644,7 @@ function renderTaskbar() {
     });
     pin.appendChild(b);
   });
+  window.renderPinnedShortcuts?.(pin);
 }
 
 /* ============================================================
@@ -1635,6 +1655,7 @@ let capturingPanicKey = false;
 /* phase de CAPTURE : la touche panique fonctionne partout, même en pleine frappe
    dans un champ de texte, un jeu ou une app — aucun élément ne peut la bloquer */
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && window.closeShortcutMenu?.()) { e.preventDefault(); return; }
   if (capturingPanicKey) {
     e.preventDefault();
     panicKey = e.key === ' ' ? 'Space' : e.key;
@@ -1724,6 +1745,7 @@ const INTERCEPT = '<scr' + 'ipt>(function(){' +
     'try{var f=e.target;e.preventDefault();' +
       'var action=f.getAttribute("action")||document.baseURI;' +
       'var url=new URL(action,document.baseURI).href;' +
+      'if((f.method||"get").toLowerCase()!=="get"||f.querySelector("input[type=password]")){parent.postMessage({wosAuth:url},"*");return;}' +
       'var p=new URLSearchParams();' +
       'Array.prototype.forEach.call(f.elements,function(el){' +
         'if(el.name&&["submit","button","reset","file"].indexOf(el.type)===-1)p.append(el.name,el.value);});' +
@@ -1747,6 +1769,10 @@ function openInApp(url) {
 }
 window.addEventListener('message', (e) => {
   if (!browserAPI?.ownsSource(e.source)) return;
+  if (e.data?.wosAuth) {
+    try { browserAPI.accountNotice(browserAddress(e.data.wosAuth)); } catch (err) {}
+    return;
+  }
   if (e.data && e.data.wosNav && browserAPI) {
     try { browserAPI.navigate(browserAddress(e.data.wosNav), true, null, !!e.data.wosHeavy); }
     catch (err) { toast(err.message, 'fa-triangle-exclamation', 'text-amber-400'); }
@@ -1773,7 +1799,7 @@ function renderBrowser() {
         <button class="btn btn-blue !py-1.5" id="br-go"><i class="fa-solid fa-arrow-right"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-mode" title="Basculer le mode de chargement"><i class="fa-solid fa-bolt"></i></button>
         <div class="relative">
-          <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-engine" title="Moteur de recherche (Startpage = résultats Google sans le domaine Google)"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-engine" title="Choisir le moteur de recherche"><i class="fa-solid fa-magnifying-glass"></i></button>
           <div id="br-engine-menu" class="hidden absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur p-1 shadow-2xl text-sm"></div>
         </div>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-boost" title="Mode Boost : tout accélérer (désactive les effets)"><i class="fa-solid fa-gauge-high"></i></button>
@@ -1792,10 +1818,11 @@ function renderBrowser() {
         <span class="chip" data-url="https://poki.com"><i class="fa-solid fa-gamepad"></i> Poki</span>
         <span class="chip" data-url="https://play.geforcenow.com"><i class="fa-solid fa-cloud"></i> GeForce NOW</span>
       </div>
+      <div id="br-service-notice" class="br-service-notice" hidden><span>Ce site demande une vérification ou refuse la connexion.</span><button id="br-change-engine">Changer de moteur</button></div>
       <div class="relative flex-1 min-h-0" id="br-frames">
         <div id="br-load" class="br-load hidden">
           <div class="spinner"></div>
-          <div class="text-[12px] text-slate-300">Chargement via proxy sécurisé...</div>
+          <div class="text-[12px] text-slate-300">Chargement via le proxy...</div>
         </div>
         <div id="br-yt" class="absolute inset-0 hidden bg-[#0f172a] flex-col z-10">
           <div class="flex items-center gap-2 px-3 py-2 border-b border-white/10 flex-none">
@@ -1825,7 +1852,8 @@ function renderBrowser() {
       </div>
       <div class="flex-none px-3 py-1 flex items-center justify-between bg-white/3 border-t border-white/8 text-[10.5px]">
         <span id="br-status" class="text-slate-500">Mode : Auto</span>
-        <span class="text-slate-600 hidden sm:inline truncate max-w-[55%]">Les sites compatibles s'ouvrent en direct — les sites bloqués (Poki, CrazyGames, Franime...) passent par le proxy intégré</span>
+        <button id="br-stop" class="br-official" hidden>Arrêter</button>
+        <button id="br-official" class="br-official" title="Ouvrir le site officiel pour se connecter ou effectuer sa vérification">Site officiel <i class="fa-solid fa-arrow-up-right-from-square"></i></button>
       </div>
     </div>`;
 }
@@ -1839,8 +1867,12 @@ function initBrowser(body, rec) {
   const ytPlayerWrap = body.querySelector('#yt-player-wrap');
   const ytPlayer = body.querySelector('#yt-player');
   const ytQ = body.querySelector('#yt-q');
+  const serviceNotice = body.querySelector('#br-service-notice');
+  const stopButton = body.querySelector('#br-stop');
+  let inspectionTimers = [];
   let history = [BROWSER_HOME], hIndex = 0;
-  let mode = 'auto'; // auto | direct | proxy
+  let mode = LS.get('browser_mode', 'auto'); // auto | direct | proxy
+  if (!['auto', 'direct', 'proxy'].includes(mode)) mode = 'auto';
   let navSeq = 0;
   /* Sites que l'utilisateur a passé manuellement par le proxy une fois :
      ils y repassent automatiquement (page de blocage du lycée…). */
@@ -1853,6 +1885,28 @@ function initBrowser(body, rec) {
   let activeTabId = null;
   let tabSeq = 0;
   let frame = null; // iframe de l'onglet actif
+  let restoringSession = true;
+
+  function safeSavedURL(value) {
+    if (value === BROWSER_HOME) return value;
+    try {
+      const u = new URL(value);
+      if (!/^https?:$/.test(u.protocol) || u.username || u.password) return null;
+      if (/(^|\.)(accounts\.google\.com|login\.microsoftonline\.com|login\.live\.com)$/.test(u.hostname)) return null;
+      if (/\/(oauth|authorize|callback|signin|login)(\/|$)/i.test(u.pathname)) return null;
+      if ([...u.searchParams.keys()].some(k => /token|password|secret|api.?key|^code$|authorization/i.test(k))) return null;
+      if (/token|password|secret|access_token/i.test(u.hash)) return null;
+      return u.href;
+    } catch (e) { return null; }
+  }
+  function saveSession() {
+    if (restoringSession || LS.get('remember_tabs', '1') !== '1') return;
+    const saved = tabs.slice(0, 12).map(t => {
+      const url = safeSavedURL(t.url);
+      return { url: url || BROWSER_HOME, title: url ? String(t.title).slice(0, 100) : 'Nouvel onglet' };
+    });
+    LS.setJSON('browser_session_v30', { tabs: saved, active: Math.max(0, tabs.findIndex(t => t.id === activeTabId)) });
+  }
 
   function createTab(url = BROWSER_HOME) {
     const id = 't' + (++tabSeq);
@@ -1881,6 +1935,8 @@ function initBrowser(body, rec) {
       history = tab.history || [tab.url]; hIndex = tab.hIndex || 0;
     }
     renderTabs();
+    if (tab?.suspended) { tab.suspended = false; navigate(tab.url, false); }
+    if (!restoringSession) updateNav();
   }
   function closeTab(id) {
     if (activeTabId === id) cancelBrowserLoad();
@@ -1893,6 +1949,7 @@ function initBrowser(body, rec) {
     else renderTabs();
   }
   function renderTabs() {
+    saveSession();
     if (!tabsBarEl) return;
     tabsBarEl.innerHTML = tabs.map(t => {
       let fav = '';
@@ -1914,6 +1971,7 @@ function initBrowser(body, rec) {
         /* réordonne le tableau selon l'ordre visuel */
         const order = [...tabsBarEl.querySelectorAll('[data-tab]')].map(x => x.dataset.tab);
         tabs.sort((a, c) => order.indexOf(a.id) - order.indexOf(c.id));
+        saveSession();
       });
       b.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -2397,6 +2455,7 @@ function initBrowser(body, rec) {
         history = history.slice(0, hIndex + 1); history.push(BROWSER_HOME); hIndex = history.length - 1;
       }
       if (activeTab0) { activeTab0.history = history; activeTab0.hIndex = hIndex; }
+      saveSession();
       setStatus('Nouvel onglet');
       return;
     }
@@ -2420,14 +2479,15 @@ function initBrowser(body, rec) {
     else urlInput.value = u;
     updateNav();
     if (activeTab) { activeTab.history = history; activeTab.hIndex = hIndex; }
+    saveSession();
     const searchHost = new URL(u).hostname.replace(/^www\./, '');
+    if (/(^|\.)(accounts\.google\.com|login\.microsoftonline\.com|login\.live\.com)$/.test(searchHost) || /\/(login|signin|oauth|authorize)(\/|$)/i.test(new URL(u).pathname)) {
+      accountNotice(u);
+      return;
+    }
     if (/^(google\.[a-z.]+|startpage\.com|(?:lite\.|html\.)?duckduckgo\.com|bing\.com|qwant\.com|ecosia\.[a-z.]+)$/.test(searchHost)) {
       showYT(false);
-      frame.removeAttribute('src');
-      frame.srcdoc = browserNoticeHTML('Recherche dans un onglet réel',
-        'Les moteurs peuvent refuser les cadres intégrés ou demander un CAPTCHA. Ouvre cette recherche dans un onglet réel pour utiliser leur interface et leur vérification. Aucun contournement du réseau ni du CAPTCHA n’est effectué.', u);
-      setStatus('Recherche prête — ouverture dans un onglet réel nécessaire');
-      return;
+      if (mode !== 'direct') { wispLoad(u); return; }
     }
     // Mode YouTube spécial : youtube.com s'affiche dans une interface intégrée
     let ytUrl = null;
@@ -2467,7 +2527,7 @@ function initBrowser(body, rec) {
        et sites de référence, qui restent en direct (rapide). */
     const SAFE_DIRECT = /^(?:[a-z-]+\.wikipedia\.org|wikipedia\.org|www\.google\.[a-z.]+|www\.startpage\.com|duckduckgo\.com|lite\.duckduckgo\.com|html\.duckduckgo\.com|www\.bing\.com|www\.qwant\.com|qwant\.com|www\.ecosia\.[a-z.]+|search\.yahoo\.com|www\.yahoo\.com)$/;
     if (mode === 'auto' && (!SAFE_DIRECT.test(hHost) || NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
-    if (mode === 'proxy') { proxyLoad(u, t0, fallback); return; }
+    if (mode === 'proxy') { wispLoad(u); return; }
     navSeq++;
     frame.removeAttribute('srcdoc');
     frame.src = smartDirect(u);
@@ -2513,6 +2573,10 @@ function initBrowser(body, rec) {
   var wispWatch = null, wispCurIdx = 0, wispRetries = 0, wispCurUrl = '';
   function cancelBrowserLoad() {
     navSeq++;
+    inspectionTimers.forEach(clearTimeout);
+    inspectionTimers = [];
+    serviceNotice.hidden = true;
+    stopButton.hidden = true;
     if (wispWatch) clearTimeout(wispWatch);
     wispWatch = null;
     wispRetries = 0;
@@ -2522,6 +2586,7 @@ function initBrowser(body, rec) {
     if (wispWatch) clearTimeout(wispWatch);
     wispWatch = null;
     showLoad(false);
+    stopButton.hidden = true;
     frame.onload = null;
     frame.removeAttribute('src');
     frame.srcdoc = browserNoticeHTML('Le service distant ne répond pas',
@@ -2542,7 +2607,27 @@ function initBrowser(body, rec) {
     if (ev.data.url && ev.data.url !== wispCurUrl) return;
     if (ev.data.wosProxy === 'loaded') {
       if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
+      stopButton.hidden = true;
       setStatus('Le proxy signale un chargement terminé — contenu distant non vérifiable');
+      const seq = navSeq, target = frame;
+      [800, 3500, 6500].forEach(delay => inspectionTimers.push(setTimeout(() => {
+        if (seq !== navSeq || target !== frame || !body.isConnected) return;
+        // Only readable same-origin proxy documents are inspected. No cookies,
+        // credentials or page text are copied to storage or another service.
+        let text = '', inspected = 0;
+        const inspect = win => {
+          if (++inspected > 12) return;
+          try {
+            text += (win.document.body?.innerText || '').slice(0, 40000) + '\n';
+            for (const child of win.document.querySelectorAll('iframe')) inspect(child.contentWindow);
+          } catch (e) { /* Cross-origin content stays private. */ }
+        };
+        inspect(target.contentWindow);
+        if (/unusual traffic|not a robot|access temporarily suspended|verify you are human|vérifiez que vous êtes|vérification de sécurité/i.test(text)) {
+          serviceNotice.hidden = false;
+          setStatus('Vérification ou accès refusé : utiliser le site officiel ou changer de moteur');
+        }
+      }, delay)));
     } else if (ev.data.wosProxy === 'error' && ev.data.url && wispWatch) {
       clearTimeout(wispWatch); wispWatch = null;
       retryProxy(wispCurUrl, navSeq, frame);
@@ -2558,6 +2643,7 @@ function initBrowser(body, rec) {
     /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran
        &wisp=N : force un serveur wisp précis (0 ou 1) — utilisé par le minuteur de secours ci-dessous */
     frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1&wisp=' + wispIdx;
+    stopButton.hidden = false;
     setStatus('Connexion au proxy intégré… tentative ' + (wispRetries + 1) + '/3');
     if (!wispIdx && !wispLoad._toastShown) { wispLoad._toastShown = true; try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {} }
     /* MINUTEUR DE SECOURS : si le site charge à l'infini (serveur wisp
@@ -2667,7 +2753,21 @@ function initBrowser(body, rec) {
   body.querySelector('#br-fwd').addEventListener('click', () => { if (hIndex < history.length - 1) { hIndex++; navigate(history[hIndex], false); } });
   body.querySelector('#br-reload').addEventListener('click', () => navigate(history[hIndex], false));
   body.querySelector('#br-home').addEventListener('click', () => navigate(BROWSER_HOME));
-  body.querySelector('#br-newtab').addEventListener('click', () => window.open(history[hIndex], '_blank'));
+  const openOfficial = () => {
+    const current = safeSavedURL(history[hIndex]);
+    if (current && current !== BROWSER_HOME) window.open(current, '_blank', 'noopener,noreferrer');
+    else toast('Ouvre d’abord un site dans le navigateur', 'fa-globe', 'text-sky-400');
+  };
+  body.querySelector('#br-newtab').addEventListener('click', openOfficial);
+  body.querySelector('#br-official').addEventListener('click', openOfficial);
+  stopButton.addEventListener('click', () => {
+    const u = history[hIndex];
+    cancelBrowserLoad();
+    frame.onload = null;
+    frame.removeAttribute('src');
+    frame.srcdoc = browserNoticeHTML('Chargement arrêté', 'Tu peux recharger cette adresse ou ouvrir le site officiel dans un vrai onglet.', u);
+    setStatus('Chargement arrêté');
+  });
   body.querySelector('#br-fs').addEventListener('click', async () => {
     const target = ytPanel && !ytPanel.classList.contains('hidden') ? body.querySelector('#br-yt') : frame;
     try {
@@ -2680,7 +2780,8 @@ function initBrowser(body, rec) {
   });
   body.querySelector('#br-mode').addEventListener('click', () => {
     mode = mode === 'auto' ? 'direct' : mode === 'direct' ? 'proxy' : 'auto';
-    toast('Chargement : ' + (mode === 'auto' ? 'Auto — direct si possible, sinon proxy intégré (Ultraviolet)' : mode === 'direct' ? 'Direct (cadre uniquement, sans proxy)' : 'Proxy HTML (lecteur simple — préférez Auto pour les sites bloqués)'), 'fa-bolt', 'text-sky-400');
+    LS.set('browser_mode', mode);
+    toast('Chargement : ' + (mode === 'auto' ? 'Auto : choix du chargement intégré' : mode === 'direct' ? 'Direct : certains sites refusent les cadres' : 'Proxy intégré : les vérifications et les limites du service restent possibles'), 'fa-bolt', 'text-sky-400');
     updateNav();
   });
   /* Bouton Boost dans le navigateur : accélère tout le système */
@@ -2709,21 +2810,65 @@ function initBrowser(body, rec) {
       `<button data-eng="${id}" class="w-full text-left px-3 py-2 rounded-md hover:bg-white/10 flex items-center gap-2 ${id === curEngine ? 'text-sky-400' : 'text-slate-200'}">
         <i class="fa-solid ${id === curEngine ? 'fa-check' : 'fa-globe'} w-4 text-center"></i><span class="flex-1">${e.name}</span></button>`).join('');
     engMenu.querySelectorAll('[data-eng]').forEach(b => b.addEventListener('click', () => {
+      const retrySearch = !serviceNotice.hidden;
       curEngine = b.dataset.eng; LS.set('engine', curEngine);
       engMenu.classList.add('hidden');
+      if (retrySearch) {
+        let q = '';
+        try { const current = new URL(history[hIndex]); q = current.searchParams.get('q') || current.searchParams.get('query') || ''; } catch (e) {}
+        navigate(SEARCH_ENGINES[curEngine].url + encodeURIComponent(q));
+      }
       toast('Moteur de recherche : ' + SEARCH_ENGINES[curEngine].name, 'fa-magnifying-glass', 'text-sky-400');
     }));
   };
   body.querySelector('#br-engine').addEventListener('click', (e) => {
     e.stopPropagation(); renderEngMenu(); engMenu.classList.toggle('hidden');
   });
-  document.addEventListener('click', (e) => { if (!engMenu.contains(e.target)) engMenu.classList.add('hidden'); });
+  body.querySelector('#br-change-engine').addEventListener('click', e => {
+    e.stopPropagation(); renderEngMenu(); engMenu.classList.remove('hidden');
+  });
+  const dismissEngineMenu = e => { if (!engMenu.contains(e.target)) engMenu.classList.add('hidden'); };
+  document.addEventListener('click', dismissEngineMenu);
   body.querySelectorAll('.chip[data-url]').forEach(c => c.addEventListener('click', () => navigate(c.dataset.url)));
 
   updateNav();
-  browserAPI = { navigate, ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source) };
-  if (rec) rec.cleanup = () => {
+  function accountNotice(u) {
     cancelBrowserLoad();
+    showYT(false);
+    frame.onload = null;
+    frame.removeAttribute('src');
+    frame.srcdoc = browserNoticeHTML('Connexion sur le site officiel',
+      'Pour protéger ton compte, connecte-toi dans un vrai onglet. Ce navigateur conserve lui-même la session selon les règles du service. WebOS ne copie ni mot de passe ni cookie de connexion.', u);
+    setStatus('Connexion : utiliser le site officiel');
+  }
+  const browserKeys = e => {
+    if (focusedApp !== 'browser' || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    if (e.key.toLowerCase() === 'l') { e.preventDefault(); urlInput.focus(); urlInput.select(); }
+    if (e.key.toLowerCase() === 't') { e.preventDefault(); createTab(); }
+    if (e.key.toLowerCase() === 'w') { e.preventDefault(); closeTab(activeTabId); }
+  };
+  document.addEventListener('keydown', browserKeys);
+  browserAPI = { navigate, accountNotice, currentUrl: () => history[hIndex], ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source) };
+  const saved = LS.getJSON('browser_session_v30', null);
+  if (LS.get('remember_tabs', '1') === '1' && Array.isArray(saved?.tabs) && saved.tabs.length) {
+    tabs.forEach(t => t.frame.remove());
+    tabs = [];
+    saved.tabs.slice(0, 12).forEach(t => {
+      const tab = createTab();
+      tab.url = safeSavedURL(t.url) || BROWSER_HOME;
+      tab.title = typeof t.title === 'string' ? t.title.slice(0, 100) : 'Nouvel onglet';
+      tab.suspended = true;
+    });
+    const active = Number.isInteger(saved.active) ? Math.min(Math.max(saved.active, 0), tabs.length - 1) : 0;
+    setActiveTab(tabs[active].id);
+  }
+  restoringSession = false;
+  saveSession();
+  if (rec) rec.cleanup = () => {
+    saveSession();
+    cancelBrowserLoad();
+    document.removeEventListener('click', dismissEngineMenu);
+    document.removeEventListener('keydown', browserKeys);
     window.removeEventListener('message', onProxyMessage);
     browserAPI = null;
   };
@@ -3852,7 +3997,7 @@ function mount2048(body, rec) {
     const before = JSON.stringify(grid);
     if (dx === 1) grid = grid.map(r => slide([...r].reverse()).reverse());
     if (dx === -1) grid = grid.map(r => slide(r));
-    if (dy === 1) { for (let x = 0; x < 4; x++) { const col = slide([grid[3][x],grid[2][x],grid[1][x],grid[0][x]].reverse()); [grid[0][x],grid[1][x],grid[2][x],grid[3][x]] = col; } }
+    if (dy === 1) { for (let x = 0; x < 4; x++) { const col = slide([grid[3][x],grid[2][x],grid[1][x],grid[0][x]]).reverse(); [grid[0][x],grid[1][x],grid[2][x],grid[3][x]] = col; } }
     if (dy === -1) { for (let x = 0; x < 4; x++) { const col = slide([grid[0][x],grid[1][x],grid[2][x],grid[3][x]]); [grid[0][x],grid[1][x],grid[2][x],grid[3][x]] = col; } }
     if (JSON.stringify(grid) !== before) { addTile(); render(); }
   }
@@ -4333,7 +4478,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v29 : actions IA validées, arrêt immédiat du contrôle, diagnostic des modèles et tentatives de chargement limitées.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v30 : bureau personnalisé, raccourcis épinglables, onglets mémorisés et navigation par proxy intégré.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. Les recherches s’ouvrent dans un onglet réel. Le diagnostic teste les modèles avec votre clé et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -4655,13 +4800,14 @@ function initSettings(body) {
   /* ---- Sauvegarde : export / import de tout le système ---- */
   body.querySelector('#st-export').addEventListener('click', () => {
     const dump = LS.entries();
-    const blob = new Blob([JSON.stringify({ app: 'webos', version: 8, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
+    delete dump.webos_keys;
+    const blob = new Blob([JSON.stringify({ app: 'webos', version: 30, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'webos-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
-    toast('Sauvegarde exportée', 'fa-floppy-disk', 'text-sky-400');
+    toast('Sauvegarde exportée sans les clés API', 'fa-floppy-disk', 'text-sky-400');
   });
   body.querySelector('#st-import-btn').addEventListener('click', () => body.querySelector('#st-import').click());
   body.querySelector('#st-import').addEventListener('change', (e) => {
@@ -4696,7 +4842,17 @@ function appGlyph(app) {
 }
 
 /* Logo ChatGPT (OpenAI), Xbox, YouTube et services : vraies images de logos */
-function brandImg(domain, sz = 128) { return `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}`; }
+function brandImg(domain, sz = 128) {
+  const host = String(domain).toLowerCase().replace(/^(www|m|open|fr)\./, '');
+  const local = {
+    'google.com': 'google.com', 'youtube.com': 'youtube.com', 'discord.com': 'discord.com',
+    'tiktok.com': 'tiktok.com', 'poki.com': 'poki.com', 'crazygames.com': 'crazygames.com',
+    'bloxd.io': 'bloxd.io', 'spotify.com': 'spotify.com', 'wikipedia.org': 'wikipedia.org',
+    'chatgpt.com': 'chatgpt.com', 'openai.com': 'chatgpt.com', 'xbox.com': 'xbox.com',
+    'custom-cursor.com': 'custom-cursor.com'
+  };
+  return local[host] ? `icons/${local[host]}.png` : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${sz}`;
+}
 
 /* Icône Paramètres style Windows 11 (engrenage Fluent) */
 const GEAR_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block"><g fill="none" stroke="#8ab4f8" stroke-width="4.6" stroke-linecap="round"><circle cx="24" cy="24" r="10.5"/></g><g fill="#8ab4f8">${[0,45,90,135,180,225,270,315].map(a => `<rect x="21.6" y="2.4" width="4.8" height="9" rx="2.4" transform="rotate(${a} 24 24)"/>`).join('')}</g><circle cx="24" cy="24" r="4.6" fill="#0b1120"/></svg>`;
@@ -4706,11 +4862,11 @@ const TRASH_SVG = `<svg viewBox="0 0 48 48" style="width:100%;height:100%;displa
 
 const APPS = {
   browser:  { title: 'Navigateur',      icon: 'fa-globe',       color: 'from-sky-500 to-blue-600',      w: 960, h: 640, render: renderBrowser,  init: initBrowser, svg: EDGE_SVG },
-  ai:       { title: 'Assistant IA',    icon: 'fa-robot',        color: 'from-emerald-500 to-green-600', w: 680, h: 560, render: renderAI,       init: initAI, img: 'https://www.google.com/s2/favicons?domain=openai.com&sz=128' },
-  games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames, img: 'https://www.google.com/s2/favicons?domain=xbox.com&sz=128' },
-  media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia, img: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128' },
+  ai:       { title: 'Assistant IA',    icon: 'fa-robot',        color: 'from-emerald-500 to-green-600', w: 680, h: 560, render: renderAI,       init: initAI, img: brandImg('openai.com') },
+  games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames, img: brandImg('xbox.com') },
+  media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia, img: brandImg('youtube.com') },
   settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings, svg: GEAR_SVG },
-  cursors:  { title: 'Curseurs',       icon: 'fa-arrow-pointer', color: 'from-violet-500 to-fuchsia-600', w: 640, h: 560, render: renderCursors, init: initCursors, img: 'https://www.google.com/s2/favicons?domain=custom-cursor.com&sz=128' }
+  cursors:  { title: 'Curseurs',       icon: 'fa-arrow-pointer', color: 'from-violet-500 to-fuchsia-600', w: 640, h: 560, render: renderCursors, init: initCursors, img: brandImg('custom-cursor.com') }
 };
 
 const iconOrder = ['browser', 'ai', 'games', 'media', 'cursors', 'settings'];

@@ -1,0 +1,123 @@
+/* WebOS v30: fluent desktop, with existing classic skins left intact. */
+:root { --v30-line:rgba(255,255,255,.09); --v30-panel:#172131; --v30-muted:#92a5bc; }
+[hidden],.br-load.hidden { display:none!important; }
+button:focus-visible,[role="button"]:focus-visible,input:focus-visible { outline:2px solid #87c7ff; outline-offset:3px; }
+.desk-icon[hidden] { display:none!important; }
+#desk-icons { right:16px; display:block; overflow-x:hidden; overflow-y:auto; }
+.desk-icon:hover { transform:none; }
+#desktop-welcome { position:absolute; top:54px; right:52px; color:#e3efff; text-align:right; pointer-events:none; z-index:2; }
+.desktop-edition { font-size:10px; letter-spacing:.2em; color:#aec8e5; }
+#desktop-welcome h1 { font-size:30px; letter-spacing:-.04em; font-weight:400; margin:9px 0 5px; }
+#desktop-welcome p { font-size:12px; color:#b5c8e1; }
+.desktop-save { display:inline-flex; gap:7px; align-items:center; font-size:10px; color:#a5bbd7; margin-top:22px; }
+.desktop-save>span { height:5px; width:5px; background:#8bcebb; border-radius:50%; }
+body:not([class*="skin-"]) .window { border-radius:12px; background:rgba(20,29,43,.96); border-color:rgba(195,219,255,.17); box-shadow:0 18px 70px #0006,0 2px 10px #0003; }
+body:not([class*="skin-"]) .window.focused { border-color:rgba(157,198,255,.4); box-shadow:0 26px 90px #0007,0 0 0 1px #a3c8ff0b; }
+body:not([class*="skin-"]) .win-header { height:42px; min-height:42px; padding-left:13px; background:rgba(191,214,250,.035); border-bottom:1px solid #ffffff07; }
+body:not([class*="skin-"]) .win-header .w-6 { width:20px; height:20px; }
+body:not([class*="skin-"]) .wbtn { width:37px; height:29px; border-radius:5px; }
+body:not([class*="skin-"]) .desk-icon { border-radius:7px; }
+body:not([class*="skin-"]) #taskbar { background:rgba(22,32,49,.88); border-top:1px solid #c2dcff25; backdrop-filter:blur(28px) saturate(125%); }
+#tb-center { min-width:0; max-width:calc(100vw - 355px); }
+#tb-pinned { min-width:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; padding:3px 0; }
+#tb-pinned::-webkit-scrollbar { display:none; }
+.tb-icon { flex-shrink:0; }
+button.tb-icon { border:0; background:transparent; color:inherit; font:inherit; }
+button.tb-icon:hover { background:rgba(255,255,255,.09); }
+#tb-search-v30 { color:#d2e2f8; font-size:17px; }
+#tb-show-desktop { position:absolute; right:0; top:7px; bottom:7px; width:7px; border:0; border-left:1px solid #ffffff2b; background:transparent; cursor:pointer; }
+#tb-show-desktop:hover { background:#ffffff25; }
+#start-menu { width:min(580px,calc(100vw - 24px)); max-height:calc(100dvh - 94px); overflow-y:auto; }
+#sm-apps { max-height:330px; overflow-y:auto; }
+.shortcut-site-icon { position:relative; width:100%; height:100%; min-width:24px; min-height:24px; display:grid; place-items:center; border-radius:22%; background:linear-gradient(145deg,#29415f,#142338); border:1px solid #c8e3ff16; color:#b5d3f6; font:600 21px "Segoe UI",system-ui; overflow:hidden; }
+.shortcut-site-icon>img { position:absolute; width:72%; height:72%; inset:14%; object-fit:contain; }
+.desk-icon>.shortcut-site-icon,.desk-icon>.shortcut-game-icon { width:52px; height:52px; flex:none; }
+.sm-tile>.w-10 { display:block; }
+#shortcut-menu header>.ic-svg { width:31px; height:31px; flex:none; }
+.shortcut-game-icon { width:100%; height:100%; min-width:24px; min-height:24px; display:grid; place-items:center; background:color-mix(in srgb,var(--pin-color),#13202e 78%); color:var(--pin-color); border:1px solid color-mix(in srgb,var(--pin-color),transparent 75%); border-radius:22%; font-size:22px; }
+.tb-glyph .shortcut-site-icon,.tb-glyph .shortcut-game-icon { width:29px; height:29px; font-size:17px; }
+.shortcut-add { width:25px; height:25px; min-width:25px; display:inline-grid; place-items:center; flex-shrink:0; border:1px solid #cbe1ff22; border-radius:6px; background:#ffffff05; color:#9cb3cf; font-size:10px; cursor:pointer; transition:background .12s,color .12s; }
+.shortcut-add:hover { background:#8ac8ff24; color:#e7f6ff; border-color:#8ac8ff66; }
+.shortcut-add.is-pinned { color:#8dcfff; border-color:#8ac8ff44; }
+.has-shortcut { position:relative; padding-right:31px!important; }
+.has-shortcut>.card-pin { position:absolute; top:7px; right:7px; width:22px; height:22px; min-width:22px; }
+.browser-quick-link { display:inline-flex; align-items:center; gap:3px; flex:none; }
+.browser-quick-link .shortcut-add { width:21px; height:21px; min-width:21px; font-size:9px; border:0; background:transparent; }
+#br-pin-current { width:30px; height:31px; }
+.br-official { flex-shrink:0; border:0; background:none; color:#9fc4eb; cursor:pointer; font-size:10px; padding:3px 0 3px 12px; }
+.br-official:hover { color:white; }
+.br-official[hidden],.br-service-notice[hidden] { display:none; }
+.br-service-notice { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; border-bottom:1px solid #e9bd6433; background:#dca23812; color:#dbc69d; font-size:10px; flex-shrink:0; }
+.br-service-notice button { white-space:nowrap; border:0; background:transparent; color:#a4cfff; cursor:pointer; font-size:10px; }
+#br-status { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+#br-url { font-size:12px; }
+#br-tabs { scrollbar-width:thin; }
+body:not([class*="skin-"]) .br-chrome { background:#192435; }
+body:not([class*="skin-"]) .glass-card { border-color:#c6dcff10; background:#c3dcff04; border-radius:11px; }
+body:not([class*="skin-"]) .glass-card:hover { border-color:#c6dcff28; }
+#shortcut-menu { position:fixed; z-index:20000; width:min(312px,calc(100vw - 16px)); padding:7px; border-radius:12px; border:1px solid #b2d0f531; color:#e5edf9; background:rgba(27,38,55,.98); box-shadow:0 20px 65px #0008; backdrop-filter:blur(25px); font:12px "Segoe UI",system-ui; }
+#shortcut-menu[hidden] { display:none; }
+#shortcut-menu header { display:flex; align-items:center; gap:10px; padding:10px 7px 14px; }
+#shortcut-menu header>.shortcut-site-icon,#shortcut-menu header>.shortcut-game-icon { width:31px; height:31px; flex:none; font-size:16px; }
+#shortcut-menu header>span:not(.shortcut-site-icon):not(.shortcut-game-icon) { min-width:0; flex:1; }
+#shortcut-menu header strong { display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#shortcut-menu header small { display:block; font-size:10px; color:#8ba1bd; margin-top:3px; }
+#shortcut-menu header>button { border:0; background:none; color:#9bb2cc; padding:3px 7px; font-size:20px; cursor:pointer; }
+#shortcut-menu>button { width:100%; border:0; background:transparent; color:inherit; display:flex; align-items:center; gap:11px; text-align:left; padding:11px 9px; border-radius:6px; cursor:pointer; }
+#shortcut-menu>button:hover { background:#ffffff0d; }
+#shortcut-menu>button>i:first-child { width:16px; color:#8dbde8; text-align:center; }
+#shortcut-menu>button>span { flex:1; }
+#shortcut-menu>button>i:last-child:not(:first-child) { font-size:9px; color:#91c8fb; }
+.shortcut-menu-rule { height:1px; background:#ffffff0b; margin:5px 8px; }
+.storage-panel { padding:18px; border-radius:12px; background:#98c7ff08; border:1px solid #98c7ff24; }
+.storage-heading { display:flex; align-items:center; gap:11px; margin-bottom:13px; }
+.storage-icon { width:37px; height:37px; display:grid; place-items:center; color:#91c8fb; border-radius:10px; background:#91c8fb17; }
+.storage-heading>div { flex:1; min-width:0; }
+.storage-heading h3 { font-size:15px; font-weight:600; margin:0 0 3px; letter-spacing:-.02em; }
+.storage-heading p { font-size:10px!important; margin:0!important; }
+.storage-status { width:6px; height:6px; background:#87cdb7; border-radius:50%; }
+.storage-status.warning { background:#e8b87d; }
+.storage-panel p { font-size:11px; line-height:1.7; color:#9eb1c9; margin:10px 0; }
+.storage-panel label { display:flex; align-items:flex-start; gap:8px; font-size:11px; color:#d8e7fa; margin:14px 0; }
+.storage-panel input { accent-color:#86c7ff; margin-top:2px; }
+.storage-panel .storage-note { padding-top:12px; border-top:1px solid #ffffff0b; }
+.storage-actions { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 10px; }
+.storage-actions .btn { font-size:10px; }
+.storage-panel small { display:block; font-size:10px; color:#849ab5; line-height:1.6; }
+body.boost #shortcut-menu { backdrop-filter:none; }
+body[class*="skin-"] #desktop-welcome { display:none; }
+@media(max-width:1050px) {
+  #tb-right>.tray-btn:nth-child(-n+3),#tb-right>.tb-sep { display:none; }
+  #tb-center { max-width:calc(100vw - 200px); }
+}
+@media(max-width:719px) {
+  #tb-center { max-width:calc(100vw - 90px); gap:0; }
+  #tb-right>.tray-btn,#tb-right>.tb-sep { display:none; }
+  #tb-clock { padding:0 9px; }
+  #clock-date { font-size:9px; }
+  #taskbar { justify-content:flex-start; padding-left:8px; }
+  #tb-center>.tb-sep { display:none; }
+  .tb-icon { width:37px; height:40px; }
+  #tb-search-v30 { width:31px; }
+  #desktop-welcome { display:none; }
+  #desktop-welcome h1 { font-size:21px; }
+  .desktop-edition { font-size:8px; }
+  #desktop-welcome p,.desktop-save { font-size:9px; }
+  .desktop-save { margin-top:12px; }
+  .br-chrome { flex-wrap:wrap; gap:4px!important; padding:6px!important; }
+  .br-chrome>#br-engine { display:none; }
+  .br-chrome>#br-url { flex-basis:calc(100% - 174px); min-width:70px; }
+  #br-boost,#br-fs { display:none; }
+  #br-pin-current { height:28px; width:25px; }
+  #gh-root>.grid,#gh-root>div>.grid,#mh-grid,#mh-free-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .has-shortcut { padding-left:10px!important; }
+  .has-shortcut .btn { font-size:10px; padding-left:7px!important; padding-right:7px!important; }
+  #start-menu { padding:16px; }
+  #sm-apps { grid-template-columns:repeat(3,minmax(0,1fr)); max-height:calc(100dvh - 280px); }
+  #br-yt>div:first-child { flex-wrap:wrap; }
+  #yt-q { min-width:90px; }
+  #shortcut-menu { font-size:11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto!important; animation:none!important; transition:none!important; }
+}
