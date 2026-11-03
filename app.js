@@ -121,6 +121,11 @@ let panicKey = LS.get('panic_key', 'Escape');
 
 /* Applications personnalisées ajoutées par l'utilisateur */
 let CUSTOM_APPS = LS.getJSON('customapps', []);
+/* v39 — Corbeille : icônes supprimées (glissées sur la corbeille), restaurables.
+   HIDDEN_APPS = apps intégrées retirées du bureau (restent dans APPS, juste cachées). */
+let TRASH = LS.getJSON('wos_trash', []);
+let HIDDEN_APPS = LS.getJSON('wos_hiddenapps', []);
+function saveTrash() { LS.setJSON('wos_trash', TRASH); LS.setJSON('wos_hiddenapps', HIDDEN_APPS); }
 
 function triggerPanic() { window.location.replace(panicUrl); }
 
@@ -5583,7 +5588,8 @@ const APPS = {
   games:    { title: 'Game Hub',        icon: 'fa-gamepad',     color: 'from-violet-500 to-purple-600', w: 780, h: 560, render: renderGames,     init: initGames, img: brandImg('xbox.com') },
   media:    { title: 'Media Hub',       icon: 'fa-clapperboard', color: 'from-red-500 to-rose-600',      w: 840, h: 620, render: renderMedia,    init: initMedia, img: brandImg('youtube.com') },
   settings: { title: 'Paramètres',      icon: 'fa-gear',        color: 'from-slate-500 to-slate-700',   w: 580, h: 640, render: renderSettings, init: initSettings, svg: GEAR_SVG },
-  cursors:  { title: 'Curseurs',       icon: 'fa-arrow-pointer', color: 'from-violet-500 to-fuchsia-600', w: 640, h: 560, render: renderCursors, init: initCursors, img: brandImg('custom-cursor.com') }
+  cursors:  { title: 'Curseurs',       icon: 'fa-arrow-pointer', color: 'from-violet-500 to-fuchsia-600', w: 640, h: 560, render: renderCursors, init: initCursors, img: brandImg('custom-cursor.com') },
+  trashwin: { title: 'Corbeille',      icon: 'fa-trash-can',    color: 'from-slate-400 to-slate-600',   w: 520, h: 500, render: renderTrashWin, init: initTrashWin }
 };
 
 const iconOrder = ['browser', 'ai', 'games', 'media', 'cursors', 'settings'];
@@ -5595,6 +5601,120 @@ const SEARCH_ALIASES = {
   settings: 'paramètres options camouflage réglages fond écran',
   cursors: 'curseurs souris curseur pointeur animé manga membres'
 };
+/* ============================================================
+   v39 — CORBEILLE + FENÊTRE « AJOUTER »
+============================================================ */
+/* Supprime une icône du bureau → corbeille (restaurable) */
+function moveToTrash(el) {
+  const id = el.dataset.iconId;
+  if (!id || id === 'trash' || id === 'addapp') { toast('Impossible de mettre ça à la corbeille', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+  const customId = el.dataset.custom;
+  if (customId) {
+    const app = CUSTOM_APPS.find(a => String(a.id) === String(customId));
+    if (app) {
+      trashAdd({ kind: 'custom', id: customId, title: app.title, url: app.url, emoji: app.emoji });
+      CUSTOM_APPS = CUSTOM_APPS.filter(a => String(a.id) !== String(customId));
+      LS.setJSON('customapps', CUSTOM_APPS);
+    }
+  } else if (APPS[id]) {
+    HIDDEN_APPS.push(id);
+    trashAdd({ kind: 'app', id, title: APPS[id].title });
+  } else return;
+  saveTrash();
+  el.remove();
+  toast('« ' + (APPS[id] ? APPS[id].title : id) + ' » à la corbeille — clique sur la corbeille pour restaurer', 'fa-trash-can', 'text-slate-400');
+}
+function trashAdd(item) { TRASH.unshift({ ...item, when: Date.now() }); }
+/* Fenêtre Corbeille : liste + Restaurer + Vider */
+function renderTrashWin() {
+  return `
+    <div id="tw-root" class="h-full overflow-y-auto p-5 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-[11px] text-slate-400">Glisse une icône du bureau sur la corbeille pour la supprimer — tout est restaurable d'ici.</div>
+        <button class="btn btn-ghost !py-1 !px-2.5 hover:!bg-red-500/20 text-[11px]" id="tw-empty"><i class="fa-solid fa-trash text-[10px] text-red-400"></i> Vider</button>
+      </div>
+      <div id="tw-list" class="space-y-2"></div>
+    </div>`;
+}
+function initTrashWin(body) {
+  const list = body.querySelector('#tw-list');
+  const render = () => {
+    if (!TRASH.length) { list.innerHTML = '<div class="text-[11px] text-slate-500 italic text-center py-8">La corbeille est vide.</div>'; return; }
+    list.innerHTML = TRASH.map((t, i) => {
+      const ico = t.kind === 'custom'
+        ? `<span class="text-lg">${escHtml(t.emoji || '🔗')}</span>`
+        : `<div class="w-5 h-5">${appGlyph(APPS[t.id]) || '<i class="fa-solid fa-cube"></i>'}</div>`;
+      const sub = t.kind === 'custom' ? escHtml(t.url || '') : 'Application intégrée';
+      return `
+      <div class="flex items-center gap-2 glass-card !rounded-lg px-3 py-2">
+        ${ico}
+        <div class="flex-1 min-w-0"><div class="text-[12px] font-semibold truncate">${escHtml(t.title)}</div><div class="text-[10.5px] text-slate-500 truncate">${sub}</div></div>
+        <button class="btn btn-ghost !py-1 !px-2.5" data-twrestore="${i}" title="Remettre sur le bureau"><i class="fa-solid fa-rotate-left text-[10px]"></i> Restaurer</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-twrestore]').forEach(b => b.addEventListener('click', () => {
+      const t = TRASH[+b.dataset.twrestore];
+      if (!t) return;
+      TRASH = TRASH.filter(x => x !== t);
+      if (t.kind === 'custom') {
+        CUSTOM_APPS.push({ id: t.id, title: t.title, url: t.url, emoji: t.emoji || '🔗' });
+        LS.setJSON('customapps', CUSTOM_APPS);
+        renderCustomIcons();
+      } else {
+        HIDDEN_APPS = HIDDEN_APPS.filter(x => x !== t.id);
+        if (!di.querySelector('.desk-icon[data-icon-id="' + t.id + '"]')) deskIconCreate(t.id);
+        renderStartMenuApps();
+      }
+      saveTrash(); render();
+      toast('« ' + t.title + ' » restauré sur le bureau', 'fa-rotate-left', 'text-emerald-400');
+    }));
+  };
+  body.querySelector('#tw-empty').addEventListener('click', () => {
+    if (!TRASH.length) { toast('La corbeille est déjà vide', 'fa-trash-can', 'text-slate-400'); return; }
+    TRASH = []; saveTrash(); render();
+    toast('Corbeille vidée définitivement', 'fa-trash-can', 'text-slate-400');
+  });
+  render();
+}
+/* Fenêtre « Ajouter » : crée une app personnalisée (nom + adresse + emoji) */
+function openAddAppDialog() {
+  const old = document.getElementById('addapp-modal'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.id = 'addapp-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center';
+  m.innerHTML = `
+    <div class="glass-card" style="width:min(400px,92vw);padding:20px;border-radius:16px">
+      <div class="text-[14px] font-bold mb-3"><i class="fa-solid fa-plus mr-2 text-violet-400"></i>Ajouter une application</div>
+      <div class="space-y-3 text-[12px]">
+        <div><div class="text-[11px] text-slate-400 mb-1">Nom</div><input id="aa-name" class="field w-full" placeholder="Poki, Discord…" /></div>
+        <div><div class="text-[11px] text-slate-400 mb-1">Adresse (URL)</div><input id="aa-url" class="field w-full" placeholder="poki.com" spellcheck="false" /></div>
+        <div><div class="text-[11px] text-slate-400 mb-1">Emoji (icône de l'app)</div><input id="aa-emoji" class="field w-full" value="🔗" maxlength="4" /></div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button class="btn btn-ghost !py-1.5" id="aa-cancel">Annuler</button>
+        <button class="btn btn-violet !py-1.5" id="aa-ok"><i class="fa-solid fa-plus"></i> Ajouter</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  const close = () => { m.remove(); document.removeEventListener('keydown', esc); };
+  const esc = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', esc);
+  m.addEventListener('pointerdown', (e) => { if (e.target === m) close(); });
+  m.querySelector('#aa-cancel').addEventListener('click', close);
+  m.querySelector('#aa-ok').addEventListener('click', () => {
+    const title = m.querySelector('#aa-name').value.trim();
+    let url = m.querySelector('#aa-url').value.trim();
+    const emoji = m.querySelector('#aa-emoji').value.trim() || '🔗';
+    if (!title || !url) { toast('Renseigne le nom et l\u2019adresse', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    CUSTOM_APPS.push({ id: Date.now(), title, url, emoji });
+    LS.setJSON('customapps', CUSTOM_APPS);
+    renderCustomIcons();
+    close();
+    toast('App ajoutée au bureau', 'fa-grid-2-plus', 'text-violet-400');
+  });
+  m.querySelector('#aa-name').focus();
+}
 const di = document.getElementById('desk-icons');
 const getIconPos = () => LS.getJSON('iconpos', {});
 /* Grille : les icônes se collent aux cases (comme un vrai bureau) */
@@ -5657,6 +5777,14 @@ function makeDeskDraggable(b, id) {
       b.style.left = Math.max(0, ox + dx) + 'px';
       b.style.top = Math.max(0, oy + dy) + 'px';
       group.forEach(s => { s.el.style.left = Math.max(0, s.x + dx) + 'px'; s.el.style.top = Math.max(0, s.y + dy) + 'px'; });
+      /* v39 — Surbrillance de la corbeille quand on la survole avec une icône */
+      const trashEl = di.querySelector('.desk-icon[data-icon-id="trash"]');
+      if (trashEl) {
+        const tr = trashEl.getBoundingClientRect();
+        const r = b.getBoundingClientRect();
+        const over = !(r.right < tr.left || r.left > tr.right || r.bottom < tr.top || r.top > tr.bottom);
+        trashEl.classList.toggle('trash-hot', over && b.dataset.iconId !== 'trash' && b.dataset.iconId !== 'addapp');
+      }
     };
     const up = () => {
       document.removeEventListener('pointermove', move);
@@ -5664,6 +5792,15 @@ function makeDeskDraggable(b, id) {
       document.removeEventListener('pointercancel', up);
       if (moved) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
+        /* v39 — Dépôt sur la corbeille : suppression au lieu du rangement */
+        const trashEl = di.querySelector('.desk-icon[data-icon-id="trash"]');
+        if (trashEl) {
+          const tr = trashEl.getBoundingClientRect();
+          const over = (el) => { const r = el.getBoundingClientRect(); return !(r.right < tr.left || r.left > tr.right || r.bottom < tr.top || r.top > tr.bottom); };
+          const hit = over(b) || group.some(s => over(s.el));
+          trashEl.classList.remove('trash-hot');
+          if (hit) { moveToTrash(b); group.forEach(s => moveToTrash(s.el)); return; }
+        }
         const pos = getIconPos();
         /* Aimantation à la grille + ANTI-SUPERPOSITION : chaque icône trouve la case libre la plus proche.
            nearestFreeCell travaille en NUMÉROS DE CASE (colonne, rangée) — on convertit
@@ -5767,10 +5904,12 @@ function appIconHtml(app, id) {
   if (app.img) return `<div class="ic bg-gradient-to-br ${app.color}">${appGlyph(app)}</div>`;
   return `<div class="ic bg-gradient-to-br ${app.color}"><i class="fa-solid ${app.icon}"></i></div>`;
 }
-iconOrder.forEach(id => {
+/* v39 — (re)crée l'icône de bureau d'une app intégrée */
+function deskIconCreate(id) {
   const app = APPS[id];
   addDeskIcon(id, appIconHtml(app, id), app.title, () => openApp(id));
-});
+}
+iconOrder.forEach(id => { if (!HIDDEN_APPS.includes(id)) deskIconCreate(id); });
 /* Applications personnalisées (ajoutées via Paramètres) */
 function renderCustomIcons() {
   di.querySelectorAll('.desk-icon[data-custom]').forEach(x => x.remove());
@@ -5787,11 +5926,11 @@ renderCustomIcons();
 /* Bouton + : ajouter une app */
 addDeskIcon('addapp',
   skinIconFor('addapp', `<div class="ic" style="background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.45)"><i class="fa-solid fa-plus text-slate-200"></i></div>`),
-  'Ajouter', () => { openApp('settings'); toast('Ajoutez vos apps dans « Mes applications »', 'fa-plus', 'text-sky-400'); });
-// Corbeille (décorative, façon Windows)
+  'Ajouter', () => { openAddAppDialog(); });
+// v39 — Corbeille : clic = fenêtre de restauration, glisser une icône dessus = supprimer
 addDeskIcon('trash',
   skinIconFor('trash', `<div class="ic-svg">${TRASH_SVG}</div>`),
-  'Corbeille', () => toast('La corbeille est vide', 'fa-trash-can', 'text-slate-400'));
+  'Corbeille', () => openApp('trashwin'));
 
 /* Au démarrage : résout les superpositions mémorisées (anciennes sauvegardes
    ou icônes en flux qui se chevauchent), façon Windows qui réorganise le bureau */
@@ -5825,20 +5964,26 @@ addDeskIcon('trash',
   if (changed) LS.setJSON('iconpos', pos);
 })();
 
-const smApps = document.getElementById('sm-apps');
-iconOrder.forEach(id => {
-  const app = APPS[id];
-  const t = document.createElement('div');
-  t.className = 'sm-tile';
-  t.dataset.name = (app.title + ' ' + (SEARCH_ALIASES[id] || '')).toLowerCase();
-  t.dataset.iconId = id;
-  t.innerHTML = appIconHtml(app, id) + `<span class="lbl">${app.title}</span>`;
-  t.addEventListener('click', () => { toggleStartMenu(false); openApp(id); });
-  smApps.appendChild(t);
-});
+/* v39 — Tuiles du menu Démarrer (re-générées après restauration corbeille) */
+function renderStartMenuApps() {
+  const smApps = document.getElementById('sm-apps');
+  smApps.innerHTML = '';
+  iconOrder.forEach(id => {
+    if (HIDDEN_APPS.includes(id)) return;
+    const app = APPS[id];
+    const t = document.createElement('div');
+    t.className = 'sm-tile';
+    t.dataset.name = (app.title + ' ' + (SEARCH_ALIASES[id] || '')).toLowerCase();
+    t.dataset.iconId = id;
+    t.innerHTML = appIconHtml(app, id) + `<span class="lbl">${app.title}</span>`;
+    t.addEventListener('click', () => { toggleStartMenu(false); openApp(id); });
+    smApps.appendChild(t);
+  });
+}
+renderStartMenuApps();
 document.getElementById('sm-search').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
-  smApps.querySelectorAll('.sm-tile').forEach(t => t.style.display = t.dataset.name.includes(q) ? '' : 'none');
+  document.getElementById('sm-apps').querySelectorAll('.sm-tile').forEach(t => t.style.display = t.dataset.name.includes(q) ? '' : 'none');
 });
 document.getElementById('sm-reco-cloak').addEventListener('click', () => { const p = CLOAK_PRESETS[0]; applyCloak(p.title, p.icon); toggleStartMenu(false); });
 document.getElementById('sm-reco-wall').addEventListener('click', () => { randomWallpaper(); toggleStartMenu(false); });
@@ -5851,7 +5996,7 @@ function toggleStartMenu(force) {
   const hidden = startMenu.classList.contains('hidden-menu');
   const show = force === undefined ? hidden : force;
   startMenu.classList.toggle('hidden-menu', !show);
-  if (show) { const s = document.getElementById('sm-search'); s.value = ''; s.focus(); smApps.querySelectorAll('.sm-tile').forEach(t => t.style.display = ''); }
+  if (show) { const s = document.getElementById('sm-search'); s.value = ''; s.focus(); document.getElementById('sm-apps').querySelectorAll('.sm-tile').forEach(t => t.style.display = ''); }
 }
 document.getElementById('start-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleStartMenu(); });
 document.addEventListener('pointerdown', (e) => {
