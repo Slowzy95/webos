@@ -542,14 +542,16 @@ const WALLPAPERS = [
   { id: 'os-win7',  name: 'Windows 7 · Harmony', cat: 'OS', type: 'image', url: 'walls/original-win7.webp', preview: '#1b7ac0' },
   { id: 'os-winxp', name: 'Windows XP · Bliss', cat: 'OS', type: 'image', url: 'walls/original-winxp.webp', preview: '#78ad3f' },
   { id: 'os-win98', name: 'Windows 98', cat: 'OS', type: 'css', css: '#008080', preview: '#008080' },
-  { id: 'os-ubuntu', name: 'Ubuntu',    cat: 'OS', type: 'css', css: 'linear-gradient(160deg,#2c001e 0%,#772953 70%,#5e2750 100%)', preview: 'linear-gradient(160deg,#2c001e,#772953)' },
-  { id: 'os-macos', name: 'macOS',     cat: 'OS', type: 'css', css: 'linear-gradient(180deg,#0f2b46 0%,#2c5d8f 55%,#e8a87c 100%)', preview: 'linear-gradient(180deg,#0f2b46,#e8a87c)' },
+  { id: 'os-ubuntu', name: 'Ubuntu 24.04 · Noble Numbat', cat: 'OS', type: 'image', url: 'walls/os-ubuntu.jpg', preview: '#b9b9b9' },
+  { id: 'os-macos', name: 'macOS · Sonoma', cat: 'OS', type: 'image', url: 'walls/os-macos.jpg', preview: '#3a49c0' },
   /* v35 : fonds des nouveaux systèmes */
-  { id: 'os-fedora', name: 'Fedora (GNOME)', cat: 'OS', type: 'css', css: 'radial-gradient(circle at 70% 20%,#4f7cc2 0%,#294172 45%,#0b1e3f 100%)', preview: 'linear-gradient(135deg,#0b1e3f,#3c6eb4)' },
-  { id: 'os-mint', name: 'Linux Mint', cat: 'OS', type: 'css', css: 'linear-gradient(160deg,#0d2b14 0%,#1f5a2a 50%,#87cf3e 130%)', preview: 'linear-gradient(135deg,#0d2b14,#87cf3e)' },
-  { id: 'os-kali', name: 'Kali Linux', cat: 'OS', type: 'css', css: 'radial-gradient(circle at 20% 80%,#1b3a8a 0%,#0a1020 45%,#05070d 100%)', preview: 'linear-gradient(135deg,#05070d,#2a5bd7)' },
-  { id: 'os-kde', name: 'KDE Plasma', cat: 'OS', type: 'css', css: 'linear-gradient(135deg,#0f2740 0%,#1d6fa5 55%,#3daee9 100%)', preview: 'linear-gradient(135deg,#0f2740,#3daee9)' },
-  { id: 'os-chromeos', name: 'ChromeOS', cat: 'OS', type: 'css', css: 'linear-gradient(135deg,#dbe8ff 0%,#c7d8fb 40%,#f3d4ee 100%)', preview: 'linear-gradient(135deg,#dbe8ff,#f3d4ee)' }
+  { id: 'os-fedora', name: 'Fedora 43', cat: 'OS', type: 'image', url: 'walls/os-fedora.jpg', preview: '#39486f' },
+  { id: 'os-mint', name: 'Linux Mint · Wilma', cat: 'OS', type: 'image', url: 'walls/os-mint.jpg', preview: '#7a4a2a' },
+  { id: 'os-kali', name: 'Kali Linux', cat: 'OS', type: 'image', url: 'walls/os-kali.jpg', preview: '#1b2a6b' },
+  { id: 'os-kde', name: 'KDE Plasma 6', cat: 'OS', type: 'image', url: 'walls/os-kde.jpg', preview: '#5b52d6' },
+  { id: 'os-chromeos', name: 'ChromeOS', cat: 'OS', type: 'image', url: 'walls/os-chromeos.jpg', preview: '#2d8cf0' },
+  { id: 'os-macos-sequoia', name: 'macOS · Sequoia', cat: 'OS', type: 'image', url: 'walls/os-macos-sequoia.jpg', preview: '#3b3ec0' },
+  { id: 'os-fedora-day', name: 'Fedora 43 · Jour', cat: 'OS', type: 'image', url: 'walls/os-fedora-day.jpg', preview: '#9fb4d8' }
 ];
 const WALL_CATS = [...new Set(WALLPAPERS.map(w => w.cat))];
 /* ---- Fonds d'écran partagés par la communauté (catégorie « Membres ») ----
@@ -676,12 +678,14 @@ async function memberWallsClean() {
 
 /* Souris de MEMBRES (curseurs partagés par tout le monde) — même système que les fonds d'écran */
 
-let MEMBER_CURSORS = LS.getJSON('membercursors', []);
+/* Entrées de test restées dans la galerie partagée (« Diamant animé », « Ancien curseur ») : ignorées */
+const isJunkCursor = it => !it || /example\.org/.test(String(it.arrow || '')) || (it.name === 'Diamant animé' && String(it.arrow || '').length < 140);
+let MEMBER_CURSORS = LS.getJSON('membercursors', []).filter(it => !isJunkCursor(it));
 async function memberCursorsFetch(strict = false) {
   try {
     const remote = await galleryRead('cursors');
-    if (remote === null) return LS.getJSON('membercursors', []);
-    const list = (await galleryMerge('cursors', remote)).slice(0, 60);
+    if (remote === null) return LS.getJSON('membercursors', []).filter(it => !isJunkCursor(it));
+    const list = (await galleryMerge('cursors', remote.filter(it => !isJunkCursor(it)))).slice(0, 60);
     MEMBER_CURSORS = list;
     LS.setJSON('membercursors', list);
     return list;
@@ -1160,6 +1164,8 @@ function applySkin(id, restore = false) {
   /* les onglets de la barre des tâches et les logos d'apps s'adaptent au skin */
   try { renderTaskbar(); refreshSkinIcons(); } catch (e) {}
   try { window.dispatchEvent(new CustomEvent('webos:skin', { detail: { id, restore } })); } catch (e) {}
+  /* les icônes du bureau se replacent selon la largeur de la zone du skin (macOS = colonne à droite) */
+  [60, 500, 1400].forEach(t => setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, t));
 }
 /* restaure le skin sauvegardé au démarrage (sans écraser le fond choisi) */
 const savedSkin = LS.get('skin', '');
@@ -1209,11 +1215,31 @@ const SKIN_APP_ICONS = {};
     SKIN_APP_ICONS[sk][app] = `<svg viewBox="0 0 24 24">${SKIN_FRAMES[sk]}<g transform="translate(0,1.2)">${g(SKIN_COLORS[sk].M, SKIN_COLORS[sk].D)}</g></svg>`;
   });
 });
+/* v36 : vraies icônes d'applications par système (Papirus pour Linux/ChromeOS, WhiteSur pour macOS) */
+const SKIN_REAL_ICONS = (() => {
+  const P = n => 'icons/os/p-' + n + '.svg', M = n => 'icons/os/m-' + n + '.svg';
+  const linux = (set, extra = {}) => Object.assign({ browser: P('browser'), ai: P('ai'), games: P('games'), media: P('media'), settings: P('settings'), trash: P('trash'), addapp: P('add') }, extra);
+  return {
+    ubuntu: linux(0, { settings: P('settings-gnome'), addapp: P('add-gnome') }),
+    fedora: linux(0, { settings: P('settings-gnome'), addapp: P('add-gnome') }),
+    mint: linux(0, { settings: P('settings-mint') }),
+    kali: linux(0, { addapp: P('add-kali') }),
+    kde: linux(0),
+    chromeos: linux(0, { browser: P('chrome'), settings: P('settings-mint') }),
+    macos: { browser: M('browser'), ai: M('ai'), games: M('games'), media: M('media'), settings: M('settings'), trash: M('trash'), addapp: M('addapp') }
+  };
+})();
+function skinRealImg(id) {
+  const skin = (document.body.className.match(/skin-(\w+)/) || [])[1];
+  const u = skin && SKIN_REAL_ICONS[skin] && SKIN_REAL_ICONS[skin][id];
+  return u ? `<img src="${u}" alt="" draggable="false" style="width:100%;height:100%;object-fit:contain">` : '';
+}
 function skinIconFor(id, fallback) {
   const original = windowsIconPath(id);
   if (original) return `<div class="ic-svg ic-original"><img src="${original}" alt="" draggable="false"></div>`;
   if ((document.body.dataset.os || LS.get('skin', 'win11')).startsWith('win')) return fallback || null;
   const skin = (document.body.className.match(/skin-(\w+)/) || [])[1];
+  if (skin && SKIN_REAL_ICONS[skin] && SKIN_REAL_ICONS[skin][id]) return `<div class="ic-svg ic-original"><img src="${SKIN_REAL_ICONS[skin][id]}" alt="" draggable="false"></div>`;
   if (skin && SKIN_APP_ICONS[skin] && SKIN_APP_ICONS[skin][id]) return `<div class="ic-svg ic-skin">${SKIN_APP_ICONS[skin][id]}</div>`;
   return fallback || null;
 }
@@ -1252,7 +1278,7 @@ function refreshSkinIcons() {
   });
   windows.forEach((rec, id) => {
     const holder = rec.el.querySelector('.win-header .w-6');
-    if (holder && APPS[id]) holder.innerHTML = appGlyph(APPS[id]);
+    if (holder && APPS[id]) holder.innerHTML = (skinRealImg(id) || appGlyph(APPS[id]));
   });
 }
 
@@ -1422,7 +1448,7 @@ function openApp(appId) {
   el.innerHTML = `
     <div class="win-header">
       <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-6 h-6 flex-none">${appGlyph(app)}</div>
+        <div class="w-6 h-6 flex-none">${skinRealImg(appId) || appGlyph(app)}</div>
         <span class="text-[12.5px] font-semibold text-slate-100 truncate">${app.title}</span>
       </div>
       <div class="flex items-center gap-0.5">
@@ -1744,7 +1770,7 @@ function renderTaskbar() {
     b.setAttribute('role', 'button');
     b.tabIndex = 0;
     b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openApp(id); } });
-    b.innerHTML = `<span class="tb-glyph">${appGlyph(app)}</span><span class="tb-lbl">${escHtml(app.title)}</span><div class="run-dot"></div>`;
+    b.innerHTML = `<span class="tb-glyph">${skinRealImg(id) || appGlyph(app)}</span><span class="tb-lbl">${escHtml(app.title)}</span><div class="run-dot"></div>`;
     b.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
@@ -5086,7 +5112,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v35 : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v36 : vrais fonds d’écran et vraies icônes d’applications pour chaque système, liens des sites qui restent dans le navigateur, Bloxd connecté, curseurs parasites retirés. Avant (v35) : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>

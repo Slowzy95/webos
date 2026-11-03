@@ -53,7 +53,7 @@ body.skin-macos .tb-icon.open .run-dot, body.skin-macos .tb-icon.active .run-dot
 body.skin-macos #start-menu { bottom: 96px; border-radius: 22px; }
 body.skin-macos .window { border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12); }
 body.skin-macos .window.maximized { border-radius: 0; }
-body.skin-macos #desk-icons { left: auto !important; right: 16px; align-items: flex-end; }
+body.skin-macos #desk-icons { left: auto !important; right: 16px; width: 330px; overflow: visible; }
 
 /* ================= Ubuntu : dock vertical à gauche + barre noire ================= */
 body.skin-ubuntu #os-topbar { background: #0b0b0b; color: #f3f3f3; height: 28px; }
