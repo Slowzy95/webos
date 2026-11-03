@@ -5619,9 +5619,11 @@ function moveToTrash(el) {
   } else if (APPS[id]) {
     HIDDEN_APPS.push(id);
     trashAdd({ kind: 'app', id, title: APPS[id].title });
+    renderStartMenuApps(); /* v39.1 : la tuile disparaît aussi du menu Démarrer */
   } else return;
   saveTrash();
   el.remove();
+  refreshTrashWin(); /* v39.1 : la fenêtre Corbeille ouverte se met à jour */
   toast('« ' + (APPS[id] ? APPS[id].title : id) + ' » à la corbeille — clique sur la corbeille pour restaurer', 'fa-trash-can', 'text-slate-400');
 }
 function trashAdd(item) { TRASH.unshift({ ...item, when: Date.now() }); }
@@ -5637,44 +5639,51 @@ function renderTrashWin() {
     </div>`;
 }
 function initTrashWin(body) {
-  const list = body.querySelector('#tw-list');
-  const render = () => {
-    if (!TRASH.length) { list.innerHTML = '<div class="text-[11px] text-slate-500 italic text-center py-8">La corbeille est vide.</div>'; return; }
-    list.innerHTML = TRASH.map((t, i) => {
-      const ico = t.kind === 'custom'
-        ? `<span class="text-lg">${escHtml(t.emoji || '🔗')}</span>`
-        : `<div class="w-5 h-5">${appGlyph(APPS[t.id]) || '<i class="fa-solid fa-cube"></i>'}</div>`;
-      const sub = t.kind === 'custom' ? escHtml(t.url || '') : 'Application intégrée';
-      return `
-      <div class="flex items-center gap-2 glass-card !rounded-lg px-3 py-2">
-        ${ico}
-        <div class="flex-1 min-w-0"><div class="text-[12px] font-semibold truncate">${escHtml(t.title)}</div><div class="text-[10.5px] text-slate-500 truncate">${sub}</div></div>
-        <button class="btn btn-ghost !py-1 !px-2.5" data-twrestore="${i}" title="Remettre sur le bureau"><i class="fa-solid fa-rotate-left text-[10px]"></i> Restaurer</button>
-      </div>`;
-    }).join('');
-    list.querySelectorAll('[data-twrestore]').forEach(b => b.addEventListener('click', () => {
-      const t = TRASH[+b.dataset.twrestore];
-      if (!t) return;
-      TRASH = TRASH.filter(x => x !== t);
-      if (t.kind === 'custom') {
-        CUSTOM_APPS.push({ id: t.id, title: t.title, url: t.url, emoji: t.emoji || '🔗' });
-        LS.setJSON('customapps', CUSTOM_APPS);
-        renderCustomIcons();
-      } else {
-        HIDDEN_APPS = HIDDEN_APPS.filter(x => x !== t.id);
-        if (!di.querySelector('.desk-icon[data-icon-id="' + t.id + '"]')) deskIconCreate(t.id);
-        renderStartMenuApps();
-      }
-      saveTrash(); render();
-      toast('« ' + t.title + ' » restauré sur le bureau', 'fa-rotate-left', 'text-emerald-400');
-    }));
-  };
+  _trashWinBody = body;
+  renderTrashList(body);
   body.querySelector('#tw-empty').addEventListener('click', () => {
     if (!TRASH.length) { toast('La corbeille est déjà vide', 'fa-trash-can', 'text-slate-400'); return; }
-    TRASH = []; saveTrash(); render();
+    TRASH = []; saveTrash(); renderTrashList(body);
     toast('Corbeille vidée définitivement', 'fa-trash-can', 'text-slate-400');
   });
-  render();
+}
+let _trashWinBody = null;
+function refreshTrashWin() {
+  if (_trashWinBody && document.body.contains(_trashWinBody)) renderTrashList(_trashWinBody);
+  else _trashWinBody = null;
+}
+function renderTrashList(body) {
+  const list = body.querySelector('#tw-list');
+  if (!list) return;
+  if (!TRASH.length) { list.innerHTML = '<div class="text-[11px] text-slate-500 italic text-center py-8">La corbeille est vide.</div>'; return; }
+  list.innerHTML = TRASH.map((t, i) => {
+    const ico = t.kind === 'custom'
+      ? `<span class="text-lg">${escHtml(t.emoji || '🔗')}</span>`
+      : `<div class="w-5 h-5">${appGlyph(APPS[t.id]) || '<i class="fa-solid fa-cube"></i>'}</div>`;
+    const sub = t.kind === 'custom' ? escHtml(t.url || '') : 'Application intégrée';
+    return `
+    <div class="flex items-center gap-2 glass-card !rounded-lg px-3 py-2">
+      ${ico}
+      <div class="flex-1 min-w-0"><div class="text-[12px] font-semibold truncate">${escHtml(t.title)}</div><div class="text-[10.5px] text-slate-500 truncate">${sub}</div></div>
+      <button class="btn btn-ghost !py-1 !px-2.5" data-twrestore="${i}" title="Remettre sur le bureau"><i class="fa-solid fa-rotate-left text-[10px]"></i> Restaurer</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-twrestore]').forEach(b => b.addEventListener('click', () => {
+    const t = TRASH[+b.dataset.twrestore];
+    if (!t) return;
+    TRASH = TRASH.filter(x => x !== t);
+    if (t.kind === 'custom') {
+      CUSTOM_APPS.push({ id: t.id, title: t.title, url: t.url, emoji: t.emoji || '🔗' });
+      LS.setJSON('customapps', CUSTOM_APPS);
+      renderCustomIcons();
+    } else {
+      HIDDEN_APPS = HIDDEN_APPS.filter(x => x !== t.id);
+      if (!di.querySelector('.desk-icon[data-icon-id="' + t.id + '"]')) deskIconCreate(t.id);
+      renderStartMenuApps();
+    }
+    saveTrash(); renderTrashList(body);
+    toast('« ' + t.title + ' » restauré sur le bureau', 'fa-rotate-left', 'text-emerald-400');
+  }));
 }
 /* Fenêtre « Ajouter » : crée une app personnalisée (nom + adresse + emoji) */
 function openAddAppDialog() {
