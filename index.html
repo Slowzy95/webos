@@ -618,7 +618,18 @@ const LS = {
     try { localStorage.setItem('webos_' + k, String(v)); } catch (e) {}
   },
   getJSON: (k, d) => { try { return JSON.parse(LS.get(k, null)) ?? d; } catch (e) { return d; } },
-  setJSON: (k, v) => LS.set(k, JSON.stringify(v))
+  setJSON: (k, v) => LS.set(k, JSON.stringify(v)),
+  persistent: () => { try { return typeof localStorage.length === 'number'; } catch (e) { return false; } },
+  entries: () => {
+    const dump = Object.fromEntries([...LS_MEMORY].map(([k, v]) => ['webos_' + k, v]));
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k?.startsWith('webos_')) dump[k] = localStorage.getItem(k);
+      }
+    } catch (e) {}
+    return dump;
+  }
 };
 
 /* ============================================================
@@ -3627,7 +3638,7 @@ function initAI(body, rec) {
   if (aiHistory.length) {
     aiHistory.slice(-40).forEach(h => addMsg(h.role === 'user' ? 'user' : 'ai', mdToHtml(h.content)));
   } else {
-    addMsg('ai', 'Bonjour. Choisissez un fournisseur et un modèle. Les clés sont enregistrées localement sur cet appareil : utilisez uniquement vos propres clés et évitez un PC partagé. Le bouton « Tester les modèles (quota) » actualise le catalogue et vérifie les réponses, sans exécuter d’action. La disponibilité, les images et les limites dépendent du service et de votre compte.');
+    addMsg('ai', 'Bonjour. Choisissez un fournisseur et un modèle. Les clés sont enregistrées localement sur cet appareil : utilisez uniquement vos propres clés et évitez un PC partagé. Le bouton « Tester les modèles (quota) » actualise le catalogue et vérifie les réponses, sans exécuter d’action. La disponibilité, les images et les limites dépendent du service et de votre compte.' + (LS.persistent() ? '' : '<br><b>Aperçu restreint : les réglages et les clés restent uniquement en mémoire jusqu’au rechargement.</b>'));
   }
 
   /* Jointure d'image */
@@ -5246,11 +5257,7 @@ function initSettings(body) {
 
   /* ---- Sauvegarde : export / import de tout le système ---- */
   body.querySelector('#st-export').addEventListener('click', () => {
-    const dump = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('webos_')) dump[k] = localStorage.getItem(k);
-    }
+    const dump = LS.entries();
     const blob = new Blob([JSON.stringify({ app: 'webos', version: 8, exported: new Date().toISOString(), data: dump }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -5269,10 +5276,10 @@ function initSettings(body) {
         const o = JSON.parse(rd.result);
         const dump = o.data || o;
         let n = 0;
-        Object.entries(dump).forEach(([k, v]) => { if (k.startsWith('webos_')) { localStorage.setItem(k, v); n++; } });
+        Object.entries(dump).forEach(([k, v]) => { if (k.startsWith('webos_')) { LS.set(k.slice(6), v); n++; } });
         if (!n) throw new Error('rien à importer');
-        toast(n + ' éléments importés — rechargement...', 'fa-upload', 'text-emerald-400');
-        setTimeout(() => location.reload(), 900);
+        toast(n + (LS.persistent() ? ' éléments importés — rechargement...' : ' éléments importés en mémoire uniquement (aperçu restreint)'), 'fa-upload', 'text-emerald-400');
+        if (LS.persistent()) setTimeout(() => location.reload(), 900);
       } catch (err) {
         toast('Fichier de sauvegarde invalide', 'fa-triangle-exclamation', 'text-amber-400');
       }
