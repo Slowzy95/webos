@@ -1402,13 +1402,15 @@ function closeApp(appId) {
 function toggleMinimize(appId) {
   const w = windows.get(appId);
   if (!w) return;
+  if (w.minTimer) { clearTimeout(w.minTimer); w.minTimer = null; }
+  w.el.classList.remove('win-min');
   w.minimized = !w.minimized;
   const animated = (document.body.dataset.anim || 'windows') !== 'none';
   if (w.minimized) {
     /* Réduction animée : la fenêtre fond vers la barre des tâches */
     if (animated) {
       w.el.classList.add('win-min');
-      setTimeout(() => { w.el.style.display = 'none'; w.el.classList.remove('win-min'); }, 210);
+      w.minTimer = setTimeout(() => { if (w.minimized) w.el.style.display = 'none'; w.el.classList.remove('win-min'); w.minTimer = null; }, 210);
     } else w.el.style.display = 'none';
     if (focusedApp === appId) focusedApp = null;
   } else {
