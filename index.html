@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v24</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v25</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -2197,12 +2197,17 @@ function renderBrowser() {
         <input id="br-url" class="field flex-1 !py-1.5" type="text" placeholder="Recherchez ou entrez une URL" value="" />
         <button class="btn btn-blue !py-1.5" id="br-go"><i class="fa-solid fa-arrow-right"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-mode" title="Basculer le mode de chargement"><i class="fa-solid fa-bolt"></i></button>
+        <div class="relative">
+          <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-engine" title="Moteur de recherche (Startpage = résultats Google sans le domaine Google)"><i class="fa-solid fa-magnifying-glass"></i></button>
+          <div id="br-engine-menu" class="hidden absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur p-1 shadow-2xl text-sm"></div>
+        </div>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-boost" title="Mode Boost : tout accélérer (désactive les effets)"><i class="fa-solid fa-gauge-high"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-fs" title="Plein écran (idéal pour les jeux)"><i class="fa-solid fa-expand"></i></button>
         <button class="btn btn-ghost !px-2.5 !py-1.5" id="br-newtab" title="Ouvrir dans un onglet réel"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
       </div>
       <div class="flex items-center gap-1 px-2 pt-1.5 pb-0 br-chrome flex-none overflow-x-auto border-b border-white/8" id="br-tabs"></div>
       <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/8 br-chrome flex-none overflow-x-auto">
+        <span class="chip" data-search="engine" title="Moteur choisi (icône loupe)"><i class="fa-solid fa-magnifying-glass"></i> Moteur</span>
         <span class="chip" data-search="google"><i class="fa-brands fa-google"></i> Google</span>
         <span class="chip" data-search="ddg"><i class="fa-solid fa-duck"></i> DuckDuckGo</span>
         <span class="chip" data-search="bing"><i class="fa-brands fa-bing"></i> Bing</span>
@@ -2343,10 +2348,25 @@ function initBrowser(body) {
   }
   createTab(BROWSER_HOME);
 
+  /* ---------- Moteur de recherche au choix ----------
+     Startpage = les résultats GOOGLE mais servi par un autre domaine : si le
+     réseau du lycée bloque Google, la recherche passe quand même. */
+  const SEARCH_ENGINES = {
+    startpage: { name: 'Startpage — résultats Google', url: 'https://www.startpage.com/sp/search?query=' },
+    google:    { name: 'Google', url: 'https://www.google.com/search?igu=1&q=' },
+    ddglite:   { name: 'DuckDuckGo Lite', url: 'https://lite.duckduckgo.com/lite/?q=' },
+    ddg:       { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
+    bing:      { name: 'Bing', url: 'https://www.bing.com/search?q=' },
+    qwant:     { name: 'Qwant', url: 'https://www.qwant.com/?q=' },
+    ecosia:    { name: 'Ecosia', url: 'https://www.ecosia.org/search?q=' }
+  };
+  let curEngine = LS.get('engine', 'startpage');
+  if (!SEARCH_ENGINES[curEngine]) curEngine = 'startpage';
+
   const normalize = (u) => {
     u = u.trim(); if (!u) return null;
     const looksUrl = /^https?:\/\//i.test(u) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(u);
-    if (!looksUrl) return 'https://www.google.com/search?igu=1&q=' + encodeURIComponent(u);
+    if (!looksUrl) return (SEARCH_ENGINES[curEngine] || SEARCH_ENGINES.startpage).url + encodeURIComponent(u);
     if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
     return u;
   };
@@ -2846,7 +2866,18 @@ function initBrowser(body) {
     navSeq++;
     frame.removeAttribute('srcdoc');
     frame.src = smartDirect(u);
-    frame.onload = () => setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct');
+    /* Réseau qui bloque (lycée, proxy d'entreprise) : si rien ne charge en 6 s,
+       on repasse AUTOMATIQUEMENT par le proxy intégré — la connexion passe
+       alors par le serveur du proxy, plus par le réseau du PC. */
+    const directSeq = navSeq;
+    let directLoaded = false;
+    frame.onload = () => { directLoaded = true; setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct'); };
+    setTimeout(() => {
+      if (!directLoaded && navSeq === directSeq && mode === 'auto') {
+        try { toast('Chargement direct impossible (réseau bridé ?) — nouvel essai via le proxy', 'fa-cloud', 'text-amber-400'); } catch (e) {}
+        wispLoad(u);
+      }
+    }, 6000);
     setStatus('Chargement direct...');
   }
 
@@ -2983,10 +3014,27 @@ function initBrowser(body) {
   body.querySelectorAll('.chip[data-search]').forEach(c => c.addEventListener('click', () => {
     const q = urlInput.value.trim();
     const eng = c.dataset.search;
+    if (eng === 'engine') navigate((SEARCH_ENGINES[curEngine] || SEARCH_ENGINES.startpage).url + encodeURIComponent(q));
     if (eng === 'google') navigate('https://www.google.com/search?q=' + encodeURIComponent(q));
     if (eng === 'bing') navigate('https://www.bing.com/search?q=' + encodeURIComponent(q));
     if (eng === 'ddg') navigate('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), true, 'https://www.bing.com/search?q=' + encodeURIComponent(q));
   }));
+  /* Sélecteur de moteur (icône loupe dans la barre d'adresse) */
+  const engMenu = body.querySelector('#br-engine-menu');
+  const renderEngMenu = () => {
+    engMenu.innerHTML = Object.entries(SEARCH_ENGINES).map(([id, e]) =>
+      `<button data-eng="${id}" class="w-full text-left px-3 py-2 rounded-md hover:bg-white/10 flex items-center gap-2 ${id === curEngine ? 'text-sky-400' : 'text-slate-200'}">
+        <i class="fa-solid ${id === curEngine ? 'fa-check' : 'fa-globe'} w-4 text-center"></i><span class="flex-1">${e.name}</span></button>`).join('');
+    engMenu.querySelectorAll('[data-eng]').forEach(b => b.addEventListener('click', () => {
+      curEngine = b.dataset.eng; LS.set('engine', curEngine);
+      engMenu.classList.add('hidden');
+      toast('Moteur de recherche : ' + SEARCH_ENGINES[curEngine].name, 'fa-magnifying-glass', 'text-sky-400');
+    }));
+  };
+  body.querySelector('#br-engine').addEventListener('click', (e) => {
+    e.stopPropagation(); renderEngMenu(); engMenu.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => { if (!engMenu.contains(e.target)) engMenu.classList.add('hidden'); });
   body.querySelectorAll('.chip[data-url]').forEach(c => c.addEventListener('click', () => navigate(c.dataset.url)));
 
   updateNav();
@@ -4487,7 +4535,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v24 — les icônes ne se superposent PLUS, même si le téléphone interrompt le geste en pleine manipulation (pointercancel géré : l'icône se range sur sa case) — pense à vérifier le numéro de version dans le menu Démarrer pour être sûr d'avoir la nouvelle version</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v25 — Google bloqué au lycée ? La recherche utilise maintenant Startpage (résultats Google, autre domaine) et passe par le proxy : loupe dans la barre d'adresse pour changer de moteur + repli automatique vers le proxy si un site refuse de charger</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
