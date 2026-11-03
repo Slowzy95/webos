@@ -3074,7 +3074,7 @@ function initBrowser(body) {
        &wisp=N : force un serveur wisp précis (0 ou 1) — utilisé par le minuteur de secours ci-dessous */
     frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1&wisp=' + wispIdx;
     setStatus('Chargé via le proxy intégré (Ultraviolet)...');
-    if (!wispIdx) { try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {} }
+    if (!wispIdx && !wispLoad._toastShown) { wispLoad._toastShown = true; try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {} }
     /* MINUTEUR DE SECOURS : si le site charge à l'infini (serveur wisp
        lent ou bloqué — ex: Poki), on relance automatiquement le
        chargement sur l'AUTRE serveur wisp au bout de 20 s. */
