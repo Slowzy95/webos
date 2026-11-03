@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v26</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v27</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -2992,22 +2992,18 @@ function initBrowser(body) {
     let hHost = '';
     try { hHost = ytUrl.hostname.replace(/^www\./, ''); } catch (e) {}
     if (!skipHeavy && HEAVY_SITES.test(hHost)) {
-      /* Discord & co : ouverture AUTOMATIQUE dans un vrai onglet via le proxy —
-         plein écran, bien plus fluide et stable qu'un onglet intégré. Si le
-         navigateur bloque le popup, la page intermédiaire propose un bouton. */
-      const real = window.open(WISP_PROXY + encodeURIComponent(u), '_blank');
-      if (real) {
-        try { toast(hHost + ' ouvert dans un vrai onglet (via le proxy)', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (err) {}
-        setStatus(hHost + ' : ouvert dans un vrai onglet');
-        return;
-      }
-      heavyInterstitial(u, hHost); return;
+      /* Discord & co : affichés DANS la fenêtre via le proxy intégré —
+         tout reste dans la page, plus jamais de nouvel onglet. */
+      wispLoad(u);
+      return;
     }
     const t0 = Date.now();
-    /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...)
-       Sur un réseau filtré (détection auto au démarrage) ou un site déjà
-       passé par le proxy manuellement : proxy direct, sans perdre de temps. */
-    if (mode === 'auto' && (NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
+    /* Mode Auto : PROXY D'ABORD. Le filtre du lycée (Région Île-de-France)
+       affiche sa propre page de blocage qui « se charge » correctement —
+       le direct est donc inutile pour tout sauf les moteurs de recherche
+       et sites de référence, qui restent en direct (rapide). */
+    const SAFE_DIRECT = /^(?:[a-z-]+\.wikipedia\.org|wikipedia\.org|www\.google\.[a-z.]+|www\.startpage\.com|duckduckgo\.com|lite\.duckduckgo\.com|html\.duckduckgo\.com|www\.bing\.com|www\.qwant\.com|qwant\.com|www\.ecosia\.[a-z.]+|search\.yahoo\.com|www\.yahoo\.com)$/;
+    if (mode === 'auto' && (!SAFE_DIRECT.test(hHost) || NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
     if (mode === 'proxy') { proxyLoad(u, t0, fallback); return; }
     navSeq++;
     frame.removeAttribute('srcdoc');
@@ -3051,14 +3047,35 @@ function initBrowser(body) {
   }
 
   /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
-  function wispLoad(u) {
+  let wispWatch = null;
+  /* La page proxy signale la fin du chargement (postMessage) : cela
+     confirme que le serveur wisp répond et arrête le minuteur de secours. */
+  window.addEventListener('message', (ev) => {
+    if (ev.data && (ev.data.wosProxy === 'loaded' || ev.data.wosProxy === 'error') && wispWatch) {
+      clearTimeout(wispWatch); wispWatch = null;
+    }
+  });
+  function wispLoad(u, wispIdx = 0) {
     frame.onload = null;
     navSeq++;
+    if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
     frame.removeAttribute('srcdoc');
-    /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran */
-    frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1';
+    /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran
+       &wisp=N : force un serveur wisp précis (0 ou 1) — utilisé par le minuteur de secours ci-dessous */
+    frame.src = WISP_PROXY + encodeURIComponent(u) + '&clean=1&wisp=' + wispIdx;
     setStatus('Chargé via le proxy intégré (Ultraviolet)...');
-    try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {}
+    if (!wispIdx) { try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via Ultraviolet', 'fa-cloud', 'text-sky-400'); } catch (e) {} }
+    /* MINUTEUR DE SECOURS : si le site charge à l'infini (serveur wisp
+       lent ou bloqué — ex: Poki), on relance automatiquement le
+       chargement sur l'AUTRE serveur wisp au bout de 20 s. */
+    const seq = navSeq;
+    wispWatch = setTimeout(() => {
+      if (navSeq !== seq) return;
+      wispWatch = null;
+      const next = wispIdx === 0 ? 1 : 0;
+      try { toast('Serveur proxy lent — nouvel essai sur l\u2019autre serveur', 'fa-rotate', 'text-amber-400'); } catch (e) {}
+      wispLoad(u, next);
+    }, 20000);
   }
 
   async function proxyLoad(u, t0, fallback) {
@@ -4704,7 +4721,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v26 — Fond d'écran des membres réparé (les images Discord qui expirent sont détectées : le fond reste affiché grâce à une copie locale de secours, les liens morts sont nettoyés de la liste) + toutes les images passent par le proxy si elles sont bloquées (favicons, miniatures YouTube, fonds…) + détection auto du réseau filtré : les sites passent par le proxy sans attendre + bouton « Site bloqué ? » pour forcer le proxy en un clic (le site y repassera tout seul ensuite)</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v27 — Jeux débloqués : TOUS les sites (jeux .io, Poki, CrazyGames…) passent maintenant par le proxy en PRIORITÉ — le filtre du lycée affiche une page de blocage qui « se charge », le direct était inutile. Seuls Google/Wikipédia/Startpage restent en direct (rapide). Discord s'affiche DANS la fenêtre, plus jamais de nouvel onglet. Et si un site charge à l'infini (ex: Poki), le Web OS bascule automatiquement sur l'autre serveur proxy au bout de 20 s.</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
