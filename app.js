@@ -549,15 +549,76 @@ const WALL_CATS = [...new Set(WALLPAPERS.map(w => w.cat))];
 /* ---- Fonds d'écran partagés par la communauté (catégorie « Membres ») ----
    Stockage partagé gratuit sans compte : tout le monde peut publier un fond,
    il apparaît immédiatement pour tous les visiteurs dans la catégorie Membres. */
-const SHARED_WALLS_API = 'https://api.restful-api.dev/objects/ff808181a09d98f701a19e29ebde1433';
+/* ---- Couche de stockage partagé (v34) ----
+   Avant : un seul service gratuit limité à 50 requêtes par jour et par réseau → « HTTP 500 »
+   dès que le quota était atteint (réseau du lycée = quota partagé). Maintenant :
+   1) service principal TextDB (sans quota connu, sans compte) ;
+   2) ancien service gardé en lecture de secours + migration automatique ;
+   3) la publication est TOUJOURS enregistrée sur l'appareil, puis envoyée à tout le monde
+      (file d'attente automatique, renvoi à chaque ouverture si le service était indisponible). */
+const GALLERY = {
+  cursors: { key: '765befd6-e2ed-4653-b868-305e1b189481', legacy: 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a0d154871bf8', field: 'cursors', name: 'webos-cursors' },
+  walls:   { key: '2db34495-37fc-44f0-b7d5-9f960eea7665', legacy: 'https://api.restful-api.dev/objects/ff808181a09d98f701a19e29ebde1433', field: 'walls', name: 'webos-walls' }
+};
+const GALLERY_API = 'https://textdb.dev/api/data/';
+const GALLERY_MAX_BYTES = 900000; /* le service accepte ~1 Mo par entrée */
+const galleryId = (kind, it) => kind === 'walls' ? String(it.url) : (it.code ? JSON.stringify(it.code) : String(it.arrow));
+async function galleryFetchJSON(url, ms = 9000, opts = {}) {
+  const rep = await fetch(url, { ...opts, signal: AbortSignal.timeout(ms) });
+  if (!rep.ok) throw new Error('HTTP ' + rep.status);
+  return rep;
+}
+/* Lit la liste partagée. Renvoie null si aucun service ne répond. */
+async function galleryRead(kind) {
+  const g = GALLERY[kind];
+  let remote = null, primaryOK = false;
+  try {
+    const txt = (await (await galleryFetchJSON(GALLERY_API + g.key)).text()).trim();
+    primaryOK = true;
+    if (txt) { const j = JSON.parse(txt); remote = Array.isArray(j[g.field]) ? j[g.field] : (j.data && Array.isArray(j.data[g.field]) ? j.data[g.field] : []); }
+  } catch (e) { if (!primaryOK) remote = null; }
+  if (remote && remote.length) return remote;
+  /* Service principal vide (1re utilisation) ou indisponible : ancien service en secours */
+  try {
+    const j = await (await galleryFetchJSON(g.legacy, 8000)).json();
+    const old = (j && j.data && Array.isArray(j.data[g.field])) ? j.data[g.field] : [];
+    if (old.length && primaryOK) galleryWrite(kind, old).catch(() => {}); /* migration unique */
+    if (old.length) return old;
+  } catch (e) {}
+  return primaryOK ? (remote || []) : null;
+}
+/* Écrit la liste partagée (taille limitée). Renvoie true si le service principal a confirmé. */
+async function galleryWrite(kind, list) {
+  const g = GALLERY[kind];
+  const trimmed = list.slice(0, 60);
+  while (trimmed.length > 1 && new TextEncoder().encode(JSON.stringify({ [g.field]: trimmed })).length > GALLERY_MAX_BYTES) trimmed.pop();
+  try {
+    await galleryFetchJSON(GALLERY_API + g.key, 12000, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ [g.field]: trimmed }) });
+    return true;
+  } catch (e) { return false; }
+}
+/* File d'attente : publications enregistrées sur l'appareil mais pas encore envoyées */
+const galleryOutbox = (kind) => LS.getJSON('gallery_outbox_' + kind, []);
+const gallerySetOutbox = (kind, arr) => LS.setJSON('gallery_outbox_' + kind, arr.slice(0, 20));
+/* Fusionne remote + outbox et envoie. Renvoie la liste à afficher. */
+async function galleryMerge(kind, remote) {
+  const pending = galleryOutbox(kind);
+  if (!pending.length) return remote;
+  const ids = new Set(remote.map(it => galleryId(kind, it)));
+  const merged = [...pending.filter(it => !ids.has(galleryId(kind, it))), ...remote];
+  if (await galleryWrite(kind, merged)) gallerySetOutbox(kind, []);
+  return merged;
+}
+const SHARED_WALLS_API = GALLERY.walls.legacy;
 let MEMBER_WALLS = LS.getJSON('memberwalls', []);
-function memberWallsFetch() {
-  return fetch(SHARED_WALLS_API).then(r => r.json()).then(o => {
-    const walls = (o && o.data && Array.isArray(o.data.walls)) ? o.data.walls : [];
-    MEMBER_WALLS = walls.slice(0, 60);
+async function memberWallsFetch() {
+  try {
+    const remote = await galleryRead('walls');
+    if (remote === null) return MEMBER_WALLS;
+    MEMBER_WALLS = (await galleryMerge('walls', remote)).slice(0, 60);
     LS.setJSON('memberwalls', MEMBER_WALLS);
-    return MEMBER_WALLS;
-  }).catch(() => MEMBER_WALLS);
+  } catch (e) {}
+  return MEMBER_WALLS;
 }
 async function memberWallPublish(name, url) {
   /* Vérifie d'abord que l'image existe vraiment (lien mort → erreur claire
@@ -574,13 +635,12 @@ async function memberWallPublish(name, url) {
   const list = cur.filter(w => w.url !== url);
   list.unshift({ name: name || 'Fond d\u2019un membre', url, by: 'Membre', ts: Date.now() });
   const trimmed = list.slice(0, 60);
-  const rep = await fetch(SHARED_WALLS_API, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'webos-walls', data: { walls: trimmed } })
-  });
-  if (!rep.ok) throw new Error('publication impossible');
+  /* Enregistré tout de suite sur l'appareil, puis envoyé à tous (file d'attente si le service est indisponible) */
   MEMBER_WALLS = trimmed;
   LS.setJSON('memberwalls', trimmed);
+  const shared = await galleryWrite('walls', trimmed);
+  if (!shared) gallerySetOutbox('walls', [trimmed[0], ...galleryOutbox('walls').filter(w => w.url !== url)]);
+  trimmed.shared = shared;
   /* Les images Discord expirent au bout de quelques jours : on prévient */
   if (/cdn\.discordapp\.com|discord\.com\/attachments/.test(url)) {
     try { toast('Attention : les liens Discord expirent vite — ce fond cessera de marcher dans quelques jours', 'fa-triangle-exclamation', 'text-amber-400'); } catch (e) {}
@@ -603,29 +663,23 @@ async function memberWallsClean() {
   if (kept.length !== list.length) {
     MEMBER_WALLS = kept;
     LS.setJSON('memberwalls', kept);
-    try {
-      await fetch(SHARED_WALLS_API, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'webos-walls', data: { walls: kept } })
-      });
-    } catch (e) {}
+    try { await galleryWrite('walls', kept); } catch (e) {}
   }
   return kept;
 }
 
 /* Souris de MEMBRES (curseurs partagés par tout le monde) — même système que les fonds d'écran */
-const SHARED_CURSORS_API = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a0d154871bf8';
+
 let MEMBER_CURSORS = LS.getJSON('membercursors', []);
 async function memberCursorsFetch(strict = false) {
   try {
-    const rep = await fetch(SHARED_CURSORS_API, { signal: AbortSignal.timeout(10000) });
-    if (!rep.ok) throw new Error('ko');
-    const j = await rep.json();
-    const list = (j.data && Array.isArray(j.data.cursors)) ? j.data.cursors : [];
+    const remote = await galleryRead('cursors');
+    if (remote === null) return LS.getJSON('membercursors', []);
+    const list = (await galleryMerge('cursors', remote)).slice(0, 60);
     MEMBER_CURSORS = list;
     LS.setJSON('membercursors', list);
     return list;
-  } catch (e) { if (strict) throw new Error('Galerie indisponible : aucune publication effectuée. Réessaie plus tard.'); return LS.getJSON('membercursors', []); }
+  } catch (e) { return LS.getJSON('membercursors', []); }
 }
 async function memberCursorPublish(name, arrow, pointer, code = null) {
   if (code) {
@@ -636,18 +690,20 @@ async function memberCursorPublish(name, arrow, pointer, code = null) {
     arrow = webos32.imageURL(arrow); pointer = webos32.imageURL(pointer || arrow);
     if (!arrow || !pointer) throw new Error('Images du curseur invalides.');
   }
-  const cur = await memberCursorsFetch(true);
+  const cur = await memberCursorsFetch();
   const list = cur.filter(c => code ? JSON.stringify(c.code) !== JSON.stringify(code) : c.arrow !== arrow);
   list.unshift({ name: String(name || 'Souris d’un membre').slice(0, 60), arrow, pointer: pointer || arrow, ...(code ? { code } : {}), by: 'Membre', ts: Date.now() });
   const trimmed = list.slice(0, 60);
-  const rep = await fetch(SHARED_CURSORS_API, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-    body: JSON.stringify({ name: 'webos-cursors', data: { cursors: trimmed } })
-  });
-  if (!rep.ok) throw new Error('Publication refusée par le service (HTTP ' + rep.status + '). Aucun succès confirmé.');
+  /* Toujours enregistré sur l'appareil (visible tout de suite dans la galerie), puis envoyé à tous */
   MEMBER_CURSORS = trimmed;
   LS.setJSON('membercursors', trimmed);
   window.dispatchEvent(new Event('webos:cursors-updated'));
+  const shared = await galleryWrite('cursors', trimmed);
+  if (!shared) {
+    const entry = trimmed[0];
+    gallerySetOutbox('cursors', [entry, ...galleryOutbox('cursors').filter(it => galleryId('cursors', it) !== galleryId('cursors', entry))]);
+  }
+  trimmed.shared = shared;
   return trimmed;
 }
 function applyMemberCursor(arrow, pointer) {
@@ -1987,6 +2043,61 @@ function initBrowser(body, rec) {
     if (activeTabId === id) setActiveTab(tabs[Math.max(0, idx - 1)].id);
     else renderTabs();
   }
+  /* ---------- Onglet détaché : fenêtre indépendante du bureau ---------- */
+  let popSeq = 0;
+  function tearOffTab(id, cx, cy) {
+    const tab = tabs.find(t => t.id === id);
+    if (!tab) return;
+    let src = '', srcdoc = null, dockUrl = tab.url;
+    const panel = framesContainer.querySelector('[data-yt-tab="' + id + '"]');
+    const yp = panel && panel.querySelector('#yt-player');
+    if (tab.ytActive) {
+      const m = yp && /\/embed\/([\w-]{6,})/.exec(yp.src || '');
+      if (!m) { toast('Lance d\u2019abord une vidéo pour pouvoir la détacher', 'fa-circle-info', 'text-sky-400'); return; }
+      src = yp.src;
+      dockUrl = 'https://www.youtube.com/watch?v=' + m[1];
+    } else {
+      src = tab.frame.getAttribute('src') || '';
+      srcdoc = tab.frame.getAttribute('srcdoc');
+      if (!src && srcdoc === null) { toast('Cet onglet est vide', 'fa-circle-info', 'text-sky-400'); return; }
+    }
+    let host = '';
+    try { host = new URL(dockUrl).hostname.replace(/^www[.]/, ''); } catch (e) {}
+    const title = String(tab.title || host || 'Page').slice(0, 40);
+    const pid = 'pop' + (++popSeq) + '_' + Date.now().toString(36);
+    APPS[pid] = {
+      title, icon: 'fa-up-right-from-square', color: 'from-sky-500 to-indigo-600', w: 900, h: 600,
+      render: () => `
+        <div class="flex flex-col h-full">
+          <div class="flex items-center gap-1.5 px-2 py-1.5 border-b border-white/8 flex-none">
+            <button class="btn btn-ghost !px-2 !py-1" data-pop="reload" title="Recharger"><i class="fa-solid fa-rotate-right"></i></button>
+            <button class="btn btn-ghost !px-2 !py-1" data-pop="dock" title="Remettre dans le navigateur"><i class="fa-regular fa-window-restore"></i></button>
+            <button class="btn btn-ghost !px-2 !py-1" data-pop="real" title="Ouvrir dans un vrai onglet"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <span class="truncate text-[11px] text-slate-400 flex-1 ml-1">${escHtml(host || title)}</span>
+          </div>
+          <div class="flex-1 relative"><iframe class="absolute inset-0 w-full h-full border-0" referrerpolicy="no-referrer" allow="fullscreen; autoplay; gamepad; clipboard-write" allowfullscreen></iframe></div>
+        </div>`,
+      init: (bodyEl) => {
+        const f = bodyEl.querySelector('iframe');
+        if (srcdoc !== null && !src) f.srcdoc = srcdoc; else f.src = src;
+        bodyEl.querySelector('[data-pop="reload"]').addEventListener('click', () => { const u = f.src; f.src = 'about:blank'; setTimeout(() => { if (srcdoc !== null && !src) f.srcdoc = srcdoc; else f.src = u; }, 60); });
+        bodyEl.querySelector('[data-pop="dock"]').addEventListener('click', () => { closeApp(pid); try { openInApp(dockUrl); } catch (e) {} });
+        bodyEl.querySelector('[data-pop="real"]').addEventListener('click', () => { if (src) window.open(src, '_blank', 'noopener,noreferrer'); });
+      }
+    };
+    openApp(pid);
+    const rec = windows.get(pid);
+    if (rec && !rec.maximized && typeof cx === 'number') {
+      const desk = layer.getBoundingClientRect();
+      if (cx > desk.left && cx < desk.right && cy > desk.top && cy < desk.bottom) {
+        const wpx = parseFloat(rec.el.style.width) || 900, hpx = parseFloat(rec.el.style.height) || 600;
+        rec.el.style.left = Math.max(0, Math.min(desk.width - wpx, wSnap(cx - desk.left - 120))) + 'px';
+        rec.el.style.top = Math.max(0, Math.min(desk.height - hpx, wSnap(cy - desk.top - 20))) + 'px';
+      }
+    }
+    closeTab(id);
+    toast('Onglet détaché dans une fenêtre indépendante', 'fa-up-right-from-square', 'text-sky-400');
+  }
   function renderTabs() {
     saveSession();
     if (!tabsBarEl) return;
@@ -1997,6 +2108,7 @@ function initBrowser(body, rec) {
       <div class="tab ${t.id === activeTabId ? 'active' : ''}" data-tab="${t.id}" title="${escHtml(t.title)}">
         ${fav ? `<img class="tab-fav" src="${fav}" alt="" onerror="this.style.display='none'">` : ''}
         <span class="truncate">${escHtml(t.title)}</span>
+        <button data-detach="${t.id}" class="tab-close tab-detach" title="Détacher dans une fenêtre indépendante"><i class="fa-solid fa-up-right-from-square"></i></button>
         <button data-close="${t.id}" class="tab-close"><i class="fa-solid fa-xmark"></i></button>
       </div>`;
     }).join('') + '<button class="tab-add" id="br-tab-add" title="Nouvel onglet"><i class="fa-solid fa-plus"></i></button>';
@@ -2004,9 +2116,18 @@ function initBrowser(body, rec) {
       b.addEventListener('click', (e) => { if (!e.target.closest('[data-close]')) setActiveTab(b.dataset.tab); });
       /* Déplacer les onglets à la souris (glisser-déposer, comme un vrai navigateur) */
       b.draggable = true;
-      b.addEventListener('dragstart', () => b.classList.add('dragging'));
-      b.addEventListener('dragend', () => {
+      b.addEventListener('dragstart', (e) => {
+        b.classList.add('dragging');
+        try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', b.dataset.tab); } catch (err) {}
+      });
+      b.addEventListener('dragend', (e) => {
         b.classList.remove('dragging');
+        /* Onglet lâché EN DEHORS de la barre d'onglets (sur le bureau, hors navigateur) :
+           il devient une fenêtre indépendante, comme dans un vrai navigateur. */
+        const bar = tabsBarEl.getBoundingClientRect();
+        const cx = e.clientX, cy = e.clientY;
+        const away = (cx === 0 && cy === 0) || cx < bar.left - 24 || cx > bar.right + 24 || cy < bar.top - 28 || cy > bar.bottom + 28;
+        if (away && e.dataTransfer && e.dataTransfer.dropEffect === 'none') { tearOffTab(b.dataset.tab, cx, cy); return; }
         /* réordonne le tableau selon l'ordre visuel */
         const order = [...tabsBarEl.querySelectorAll('[data-tab]')].map(x => x.dataset.tab);
         tabs.sort((a, c) => order.indexOf(a.id) - order.indexOf(c.id));
@@ -2021,6 +2142,7 @@ function initBrowser(body, rec) {
       });
     });
     tabsBarEl.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); closeTab(b.dataset.close); }));
+    tabsBarEl.querySelectorAll('[data-detach]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); tearOffTab(b.dataset.detach); }));
     const addBtn = tabsBarEl.querySelector('#br-tab-add');
     if (addBtn) addBtn.addEventListener('click', () => createTab(BROWSER_HOME));
   }
@@ -3768,12 +3890,12 @@ function aiwSysPrompt() {
     '- {"cmd":"open_app","app":"browser"} — ouvre une app (id : ' + Object.keys(APPS).join(', ') + ') ou une app personnalisée (son nom)\n' +
     '- {"cmd":"close_app","app":"browser"} — ferme une app\n' +
     '- {"cmd":"navigate","url":"https://..."} — navigue dans le navigateur interne\n' +
-    '- {"cmd":"youtube","query":"recherche"} — ouvre YouTube dans le navigateur et lance la recherche\n' +
+    '- {"cmd":"youtube","query":"recherche","alt":["titre original en anglais"]} — ouvre YouTube dans le navigateur et lance la recherche ; si l’utilisateur donne un titre en français mais que la vidéo a probablement un titre anglais (ou d’une autre langue), mets ce titre original probable dans "alt"\n' +
     '- {"cmd":"search","query":"météo Paris"} — recherche WebOS lisible sans intégrer Google ; utiliser cette action pour toute recherche Web\n' +
     '- {"cmd":"open_result","index":1,"title":""} — attend les résultats Web actuels puis ouvre celui demandé (index commence à 1 ou titre)\n' +
-    '- {"cmd":"play_video","index":1,"title":""} — attend les vidéos visibles dans YouTube WebOS puis sélectionne la vidéo demandée ; lecture distante non garantie\n' +
+    '- {"cmd":"play_video","index":1,"title":"","alt":["titre original en anglais"]} — attend les vidéos visibles dans YouTube WebOS puis sélectionne la vidéo demandée ; lecture distante non garantie\n' +
     '- {"cmd":"new_tab","url":"https://www.youtube.com/"} — ouvre un nouvel onglet WebOS sans remplacer le jeu ou la vidéo en cours ; utiliser si un autre contenu doit rester ouvert\n' +
-    'Pour un titre de vidéo donné par l’utilisateur, transmettre ses mots dans play_video.title sans inventer le titre complet ; la correspondance tolère accents, ponctuation, mots manquants et petites fautes. Si plusieurs titres sont proches, demander lequel.\n' +
+    'Pour un titre de vidéo donné par l’utilisateur, transmettre ses mots dans play_video.title sans inventer le titre complet ; la correspondance tolère accents, ponctuation, mots manquants et petites fautes. Si plusieurs titres sont proches, demander lequel. Pour une vidéo dont le titre donné est en français mais dont le titre réel est sans doute en anglais, remplis TOUJOURS "alt" avec le titre original probable dans la même action youtube et play_video : WebOS essaie les deux (et une traduction automatique en secours).\n' +
     '- {"cmd":"click","index":12} — clique sur l\'élément n°12 de la liste\n' +
     '- {"cmd":"type","index":5,"text":"..."} — écrit le texte dans l\'élément n°5\n' +
     '- {"cmd":"theme","id":"red"} — change le thème (blue, cyan, purple, green, red, orange, pink, slate)\n' +
@@ -3845,7 +3967,9 @@ async function aiwExec(a, snapshot = aiwItems()) {
         break;
       }
       case 'youtube': {
-        const q = String(a.query || a.q || '').trim();
+        /* Titre en français mais vidéo en anglais : si l'IA fournit la version originale (alt), on cherche avec elle */
+        const alt0 = [].concat(a.alt || a.alts || a.title_en || a.original_title || []).map(x => String(x || '').trim()).filter(Boolean)[0];
+        const q = String(alt0 || a.query || a.q || '').trim();
         const url = q ? 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) : 'https://www.youtube.com/';
         openInApp(url);
         done.push(q ? 'Recherche YouTube demandée : « ' + q + ' »' : 'Interface YouTube ouverte');
@@ -3865,8 +3989,8 @@ async function aiwExec(a, snapshot = aiwItems()) {
       }
       case 'open_result':
       case 'play_video': {
-        await webos32.selectResult(a, aiwRequestController?.signal);
-        done.push(a.cmd === 'open_result' ? 'résultat sélectionné dans le navigateur' : 'vidéo sélectionnée ; lecture dépend de YouTube');
+        const picked = await webos32.selectResult(a, aiwRequestController?.signal);
+        done.push(a.cmd === 'open_result' ? 'résultat sélectionné dans le navigateur' : (picked ? 'vidéo sélectionnée : ' + picked : 'vidéo sélectionnée ; lecture dépend de YouTube'));
         break;
       }
       case 'click': {
@@ -4063,8 +4187,9 @@ function initCursors(body) {
     const btn = body.querySelector('#cur-pub-go');
     btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publication...';
     try {
-      await memberCursorPublish(name, arrow, pointer);
-      toast('Souris publiée pour tous les membres', 'fa-share-nodes', 'text-emerald-400');
+      const cl = await memberCursorPublish(name, arrow, pointer);
+      if (cl.shared) toast('Souris publiée pour tous les membres', 'fa-share-nodes', 'text-emerald-400');
+      else toast('Souris enregistrée : elle sera envoyée aux membres dès que le service répond', 'fa-clock', 'text-sky-400');
       refreshMembers();
     } catch (e) {
       toast('Publication impossible pour le moment', 'fa-triangle-exclamation', 'text-amber-400');
@@ -4742,7 +4867,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v33 : onglets YouTube indépendants, curseurs par code partageables et conversation IA effaçable.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v34 : publication fiable (file d’attente), onglets détachables en fenêtres, YouTube FR/EN, disposition du bureau sauvegardée.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -5023,8 +5148,9 @@ function initSettings(body) {
     try {
       const name = prompt('Quel nom pour ce fond d\u2019écran ? (visible par tous)', 'Fond de la communauté');
       if (name === null) return;
-      await memberWallPublish(name, u);
-      toast('Fond publié pour tous les membres', 'fa-share-nodes', 'text-violet-400');
+      const wl = await memberWallPublish(name, u);
+      if (wl.shared) toast('Fond publié pour tous les membres', 'fa-share-nodes', 'text-violet-400');
+      else toast('Fond enregistré : il sera envoyé aux membres dès que le service répond', 'fa-clock', 'text-sky-400');
       if (activeCat === 'Membres') renderWalls();
     } catch (e) {
       toast('Publication impossible pour le moment', 'fa-triangle-exclamation', 'text-amber-400');
@@ -5191,12 +5317,18 @@ function makeDeskDraggable(b, id) {
     /* Groupe : toutes les icônes sélectionnées se déplacent ensemble */
     const group = [...di.querySelectorAll('.desk-icon.selected')].filter(el => el !== b)
       .map(el => { const er = el.getBoundingClientRect(); return { el, x: er.left - pr.left, y: er.top - pr.top }; });
+    /* Toutes les AUTRES icônes (non sélectionnées) : on mémorise leur place actuelle pour les
+       figer dès le premier déplacement — sinon elles « glissent » dans les cases libérées
+       et leur emplacement n'est jamais sauvegardé. */
+    const others = [...di.querySelectorAll('.desk-icon')].filter(el => el !== b && !group.some(g => g.el === el))
+      .map(el => { const er = el.getBoundingClientRect(); return { el, x: er.left - pr.left, y: er.top - pr.top }; });
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 8) return;
       if (!moved) {
         b.style.position = 'absolute'; b.style.zIndex = 40; di.appendChild(b);
         group.forEach(s => { s.el.style.position = 'absolute'; s.el.style.zIndex = 39; di.appendChild(s.el); });
+        others.forEach(s => { if (s.el.style.position !== 'absolute') { s.el.style.position = 'absolute'; s.el.style.left = s.x + 'px'; s.el.style.top = s.y + 'px'; } });
         moved = true;
       }
       b.style.left = Math.max(0, ox + dx) + 'px';
@@ -5227,7 +5359,16 @@ function makeDeskDraggable(b, id) {
           pos[id2] = { x: c2.x * GRID_X, y: c2.y * GRID_Y };
           s.el.style.left = pos[id2].x + 'px'; s.el.style.top = pos[id2].y + 'px';
         });
+        /* Fige aussi la place de toutes les autres icônes (disposition complète sauvegardée) */
+        others.forEach(s => {
+          const id2 = s.el.dataset.iconId;
+          if (!id2 || pos[id2]) return;
+          const cx = Math.max(0, Math.round(s.x / GRID_X)), cy = Math.max(0, Math.round(s.y / GRID_Y));
+          pos[id2] = { x: cx * GRID_X, y: cy * GRID_Y };
+          s.el.style.left = pos[id2].x + 'px'; s.el.style.top = pos[id2].y + 'px';
+        });
         LS.setJSON('iconpos', pos);
+        try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
       }
     };
     document.addEventListener('pointermove', move);

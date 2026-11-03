@@ -48,6 +48,95 @@ window.webos32 = {
     const suggestions = (choices.length ? choices : ranked.slice(0, 3)).map(r => String(r.el.dataset.title || r.el.textContent).trim().slice(0, 100)).join(' / ');
     throw new Error((top?.score >= .72 ? 'Plusieurs titres sont proches. Précise quelques mots ou le numéro : ' : 'Aucun titre assez proche. Titres visibles : ') + suggestions);
   },
+  /* Version non bloquante de matchTitle : { el } ou { error, ambiguous } */
+  tryMatch(list, title) {
+    try { return { el: this.matchTitle(list, title) }; }
+    catch (e) { return { error: e.message, ambiguous: /^Plusieurs titres/.test(e.message) }; }
+  },
+  /* Traduction FR → EN (service public, sans clé). Renvoie '' en cas d'échec : jamais bloquant. */
+  async translateToEnglish(text, signal) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 4000);
+    const onAbort = () => ctl.abort();
+    signal?.addEventListener('abort', onAbort, { once: true });
+    try {
+      const r = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=' + encodeURIComponent(text.slice(0, 200)), { signal: ctl.signal });
+      if (!r.ok) return '';
+      const j = await r.json();
+      return (j[0] || []).map(x => x[0]).join('').trim();
+    } catch (e) { return ''; }
+    finally { clearTimeout(timer); signal?.removeEventListener('abort', onAbort); }
+  },
+  /* Liste des vidéos YouTube visibles dans le navigateur WebOS */
+  ytList() {
+    return [...document.querySelectorAll('#yt-results button[data-yt]')].filter(el => el.getClientRects().length);
+  },
+  async sleep(ms, signal) {
+    await new Promise(resolve => {
+      const finish = () => { clearTimeout(t); signal?.removeEventListener('abort', finish); resolve(); };
+      const t = setTimeout(finish, ms);
+      signal?.addEventListener('abort', finish, { once: true });
+    });
+  },
+  /* Lance une nouvelle recherche YouTube et attend ses résultats (max 15 s) */
+  async searchYouTube(query, signal) {
+    openInApp('https://www.youtube.com/results?search_query=' + encodeURIComponent(query));
+    await this.sleep(700, signal);
+    const end = Date.now() + 15000;
+    while (Date.now() < end) {
+      if (signal?.aborted) throw new Error('Action annulée');
+      const loading = document.querySelector('#yt-results .spinner');
+      const list = this.ytList();
+      if (list.length && !loading) return list;
+      await this.sleep(150, signal);
+    }
+    return this.ytList();
+  },
+  /* Vidéo demandée avec un titre en français alors que la vidéo est en anglais (ou autre) :
+     1) on essaie le titre tel quel + les variantes données par l'IA (alt) ;
+     2) sinon on le traduit automatiquement en anglais ;
+     3) pour chaque variante on relance une recherche YouTube et on compare ;
+     4) en dernier recours, on prend le 1er résultat de la recherche du titre original (anglais). */
+  async playVideoSmart(action, signal) {
+    const title = String(action.title || '').trim();
+    const alts = [].concat(action.alt || action.alts || action.title_en || action.original_title || [])
+      .map(x => String(x || '').trim()).filter(Boolean).slice(0, 3);
+    let list = this.ytList();
+    const variants = [title, ...alts].filter(Boolean);
+    const seen = new Set();
+    const attempt = (items) => {
+      let ambiguous = null;
+      for (const v of variants) {
+        const r = this.tryMatch(items, v.toLocaleLowerCase('fr'));
+        if (r.el) return { el: r.el };
+        if (r.ambiguous && !ambiguous) ambiguous = r.error;
+      }
+      return { ambiguous };
+    };
+    let res = attempt(list);
+    if (res.el) return { el: res.el, how: 'direct' };
+    seen.add(title.toLocaleLowerCase('fr'));
+    /* Traduction automatique du titre si l'IA n'a pas fourni de version originale */
+    if (!alts.length && title) {
+      const tr = await this.translateToEnglish(title, signal);
+      if (tr && !seen.has(tr.toLocaleLowerCase('fr'))) { alts.push(tr); variants.push(tr); }
+    }
+    let firstOfAlt = null;
+    for (const v of alts) {
+      const key = v.toLocaleLowerCase('fr');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list = await this.searchYouTube(v, signal);
+      if (!list.length) continue;
+      res = attempt(list);
+      if (res.el) return { el: res.el, how: 'alt' };
+      if (!firstOfAlt) firstOfAlt = { el: list[0], query: v };
+    }
+    if (res.ambiguous) throw new Error(res.ambiguous);
+    /* Dernier recours : le 1er résultat de YouTube pour le titre original */
+    if (firstOfAlt) return { el: firstOfAlt.el, how: 'first', query: firstOfAlt.query };
+    throw new Error('Aucune vidéo trouvée, même avec le titre traduit. Essaie avec le nom original de la vidéo.');
+  },
   imageURL(value) {
     const s = String(value).trim();
     if (!s || s.length > 700000 || /["'\\\s<>]/.test(s)) return '';
@@ -110,8 +199,10 @@ window.webos32 = {
         const name = section.querySelector('#cur-code-name').value.trim();
         if (!name) throw new Error('Donne un nom au curseur avant de le publier.');
         status.textContent = 'Publication dans la galerie des membres…';
-        await memberCursorPublish(name, '', '', code);
-        status.textContent = 'Curseur publié : les autres membres peuvent maintenant l’utiliser dans la galerie.';
+        const cl = await memberCursorPublish(name, '', '', code);
+        status.textContent = cl.shared
+          ? 'Curseur publié : les autres membres peuvent maintenant l’utiliser dans la galerie.'
+          : 'Curseur enregistré dans ta galerie. Le service de partage ne répond pas : il sera envoyé aux membres automatiquement dès qu’il revient.';
         status.dataset.state = 'ok';
       } catch (e) { status.textContent = e.message; status.dataset.state = 'error'; }
       finally { publish.disabled = false; }
@@ -217,6 +308,12 @@ window.webos32 = {
       if (list.length) {
         const index = action.index == null ? 1 : Number(action.index);
         const title = String(action.title || '').trim().toLocaleLowerCase('fr');
+        if (!isWeb && title) {
+          const found = await this.playVideoSmart(action, signal);
+          const label = String(found.el.dataset.title || found.el.textContent || '').trim().slice(0, 100);
+          found.el.click();
+          return found.how === 'first' ? 'Pas de titre identique : j\u2019ai pris le 1er résultat YouTube pour « ' + found.query + ' » — ' + label : label;
+        }
         const el = title ? this.matchTitle(list, title) : list[index - 1];
         if (!el) throw new Error('Résultat ou vidéo introuvable parmi les éléments visibles');
         if (isWeb) browserAPI.navigate(el.href); else el.click();

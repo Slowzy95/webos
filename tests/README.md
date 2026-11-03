@@ -1,4 +1,6 @@
-# Tests de fiabilité WebOS v33
+# Tests de fiabilité WebOS v34
+
+Nouveau : `node tests/v34.mjs` (publication avec file d’attente, onglet détaché, bureau, titre YouTube FR/EN). Les anciens tests v33 simulent l’ancien service de partage (restful-api.dev) et doivent être adaptés au nouveau stockage TextDB.
 
 La suite couvre l’interface et l’intégration des fournisseurs avec des réponses HTTP simulées. Elle ne prouve pas qu’un compte réel a accès aux modèles, ni qu’un réseau scolaire autorise les jeux.
 
