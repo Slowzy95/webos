@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v27</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v28</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -3047,17 +3047,27 @@ function initBrowser(body) {
   }
 
   /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
-  let wispWatch = null;
-  /* La page proxy signale la fin du chargement (postMessage) : cela
-     confirme que le serveur wisp répond et arrête le minuteur de secours. */
+  let wispWatch = null, wispCurIdx = 0, wispRetries = 0, wispCurUrl = '';
+  /* La page proxy signale la fin du chargement (postMessage 'loaded') : le
+     serveur wisp répond. En cas d'échec ('error'), on bascule vite sur
+     l'autre serveur wisp au lieu d'attendre le minuteur de 20 s. */
   window.addEventListener('message', (ev) => {
-    if (ev.data && (ev.data.wosProxy === 'loaded' || ev.data.wosProxy === 'error') && wispWatch) {
+    if (!ev.data || !ev.data.wosProxy) return;
+    if (ev.data.wosProxy === 'loaded') {
+      wispRetries = 0;
+      if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
+    } else if (ev.data.wosProxy === 'error' && ev.data.url && wispWatch) {
       clearTimeout(wispWatch); wispWatch = null;
+      if (wispRetries < 2) {
+        wispRetries++;
+        setTimeout(() => wispLoad(ev.data.url, wispCurIdx === 0 ? 1 : 0), 2000);
+      }
     }
   });
   function wispLoad(u, wispIdx = 0) {
     frame.onload = null;
     navSeq++;
+    wispCurIdx = wispIdx; wispCurUrl = u;
     if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
     frame.removeAttribute('srcdoc');
     /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran
@@ -4721,7 +4731,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v27 — Jeux débloqués : TOUS les sites (jeux .io, Poki, CrazyGames…) passent maintenant par le proxy en PRIORITÉ — le filtre du lycée affiche une page de blocage qui « se charge », le direct était inutile. Seuls Google/Wikipédia/Startpage restent en direct (rapide). Discord s'affiche DANS la fenêtre, plus jamais de nouvel onglet. Et si un site charge à l'infini (ex: Poki), le Web OS bascule automatiquement sur l'autre serveur proxy au bout de 20 s.</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v28 — Jeux réellement jouables : le clic sur un jeu (Poki, CrazyGames, .io) faisait plantER le cadre — les liens sont maintenant interceptés et le jeu se charge proprement dans le cadre. Un serveur proxy lent ? Bascule automatique sur l'autre en 2 s. Page blanche ? Nouvel essai automatique.</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
