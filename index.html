@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v22</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v23</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -4487,7 +4487,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v22 — superposition réglée AUSSI sur ordinateur : les zones d'aimantation (bords d'écran) ne recouvrent plus les autres applis, les fenêtres maximisées bloquent les autres, et tout se range en carrés dès qu'il n'y a plus de place</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v23 — LE bug des icônes du bureau réparé : une icône lâchée sur une case occupée part automatiquement à la case libre la plus proche (une seule icône par carré, comme un vrai PC) — les icônes déjà empilées se réarrangent au rechargement</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -4941,19 +4941,22 @@ function makeDeskDraggable(b, id) {
       if (moved) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
         const pos = getIconPos();
-        /* Aimantation à la grille + ANTI-SUPERPOSITION : chaque icône trouve la case libre la plus proche */
+        /* Aimantation à la grille + ANTI-SUPERPOSITION : chaque icône trouve la case libre la plus proche.
+           nearestFreeCell travaille en NUMÉROS DE CASE (colonne, rangée) — on convertit
+           la position en pixels vers la case, puis la case choisie en pixels. */
         const taken = occupiedCells(id);
-        let cell = nearestFreeCell(snapV(parseFloat(b.style.left) || 0, GRID_X), snapV(parseFloat(b.style.top) || 0, GRID_Y), taken);
+        const cellIdx = (v, g) => Math.max(0, Math.round((parseFloat(v) || 0) / g));
+        let cell = nearestFreeCell(cellIdx(b.style.left, GRID_X), cellIdx(b.style.top, GRID_Y), taken);
         taken.add(cell.x + ',' + cell.y);
-        pos[id] = cell;
-        b.style.left = cell.x + 'px'; b.style.top = cell.y + 'px';
+        pos[id] = { x: cell.x * GRID_X, y: cell.y * GRID_Y };
+        b.style.left = pos[id].x + 'px'; b.style.top = pos[id].y + 'px';
         group.forEach(s => {
           const id2 = s.el.dataset.iconId;
           if (!id2) return;
-          const c2 = nearestFreeCell(snapV(parseFloat(s.el.style.left) || 0, GRID_X), snapV(parseFloat(s.el.style.top) || 0, GRID_Y), taken);
+          const c2 = nearestFreeCell(cellIdx(s.el.style.left, GRID_X), cellIdx(s.el.style.top, GRID_Y), taken);
           taken.add(c2.x + ',' + c2.y);
-          pos[id2] = c2;
-          s.el.style.left = c2.x + 'px'; s.el.style.top = c2.y + 'px';
+          pos[id2] = { x: c2.x * GRID_X, y: c2.y * GRID_Y };
+          s.el.style.left = pos[id2].x + 'px'; s.el.style.top = pos[id2].y + 'px';
         });
         LS.setJSON('iconpos', pos);
       }
