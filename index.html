@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v23</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v24</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -4487,7 +4487,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v23 — LE bug des icônes du bureau réparé : une icône lâchée sur une case occupée part automatiquement à la case libre la plus proche (une seule icône par carré, comme un vrai PC) — les icônes déjà empilées se réarrangent au rechargement</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v24 — les icônes ne se superposent PLUS, même si le téléphone interrompt le geste en pleine manipulation (pointercancel géré : l'icône se range sur sa case) — pense à vérifier le numéro de version dans le menu Démarrer pour être sûr d'avoir la nouvelle version</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -4938,6 +4938,7 @@ function makeDeskDraggable(b, id) {
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
       if (moved) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
         const pos = getIconPos();
@@ -4963,6 +4964,9 @@ function makeDeskDraggable(b, id) {
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
+    /* Sur mobile, le navigateur peut ANNULER le geste (pointercancel) : sans ça,
+       l'icône restait figée où elle était — parfois à cheval sur une autre. */
+    document.addEventListener('pointercancel', up);
   });
 }
 /* Sélection au lasso (comme un vrai ordinateur) — sur TOUT le bureau, plus seulement la zone des icônes */
