@@ -1023,7 +1023,9 @@ document.querySelector('.tray-btn[title="Volume"]').addEventListener('click', ()
   const newMuted = !muted;
   trayPopup.dataset.muted = newMuted ? '1' : '0';
   document.querySelectorAll('audio, video').forEach(el => { el.muted = newMuted; });
-  document.querySelectorAll('iframe').forEach(f => { try { f.contentWindow.postMessage({ wosMute: newMuted }, '*'); } catch (e) {} });
+  /* v37 : coupe vraiment tout (médias, Web Audio, cadres imbriqués, YouTube) */
+  let uncontrolled = 0;
+  try { uncontrolled = window.wosAudio ? window.wosAudio.set(newMuted) : 0; } catch (e) {}
   const icon = document.querySelector('.tray-btn[title="Volume"] i');
   icon.className = newMuted ? 'fa-solid fa-volume-xmark text-[13px] text-red-400' : 'fa-solid fa-volume-high text-[13px]';
   trayPopup.innerHTML = `
@@ -2320,7 +2322,7 @@ function initBrowser(body, rec) {
     ytResults.classList.add('hidden');
     ytPlayerWrap.classList.remove('hidden');
     ytPlayerWrap.classList.add('flex');
-    ytPlayer.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0';
+    ytPlayer.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1';
     if (id) {
       try {
         const hist = LS.getJSON('ythist', []);
@@ -4827,7 +4829,7 @@ function renderMedia() {
           <button class="btn btn-red !py-1.5" id="yt-go"><i class="fa-solid fa-play"></i> Lire</button>
         </div>
         <div class="rounded-xl overflow-hidden border border-white/10 bg-black aspect-video">
-          <iframe id="yt-frame" class="w-full h-full" src="https://www.youtube-nocookie.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <iframe id="yt-frame" class="w-full h-full" src="https://www.youtube-nocookie.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI&enablejsapi=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
       </div>
       <div>
@@ -4894,7 +4896,7 @@ function initMedia(body) {
   const ytUrl = body.querySelector('#yt-url'), ytFrame = body.querySelector('#yt-frame');
   const play = () => {
     const m = ytUrl.value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/);
-    if (m) { ytFrame.src = 'https://www.youtube-nocookie.com/embed/' + m[1] + '?autoplay=1'; toast('Lecture lancée', 'fa-play', 'text-red-400'); }
+    if (m) { ytFrame.src = 'https://www.youtube-nocookie.com/embed/' + m[1] + '?autoplay=1&enablejsapi=1'; toast('Lecture lancée', 'fa-play', 'text-red-400'); }
     else toast('Lien YouTube non reconnu', 'fa-triangle-exclamation', 'text-amber-400');
   };
   body.querySelector('#yt-go').addEventListener('click', play);
@@ -4978,6 +4980,8 @@ function renderSettings() {
         <div class="text-[11px] text-slate-400 mb-1">Moteur de recherche</div>
         <div class="flex flex-wrap gap-2 mb-3" id="st-px-search"></div>
         <label class="flex items-center gap-2 text-[11.5px] text-slate-300"><input type="checkbox" id="st-px-auto" class="accent-sky-500 w-4 h-4" /> Automatique : retenir ce qui marche pour chaque site et changer de combinaison en cas d'échec</label>
+        <div class="text-[11px] text-slate-400 mt-3 mb-1">Serveur Wisp personnalisé (optionnel — essayé en premier ; utile si ton réseau bloque les serveurs publics)</div>
+        <div class="flex gap-2"><input id="st-wisp-url" class="field flex-1" placeholder="wss://mon-serveur.workers.dev/" spellcheck="false" /><button class="btn btn-ghost" id="st-wisp-save">Enregistrer</button></div>
       </section>
 
       <section class="pt-4 border-t border-white/8">
@@ -5113,7 +5117,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v37 : Discord passe par Ultraviolet (le captcha ne tourne plus à l’infini). WebOS v36 : vrais fonds d’écran et vraies icônes d’applications pour chaque système, liens des sites qui restent dans le navigateur, Bloxd connecté, curseurs parasites retirés. Avant (v35) : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v38 : le bouton muet coupe vraiment tout le son (jeux, vidéos, YouTube, cadres imbriqués), la touche de secours marche aussi en plein écran et dans les lecteurs, serveur Wisp personnalisé dans les réglages. WebOS v37 : Discord passe par Ultraviolet (le captcha ne tourne plus à l’infini). WebOS v36 : vrais fonds d’écran et vraies icônes d’applications pour chaque système, liens des sites qui restent dans le navigateur, Bloxd connecté, curseurs parasites retirés. Avant (v35) : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -5138,6 +5142,17 @@ function initSettings(body) {
       chips(seBox, SEARCH_CHOICES, LS.get('engine', 'ddg'), 'pxs');
       autoBox.checked = LS.get('proxy_auto', '1') === '1';
     };
+    const wispIn = body.querySelector('#st-wisp-url');
+    if (wispIn) {
+      wispIn.value = localStorage.getItem('wos_wisp_custom') || '';
+      body.querySelector('#st-wisp-save').addEventListener('click', () => {
+        const v = wispIn.value.trim();
+        if (v && !/^wss?:\/\//i.test(v)) { toast('Adresse invalide : elle doit commencer par wss://', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+        if (v) localStorage.setItem('wos_wisp_custom', v); else localStorage.removeItem('wos_wisp_custom');
+        LS.setJSON('proxy_ok', {});
+        toast(v ? 'Serveur Wisp personnalisé enregistré' : 'Serveur Wisp personnalisé retiré', 'fa-network-wired', 'text-sky-400');
+      });
+    }
     body.addEventListener('click', e => {
       const b = e.target.closest('[data-pxe],[data-pxt],[data-pxs]');
       if (!b || !engBox.contains(b) && !trBox.contains(b) && !seBox.contains(b)) return;
