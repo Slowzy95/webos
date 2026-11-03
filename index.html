@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v25</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v26</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -609,6 +609,78 @@ const LS = {
   getJSON: (k, d) => { try { return JSON.parse(localStorage.getItem('webos_' + k)) ?? d; } catch (e) { return d; } },
   setJSON: (k, v) => { try { localStorage.setItem('webos_' + k, JSON.stringify(v)); } catch (e) {} }
 };
+
+/* ============================================================
+   SAUVETAGE D'IMAGES VIA LE PROXY INTÉGRÉ (v26)
+   Les images des domaines bloqués par le réseau (favicons Google,
+   miniatures YouTube, images Discord…) sont récupérées par le
+   Service Worker du proxy Ultraviolet (même origine) et servies en
+   local : elles s'affichent toujours, même sur un réseau filtré.
+============================================================ */
+let NET_FILTERED = false;
+/* Renifleur de réseau : un domaine aléatoire inexistant doit TOUJOURS
+   échouer (DNS mort). S'il « répond », c'est que le pare-feu du réseau
+   détourne toutes les requêtes (lycée, entreprise) → images et sites
+   passent par le proxy en priorité. */
+(async () => {
+  try {
+    const rnd = Math.random().toString(36).slice(2, 12);
+    await fetch(`https://${rnd}.inexistant-${Date.now()}.webos-test.invalid/`, { mode: 'no-cors', cache: 'no-store' });
+    NET_FILTERED = true; /* le réseau détourne le DNS → filtré */
+  } catch (e) { /* échec normal : DNS sain, réseau non filtré */ }
+})();
+
+let _rescueWin = null, _rescuePromise = null;
+function rescueGateway() {
+  /* Mini cadre caché dans la portée du Service Worker du proxy :
+     ses requêtes passent par Ultraviolet (même technique que la
+     passerelle YouTube). Créé une seule fois. */
+  if (!_rescuePromise) {
+    _rescuePromise = new Promise((resolve, reject) => {
+      const ifr = document.createElement('iframe');
+      ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0';
+      ifr.src = '/proxy/uv/blank.html';
+      const to = setTimeout(() => reject(new Error('proxy indisponible')), 15000);
+      const onMsg = (ev) => {
+        if (ev.data && ev.data.wosYtProxy === 'ready') {
+          clearTimeout(to); window.removeEventListener('message', onMsg);
+          _rescueWin = ifr.contentWindow; resolve(_rescueWin);
+        }
+      };
+      window.addEventListener('message', onMsg);
+      ifr.addEventListener('error', () => { clearTimeout(to); reject(new Error('chargement impossible')); });
+      document.body.appendChild(ifr);
+    }).catch(e => { _rescuePromise = null; throw e; });
+  }
+  return _rescuePromise;
+}
+const _proxyImgCache = new Map();
+async function proxyImageURL(url) {
+  if (_proxyImgCache.has(url)) return _proxyImgCache.get(url);
+  const objURL = await rescueGateway().then(async (cw) => {
+    const enc = cw.__uv$config.encodeUrl(url);
+    const rep = await cw.fetch('/proxy/uv/service/' + enc);
+    if (!rep.ok) throw new Error('HTTP ' + rep.status);
+    const blob = await rep.blob();
+    return URL.createObjectURL(blob);
+  });
+  _proxyImgCache.set(url, objURL);
+  return objURL;
+}
+/* Filet de sécurité global : toute image qui échoue est retentée
+   automatiquement via le proxy (une seule fois par image). */
+window.addEventListener('error', (e) => {
+  const t = e.target;
+  if (!t || t.tagName !== 'IMG') return;
+  const src = t.currentSrc || t.src || '';
+  if (!/^https:\/\//i.test(src) || t.dataset.wosRescue || src.startsWith('blob:')) return;
+  t.dataset.wosRescue = '1';
+  proxyImageURL(src).then((u) => {
+    t.src = u;
+    if (t.style.display === 'none') t.style.display = '';
+    t.onerror = null;
+  }).catch(() => {});
+}, true);
 
 const DEFAULT_KEYS = {
   google:   '',
@@ -1003,22 +1075,22 @@ const WALLPAPERS = [
   { id: 'naruto',  name: 'Ninja (animé)',    cat: 'Animé', type: 'svg', svg: NARUTO_SVG, preview: 'radial-gradient(circle at 50% 40%, #b45309, #0c0a14)' },
   { id: 'mc',      name: 'Minecraft',        cat: 'Jeux', type: 'svg', svg: MC_SVG, preview: 'linear-gradient(180deg,#59a8ff,#5fae3c)' },
   { id: 'synth',   name: 'Synthwave (animé)', cat: 'Jeux', type: 'svg', svg: SYNTH_SVG, preview: 'linear-gradient(180deg,#2b1055,#ff2975)' },
-  { id: 'img1',    name: 'Montagnes nuit',   cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img2',    name: 'Lac & sommets',    cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img3',    name: 'Forêt brumeuse',   cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img4',    name: 'San Francisco',    cat: 'Villes', type: 'image',  url: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img5',    name: 'Terre depuis l\u2019espace', cat: 'Espace', type: 'image', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img6',    name: 'Abstrait violet',  cat: 'Système', type: 'image',  url: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img7',    name: 'Mont Fuji',        cat: 'Animé', type: 'image',  url: 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img8',    name: 'Torii japonais',   cat: 'Animé', type: 'image',  url: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img9',    name: 'Bambous',          cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1526397751294-331021109fbd?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img10',   name: 'Plage tropicale', cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img11',   name: 'Coucher de soleil', cat: 'Nature', type: 'image', url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img12',   name: 'Désert étoilé',  cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img13',   name: 'Ville néon',      cat: 'Villes', type: 'image',  url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img14',   name: 'Aurora boréale',  cat: 'Espace', type: 'image',  url: 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img15',   name: 'Néon Tokyo',        cat: 'Animé', type: 'image',  url: 'https://images.unsplash.com/photo-1542051841857-5f90071e7989?auto=format&fit=crop&w=1920&q=80' },
-  { id: 'img16',   name: 'Océan profond',   cat: 'Nature', type: 'image',  url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'img1',    name: 'Montagnes nuit',   cat: 'Nature', type: 'image',  url: 'walls/w12.jpg' },
+  { id: 'img2',    name: 'Lac & sommets',    cat: 'Nature', type: 'image',  url: 'walls/w8.jpg' },
+  { id: 'img3',    name: 'Forêt brumeuse',   cat: 'Nature', type: 'image',  url: 'walls/w1.jpg' },
+  { id: 'img4',    name: 'San Francisco',    cat: 'Villes', type: 'image',  url: 'walls/w2.jpg' },
+  { id: 'img5',    name: 'Terre depuis l\u2019espace', cat: 'Espace', type: 'image', url: 'walls/w3.jpg' },
+  { id: 'img6',    name: 'Abstrait violet',  cat: 'Système', type: 'image',  url: 'walls/w16.jpg' },
+  { id: 'img7',    name: 'Mont Fuji',        cat: 'Animé', type: 'image',  url: 'walls/w5.jpg' },
+  { id: 'img8',    name: 'Torii japonais',   cat: 'Animé', type: 'image',  url: 'walls/w14.jpg' },
+  { id: 'img9',    name: 'Bambous',          cat: 'Nature', type: 'image',  url: 'walls/w13.jpg' },
+  { id: 'img10',   name: 'Plage tropicale', cat: 'Nature', type: 'image',  url: 'walls/w9.jpg' },
+  { id: 'img11',   name: 'Coucher de soleil', cat: 'Nature', type: 'image', url: 'walls/w6.jpg' },
+  { id: 'img12',   name: 'Désert étoilé',  cat: 'Nature', type: 'image',  url: 'walls/w10.jpg' },
+  { id: 'img13',   name: 'Ville néon',      cat: 'Villes', type: 'image',  url: 'walls/w11.jpg' },
+  { id: 'img14',   name: 'Aurora boréale',  cat: 'Espace', type: 'image',  url: 'walls/w4.jpg' },
+  { id: 'img15',   name: 'Néon Tokyo',        cat: 'Animé', type: 'image',  url: 'walls/w15.jpg' },
+  { id: 'img16',   name: 'Océan profond',   cat: 'Nature', type: 'image',  url: 'walls/w7.jpg' },
   { id: 'shonen',  name: 'Shonen (animé)',  cat: 'Animé', type: 'svg', svg: SHONEN_SVG, preview: 'radial-gradient(circle at 50% 50%, #f97316, #0c0a14)' },
   { id: 'kawaii',  name: 'Kawaii (animé)',  cat: 'Animé', type: 'svg', svg: KAWAII_SVG, preview: 'linear-gradient(135deg,#fce4ec,#e8eaf6)' },
   { id: 'samurai', name: 'Samouraï (animé)', cat: 'Animé', type: 'svg', svg: SAMURAI_SVG, preview: 'linear-gradient(180deg,#1a1a2e,#0d1117)' },
@@ -1064,6 +1136,16 @@ function memberWallsFetch() {
   }).catch(() => MEMBER_WALLS);
 }
 async function memberWallPublish(name, url) {
+  /* Vérifie d'abord que l'image existe vraiment (lien mort → erreur claire
+     au lieu de publier un fond que personne ne pourra afficher) */
+  const alive = await new Promise(res => {
+    const im = new Image();
+    const to = setTimeout(() => res(false), 10000);
+    im.onload = () => { clearTimeout(to); res(true); };
+    im.onerror = () => { clearTimeout(to); res(false); };
+    im.src = url;
+  });
+  if (!alive) throw new Error('image introuvable');
   const cur = await memberWallsFetch();
   const list = cur.filter(w => w.url !== url);
   list.unshift({ name: name || 'Fond d\u2019un membre', url, by: 'Membre', ts: Date.now() });
@@ -1075,7 +1157,36 @@ async function memberWallPublish(name, url) {
   if (!rep.ok) throw new Error('publication impossible');
   MEMBER_WALLS = trimmed;
   LS.setJSON('memberwalls', trimmed);
+  /* Les images Discord expirent au bout de quelques jours : on prévient */
+  if (/cdn\.discordapp\.com|discord\.com\/attachments/.test(url)) {
+    try { toast('Attention : les liens Discord expirent vite — ce fond cessera de marcher dans quelques jours', 'fa-triangle-exclamation', 'text-amber-400'); } catch (e) {}
+  }
   return trimmed;
+}
+/* Nettoie la liste partagée : les fonds dont le lien est mort (ex: images
+   Discord expirées) sont retirés automatiquement pour tous les membres. */
+async function memberWallsClean() {
+  const list = await memberWallsFetch();
+  if (!list.length) return list;
+  const alive = await Promise.all(list.map(w => new Promise(res => {
+    const im = new Image();
+    const to = setTimeout(() => res(false), 8000);
+    im.onload = () => { clearTimeout(to); res(true); };
+    im.onerror = () => { clearTimeout(to); res(false); };
+    im.src = w.url;
+  })));
+  const kept = list.filter((_, i) => alive[i]);
+  if (kept.length !== list.length) {
+    MEMBER_WALLS = kept;
+    LS.setJSON('memberwalls', kept);
+    try {
+      await fetch(SHARED_WALLS_API, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'webos-walls', data: { walls: kept } })
+      });
+    } catch (e) {}
+  }
+  return kept;
 }
 
 /* Souris de MEMBRES (curseurs partagés par tout le monde) — même système que les fonds d'écran */
@@ -1200,6 +1311,20 @@ setCursorTheme(LS.get('cursor', 'default'));
 
 let wallpaperCleanup = null;
 
+/* Sauvegarde locale du fond externe (membres, URL perso) : une copie
+   base64 est gardée dans le navigateur — si le lien d'origine meurt
+   (images Discord qui expirent, site bloqué…), le fond reste affiché. */
+function cacheWallImage(url) {
+  LS.set('wall_last_ok', LS.get('wall', 'bloom'));
+  if (!/^https:\/\//i.test(url) || url.startsWith(location.origin)) return;
+  fetch(url).then(r => r.blob()).then(b => {
+    if (b.size > 2200000) return; /* trop lourd pour le stockage local */
+    const fr = new FileReader();
+    fr.onload = () => LS.setJSON('wall_cache', { url, b64: fr.result });
+    fr.readAsDataURL(b);
+  }).catch(() => {});
+}
+
 function applyWallpaper(w) {
   const wp = document.getElementById('wallpaper');
   if (wallpaperCleanup) { try { wallpaperCleanup(); } catch (e) {} wallpaperCleanup = null; }
@@ -1225,6 +1350,22 @@ function applyWallpaper(w) {
   }
   else if (w.type === 'image') {
     wp.style.background = `url("${w.url}") center/cover no-repeat`;
+    /* Vérifie que l'image existe vraiment (lien Discord expiré, site
+       bloqué…) : sinon retour au dernier fond valide ou au fond par
+       défaut — plus jamais d'écran « non sauvegardé ». */
+    const probe = new Image();
+    probe.onload = () => { cacheWallImage(w.url); };
+    probe.onerror = () => {
+      const cache = LS.getJSON('wall_cache', null);
+      if (cache && cache.url === w.url && cache.b64) {
+        wp.style.background = `url("${cache.b64}") center/cover no-repeat`;
+        return;
+      }
+      try { toast('Fond d\u2019écran introuvable (lien expiré) — retour au fond précédent', 'fa-triangle-exclamation', 'text-amber-400'); } catch (e) {}
+      const prev = LS.get('wall_last_ok', 'bloom');
+      setWallpaperById(prev && prev !== w.id ? prev : 'bloom');
+    };
+    probe.src = w.url;
   }
   else if (w.type === 'waves') {
     wp.style.background = 'linear-gradient(180deg,#020617 0%,#082f49 100%)';
@@ -2267,6 +2408,9 @@ function initBrowser(body) {
   let history = [BROWSER_HOME], hIndex = 0;
   let mode = 'auto'; // auto | direct | proxy
   let navSeq = 0;
+  /* Sites que l'utilisateur a passé manuellement par le proxy une fois :
+     ils y repassent automatiquement (page de blocage du lycée…). */
+  const ALWAYS_PROXY = LS.getJSON('alwaysproxy', []);
 
   /* ---------- Système d'onglets ---------- */
   const framesContainer = body.querySelector('#br-frames');
@@ -2860,25 +3004,50 @@ function initBrowser(body) {
       heavyInterstitial(u, hHost); return;
     }
     const t0 = Date.now();
-    /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...) */
-    if (mode === 'auto' && !isFrameable(u)) { wispLoad(u); return; }
+    /* Mode Auto : direct si possible, sinon le VRAI proxy Ultraviolet (sites bloqués : Poki, CrazyGames, Franime, Netflix...)
+       Sur un réseau filtré (détection auto au démarrage) ou un site déjà
+       passé par le proxy manuellement : proxy direct, sans perdre de temps. */
+    if (mode === 'auto' && (NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
     if (mode === 'proxy') { proxyLoad(u, t0, fallback); return; }
     navSeq++;
     frame.removeAttribute('srcdoc');
     frame.src = smartDirect(u);
-    /* Réseau qui bloque (lycée, proxy d'entreprise) : si rien ne charge en 6 s,
+    /* Réseau qui bloque (lycée, proxy d'entreprise) : si rien ne charge en 3,5 s,
        on repasse AUTOMATIQUEMENT par le proxy intégré — la connexion passe
        alors par le serveur du proxy, plus par le réseau du PC. */
     const directSeq = navSeq;
     let directLoaded = false;
-    frame.onload = () => { directLoaded = true; setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct'); };
+    frame.onload = () => { directLoaded = true; setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct'); showBlockedPill(u); };
     setTimeout(() => {
       if (!directLoaded && navSeq === directSeq && mode === 'auto') {
         try { toast('Chargement direct impossible (réseau bridé ?) — nouvel essai via le proxy', 'fa-cloud', 'text-amber-400'); } catch (e) {}
         wispLoad(u);
       }
-    }, 6000);
+    }, 3500);
     setStatus('Chargement direct...');
+  }
+
+  /* Pastille « Site bloqué ? » : si le pare-feu du lycée affiche SA page de
+     blocage (elle se « charge » correctement, le repli auto ne la détecte pas),
+     un bouton apparaît 12 s en bas de la fenêtre — un clic et le site repasse
+     par le proxy (et il y repassera automatiquement les prochaines fois). */
+  function showBlockedPill(u) {
+    let pill = body.querySelector('#br-blocked-pill');
+    if (pill) pill.remove();
+    pill = document.createElement('button');
+    pill.id = 'br-blocked-pill';
+    pill.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500/95 text-slate-900 text-[12px] font-bold shadow-lg hover:bg-amber-400 transition-all';
+    pill.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Site bloqué ? Passer par le proxy';
+    pill.onclick = () => {
+      try { pill.remove(); } catch (e) {}
+      try {
+        const h = new URL(u).hostname.replace(/^www\./, '');
+        if (!ALWAYS_PROXY.includes(h)) { ALWAYS_PROXY.push(h); LS.setJSON('alwaysproxy', ALWAYS_PROXY); }
+      } catch (e) {}
+      wispLoad(u);
+    };
+    body.appendChild(pill);
+    setTimeout(() => { try { pill.remove(); } catch (e) {} }, 12000);
   }
 
   /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
@@ -4535,7 +4704,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v25 — Google bloqué au lycée ? La recherche utilise maintenant Startpage (résultats Google, autre domaine) et passe par le proxy : loupe dans la barre d'adresse pour changer de moteur + repli automatique vers le proxy si un site refuse de charger</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v26 — Fond d'écran des membres réparé (les images Discord qui expirent sont détectées : le fond reste affiché grâce à une copie locale de secours, les liens morts sont nettoyés de la liste) + toutes les images passent par le proxy si elles sont bloquées (favicons, miniatures YouTube, fonds…) + détection auto du réseau filtré : les sites passent par le proxy sans attendre + bouton « Site bloqué ? » pour forcer le proxy en un clic (le site y repassera tout seul ensuite)</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
@@ -4579,7 +4748,10 @@ function initSettings(body) {
     if (activeCat === 'Membres') {
       wallsEl.innerHTML = MEMBER_WALLS.length ? MEMBER_WALLS.map(w => `
         <button data-memberwall="${escHtml(w.url)}" class="rounded-xl overflow-hidden border-2 transition-all text-left border-white/10 hover:border-white/30">
-          <img src="${escHtml(w.url)}" class="w-full h-16 object-cover bg-slate-800" loading="lazy" alt="" onerror="this.style.display='none'">
+          <div class="relative">
+            <img src="${escHtml(w.url)}" class="w-full h-16 object-cover bg-slate-800" loading="lazy" alt="" onerror="this.style.display='none';var b=this.parentElement.querySelector('.wexp');if(b)b.classList.remove('hidden')">
+            <span class="wexp hidden absolute top-1 right-1 text-[9px] font-bold bg-red-500/90 text-white px-1.5 py-0.5 rounded">expiré</span>
+          </div>
           <div class="px-2 py-1.5 text-[10.5px] font-medium truncate"><i class="fa-solid fa-user text-[9px] text-slate-500 mr-1"></i>${escHtml(w.name || 'Fond de membre')}</div>
         </button>`).join('') : '<div class="col-span-3 text-[11px] text-slate-500 italic py-4">Aucun fond partagé pour le moment — publiez le premier avec le bouton « Publier ».</div>';
       wallsEl.querySelectorAll('[data-memberwall]').forEach(b => b.addEventListener('click', () => applyMemberWall(b.dataset.memberwall)));
@@ -4601,8 +4773,9 @@ function initSettings(body) {
   };
   renderCats();
   renderWalls();
-  /* Récupère les fonds partagés par la communauté (mise à jour de la catégorie Membres) */
-  memberWallsFetch().then(() => { if (activeCat === 'Membres') renderWalls(); }).catch(() => {});
+  /* Récupère les fonds partagés par la communauté + retire ceux dont le
+     lien est mort (images Discord expirées…) — mise à jour de la catégorie Membres */
+  memberWallsClean().then(() => { if (activeCat === 'Membres') renderWalls(); }).catch(() => {});
   const mcToggle = body.querySelector('#st-mc');
   mcToggle.checked = document.body.classList.contains('mc');
   mcToggle.addEventListener('change', () => {
