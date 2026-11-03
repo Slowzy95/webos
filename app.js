@@ -1879,7 +1879,8 @@ function proxyPrefs() {
 }
 /* Liste ordonnée des tentatives pour une adresse : choix de l'utilisateur (ou
    dernière combinaison qui a marché pour ce site), puis les autres serveurs
-   Wisp, puis l'autre moteur et l'autre transport. */
+   Wisp (5 serveurs publics en rotation depuis nov. 2026), puis l'autre
+   moteur et l'autre transport. */
 function proxyPlan(u) {
   let host = '';
   try { host = new URL(u).hostname.replace(/^www\./, ''); } catch (e) {}
@@ -1895,6 +1896,7 @@ function proxyPlan(u) {
   const plan = [
     first,
     { engine: first.engine, transport: first.transport, wisp: 1 },
+    { engine: first.engine, transport: first.transport, wisp: 2 },
     { engine: first.engine, transport: oTr, wisp: 0 },
     { engine: oEng, transport: oEng === 'uv' ? 'epoxy' : 'libcurl', wisp: 0 },
     { engine: oEng, transport: oEng === 'uv' ? 'libcurl' : 'epoxy', wisp: 1 }
