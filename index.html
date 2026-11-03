@@ -560,7 +560,7 @@
         <div class="flex items-center gap-2.5 px-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center"><i class="fa-solid fa-user text-[11px] text-white"></i></div>
           <span class="text-[12px] font-semibold">Utilisateur</span>
-          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v21</span>
+          <span class="text-[10px] font-bold text-slate-500 bg-white/5 border border-white/10 rounded-full px-2 py-0.5" title="Version installée — si ce n'est pas la dernière, fais Ctrl+Shift+R">v22</span>
         </div>
         <div class="flex gap-1">
           <div class="tray-btn" title="Redémarrer" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i></div>
@@ -1635,7 +1635,8 @@ function findFreeSpot(w, h) {
 function avoidOverlap(x, y, w, h, selfEl, desk) {
   let r = { l: x, t: y, r: x + w, b: y + h };
   windows.forEach((w2) => {
-    if (w2.el === selfEl || w2.minimized || w2.maximized) return;
+    /* une fenêtre maximisée occupe tout l'écran : on ne peut pas passer dessus */
+    if (w2.el === selfEl || w2.minimized) return;
     const o = w2.el.getBoundingClientRect();
     const ob = { l: o.left - desk.left, t: o.top - desk.top, r: o.right - desk.left, b: o.bottom - desk.top };
     const ix = Math.min(r.r, ob.r) - Math.max(r.l, ob.l);
@@ -1949,7 +1950,9 @@ function makeDraggable(el, appId) {
           w.prevRect = { l: el.style.left, t: el.style.top, w: el.style.width, h: el.style.height };
           if (snapZone === 'max') { if (!w.maximized) toggleMaximize(appId); }
           else {
-            /* Moitiés et quarts d'écran (comme Windows) */
+            /* Moitiés et quarts d'écran (comme Windows) — MAIS si la zone visée
+               est déjà occupée par une autre appli, on ne la recouvre PAS : la
+               fenêtre se range dans la première case libre à la place. */
             const R = {
               left: [0, 0, desk.width / 2, desk.height],
               right: [desk.width / 2, 0, desk.width / 2, desk.height],
@@ -1958,8 +1961,21 @@ function makeDraggable(el, appId) {
               bl: [0, desk.height / 2, desk.width / 2, desk.height / 2],
               br: [desk.width / 2, desk.height / 2, desk.width / 2, desk.height / 2]
             }[snapZone];
-            el.style.left = R[0] + 'px'; el.style.top = R[1] + 'px';
-            el.style.width = R[2] + 'px'; el.style.height = R[3] + 'px';
+            const zoneTaken = windowRects(el).some(o => !(R[0] + R[2] <= o.l + 4 || R[0] >= o.r - 4 || R[1] + R[3] <= o.t + 4 || R[1] >= o.b - 4));
+            if (zoneTaken) {
+              /* zone occupée : grille / carrés, JAMAIS de superposition */
+              const r2 = el.getBoundingClientRect();
+              const drop = gridDrop(r2.left - desk.left, r2.top - desk.top, r2.width, r2.height, el, desk);
+              if (drop) {
+                el.style.transition = 'left .16s ease, top .16s ease';
+                el.style.left = drop.x + 'px';
+                el.style.top = drop.y + 'px';
+                setTimeout(() => { el.style.transition = ''; }, 190);
+              } else retileAll();
+            } else {
+              el.style.left = R[0] + 'px'; el.style.top = R[1] + 'px';
+              el.style.width = R[2] + 'px'; el.style.height = R[3] + 'px';
+            }
           }
         }
       } else if (moved) {
@@ -4471,7 +4487,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">Web OS v21 — FINI la superposition : sur téléphone les applis s'ouvrent en PLEIN ÉCRAN si elles sont seules, sinon TOUT se range en carrés (chaque appli a son carré) ; correctif du widget Contrôle PC (mêmes endpoints et clés que l'app IA, OpenRouter et Gemini réparés)</div>
+        <div class="font-bold text-slate-300 mb-1">Web OS v22 — superposition réglée AUSSI sur ordinateur : les zones d'aimantation (bords d'écran) ne recouvrent plus les autres applis, les fenêtres maximisées bloquent les autres, et tout se range en carrés dès qu'il n'y a plus de place</div>
         <div class="text-slate-400 text-[11px] mb-3">Vos sites bloqués s'ouvrent via un vrai proxy Ultraviolet (hébergé sur votre GitHub, sans pub). Les sites compatibles s'ouvrent en direct, les autres passent automatiquement par le proxy. IA : Pollinations fonctionne sans clé, les clés des autres fournisseurs s'enregistrent automatiquement.</div>
         Bureau virtuel autonome en un seul fichier : navigation par proxy intégrée, 6 jeux jouables, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>localStorage</b> de votre navigateur.
       </section>
