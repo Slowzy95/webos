@@ -2945,23 +2945,39 @@ function initBrowser(body, rec) {
     const abort = new AbortController();
     readerAbort = abort;
     let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; abort.abort(); }, 18000);
+    const timeout = setTimeout(() => { timedOut = true; abort.abort(); }, 25000);
     stopButton.hidden = false;
-    setStatus('Recherche simplifiée en cours · maximum 18 s');
+    setStatus('Recherche simplifiée en cours · maximum 25 s');
+    const feed = 'https://www.bing.com/search?format=rss&q=' + encodeURIComponent(q);
+    /* v39.3 — On lit le flux Bing via TON PROXY (rescue gateway Ultraviolet) :
+       plus aucun service externe (Jina renvoyait HTTP 403). Repli sur Jina si le
+       proxy est indisponible, puis parse RSS natif. */
+    let results = null, via = '';
     try {
-      const feed = 'https://www.bing.com/search?format=rss&q=' + encodeURIComponent(q);
-      const response = await fetch('https://r.jina.ai/' + feed, {signal:abort.signal, credentials:'omit', referrerPolicy:'no-referrer'});
-      if (!response.ok) throw new Error(response.status === 429 ? 'Le service public limite les recherches. Attends un peu avant de réessayer.' : 'Le service de lecture est indisponible (HTTP ' + response.status + ').');
-      const results = window.webosParseSearch(await response.text());
+      try {
+        const cw = await rescueGateway();
+        const enc = cw.__uv$config.encodeUrl(feed);
+        const rep = await cw.fetch('/proxy/uv/service/' + enc, { signal: abort.signal });
+        if (!rep.ok) throw new Error('HTTP ' + rep.status);
+        results = window.webosParseSearchRSS(await rep.text());
+        if (!results.length) throw new Error('flux vide');
+        via = 'Bing via ton proxy';
+      } catch (e1) {
+        if (abort.signal.aborted) throw e1;
+        const response = await fetch('https://r.jina.ai/' + feed, {signal:abort.signal, credentials:'omit', referrerPolicy:'no-referrer'});
+        if (!response.ok) throw new Error(response.status === 429 ? 'Le service public limite les recherches. Attends un peu avant de réessayer.' : 'Le service de lecture est indisponible (HTTP ' + response.status + ').');
+        results = window.webosParseSearch(await response.text());
+        via = 'Bing / Jina Reader';
+      }
       if (!results.length) throw new Error('Aucun résultat lisible reçu. Essaie une recherche plus courte ou ouvre le moteur officiel.');
       if (seq !== navSeq || frame !== target || !body.isConnected || abort.signal.aborted) return;
       readerCache.set(q, {time:Date.now(), results});
       if (readerCache.size > 20) readerCache.delete(readerCache.keys().next().value);
       target.srcdoc = window.webosSearchHTML(q, {results, retryURL:u});
-      setStatus(results.length + ' résultats · Bing / Jina Reader');
+      setStatus(results.length + ' résultats · ' + via);
     } catch (e) {
       if (seq !== navSeq || frame !== target || !body.isConnected || (abort.signal.aborted && !timedOut)) return;
-      target.srcdoc = window.webosSearchHTML(q, {error:timedOut ? 'Le délai de 18 secondes est dépassé. La tentative a été arrêtée ; aucune boucle de chargement ne continue.' : e.message || 'Connexion au service impossible.', retryURL:u});
+      target.srcdoc = window.webosSearchHTML(q, {error:timedOut ? 'Le délai de 25 secondes est dépassé. La tentative a été arrêtée ; aucune boucle de chargement ne continue.' : e.message || 'Connexion au service impossible.', retryURL:u});
       setStatus('Recherche arrêtée · réessai manuel ou moteur officiel');
     } finally {
       clearTimeout(timeout);
@@ -2976,14 +2992,22 @@ function initBrowser(body, rec) {
     frame.onload = null;
     frame.removeAttribute('src');
     const pl = proxyPlan(u);
+    /* v39.3 — Si c'est une recherche (Google, Bing, DDG…) qui échoue via le
+       proxy, on propose la recherche intégrée (Bing RSS lu via ton proxy) */
+    const actions = [
+      { label: 'Réessayer depuis le début', msg: { wosRetry: u } },
+      { label: 'Forcer Scramjet', msg: { wosRetry: u, engine: 'sj' } },
+      { label: 'Forcer Ultraviolet', msg: { wosRetry: u, engine: 'uv' } }
+    ];
+    try {
+      const pu = new URL(u);
+      const sq = pu.searchParams.get('q') || pu.searchParams.get('p');
+      if (sq && /^(www\.)?(google\.[a-z.]{2,7}|bing\.com|duckduckgo\.com|search\.yahoo\.com)$/.test(pu.hostname)) {
+        actions.splice(1, 0, { label: 'Rechercher avec la recherche intégrée', msg: { wosNav: 'https://www.bing.com/search?wos_reader=1&q=' + encodeURIComponent(sq) } });
+      }
+    } catch (e) {}
     frame.srcdoc = browserNoticeHTML('Ce site ne répond pas via le proxy',
-      pl.length + ' combinaisons (Scramjet / Ultraviolet, libcurl / Epoxy, 2 serveurs) ont été essayées automatiquement. Le site refuse peut-être les proxys, ou le réseau bloque les serveurs Wisp. Tu peux relancer les essais ou choisir une combinaison précise.', u, {
-        actions: [
-          { label: 'Réessayer depuis le début', msg: { wosRetry: u } },
-          { label: 'Forcer Scramjet', msg: { wosRetry: u, engine: 'sj' } },
-          { label: 'Forcer Ultraviolet', msg: { wosRetry: u, engine: 'uv' } }
-        ]
-      });
+      pl.length + ' combinaisons (Scramjet / Ultraviolet, libcurl / Epoxy, serveurs wisp) ont été essayées automatiquement. Le site refuse peut-être les proxys, ou le réseau bloque les serveurs Wisp. Tu peux relancer les essais ou choisir une combinaison précise.', u, { actions });
     setStatus('Échec du chargement — tentatives arrêtées');
   }
   function retryProxy(u, seq, targetFrame) {

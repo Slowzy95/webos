@@ -2,6 +2,32 @@
 
 /* A bounded, read-only RSS result reader, independent of the game proxy.
    No API key, login cookie or assistant context is sent to this service. */
+/* v39.3 — Parse le flux RSS Bing (lecture via le proxy du WebOS, sans Jina) */
+window.webosParseSearchRSS = function (text) {
+  const results = [];
+  const seen = new Set();
+  let doc;
+  try { doc = new DOMParser().parseFromString(String(text).slice(0, 300000), 'text/xml'); } catch (e) { return results; }
+  if (doc.querySelector('parsererror')) return results;
+  const items = doc.querySelectorAll('item');
+  const clean = s => String(s || '').replace(/<[^>]+>/g, '').trim();
+  for (const it of items) {
+    let url;
+    try {
+      url = new URL((it.querySelector('link') && it.querySelector('link').textContent) || '');
+      if (!/^https?:$/.test(url.protocol) || url.username || url.password || seen.has(url.href)) continue;
+    } catch (e) { continue; }
+    results.push({
+      title: clean(it.querySelector('title') && it.querySelector('title').textContent).slice(0, 200),
+      url: url.href,
+      snippet: clean(it.querySelector('description') && it.querySelector('description').textContent).slice(0, 500)
+    });
+    seen.add(url.href);
+    if (results.length === 10) break;
+  }
+  return results;
+};
+
 window.webosParseSearch = function (text) {
   const results = [];
   const seen = new Set();
