@@ -2292,6 +2292,13 @@ function initBrowser(body, rec) {
     LS.set('engine', 'ddg');
     LS.set('search_route_v35', '1');
   }
+  /* v39.3 — Par défaut : la recherche intégrée WebOS. Elle lit maintenant le
+     flux Bing via TON propre proxy (rapide, fiable, sans service externe) —
+     les moteurs complets via proxy restent choisis manuellement (loupe). */
+  if (LS.get('search_route_v393', '') !== '1') {
+    LS.set('search_route_v393', '1');
+    if (LS.get('engine', 'ddg') === 'ddg') LS.set('engine', 'webos');
+  }
   let curEngine = LS.get('engine', 'ddg');
   if (!SEARCH_ENGINES[curEngine]) curEngine = 'ddg';
 
