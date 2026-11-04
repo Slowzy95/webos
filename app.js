@@ -1874,14 +1874,19 @@ const SJ_PROXY = 'https://slowzy95.github.io/proxy/sj/go.html?url=';
    libcurl ou Epoxy. Réglables dans Paramètres › Navigateur ; sinon plan automatique
    avec repli sur les autres combinaisons (plus jamais « ouvre un vrai onglet »). */
 const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
-/* v38 — Gardien du serveur wisp Render (le plan gratuit l'endort après ~15 min
+/* v39 — Gardien du serveur wisp Render (le plan gratuit l'endort après ~15 min
    d'inactivité) : un ping discret toutes les 10 min tant que le WebOS est
-   ouvert le garde réveillé → première connexion toujours rapide. */
+   ouvert le garde réveillé → première connexion toujours rapide.
+   v40 : ping via le RELAIS Cloudflare (marche même si onrender.com est
+   bloqué sur le réseau) + ping direct Render en secours. */
 (function keepWispAwake() {
-  const url = 'https://wisp-server-maiz.onrender.com/health';
-  const ping = () => { try { fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch (e) {} };
-  ping();
-  setInterval(ping, 10 * 60 * 1000);
+  const ping = (url) => { try { fetch(url, { mode: 'no-cors' }).catch(() => {}); } catch (e) {} };
+  ping('https://gate-s95.slowzy.workers.dev/health');
+  ping('https://wisp-server-maiz.onrender.com/health');
+  setInterval(() => {
+    ping('https://gate-s95.slowzy.workers.dev/health');
+    ping('https://wisp-server-maiz.onrender.com/health');
+  }, 10 * 60 * 1000);
 })();
 const PROXY_TRANSPORTS = { libcurl: 'libcurl', epoxy: 'Epoxy' };
 /* Sites qui ne fonctionnent bien qu'avec Ultraviolet (constaté en test) */
