@@ -1888,6 +1888,29 @@ const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
     ping('https://wisp-server-maiz.onrender.com/health');
   }, 10 * 60 * 1000);
 })();
+/* v41 — Préchauffage du proxy au démarrage : dès l'ouverture du WebOS, un
+   mini-cadre invisible prépare le service worker et la connexion au serveur
+   en tâche de fond. Résultat : quand tu ouvres le navigateur et cherches un
+   truc, tout part immédiatement — plus de « proxy qui se lance » visible.
+   Rien à choisir : le mode automatique gère moteur, transport et serveur,
+   et retient ce qui marche pour chaque site. */
+(function prewarmProxy() {
+  const boot = () => setTimeout(() => {
+    /* Ultraviolet : enregistre le service worker + configure le transport */
+    try { rescueGateway().catch(() => {}); } catch (e) {}
+    /* Scramjet : charge une page très légère via le proxy dans un cadre invisible */
+    try {
+      const ifr = document.createElement('iframe');
+      ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0;visibility:hidden';
+      ifr.src = SJ_PROXY + encodeURIComponent('https://example.com/') + '&clean=1&wisp=0&transport=libcurl';
+      document.body.appendChild(ifr);
+      /* on laisse 60 s pour tout initialiser, puis on retire le cadre */
+      setTimeout(() => { try { ifr.remove(); } catch (e) {} }, 60000);
+    } catch (e) {}
+  }, 4000);
+  if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
 const PROXY_TRANSPORTS = { libcurl: 'libcurl', epoxy: 'Epoxy' };
 /* Sites qui ne fonctionnent bien qu'avec Ultraviolet (constaté en test) */
 /* sites qui exigent Ultraviolet : Bloxd (Scramjet incompatible) et Discord (le captcha hCaptcha tourne à l'infini sous Scramjet, il marche sous Ultraviolet) */
@@ -1899,7 +1922,7 @@ function proxyPrefs() {
 }
 /* Liste ordonnée des tentatives pour une adresse : choix de l'utilisateur (ou
    dernière combinaison qui a marché pour ce site), puis les autres serveurs
-   Wisp (5 serveurs publics en rotation depuis nov. 2026), puis l'autre
+   Wisp (relais Cloudflare, Render direct, 2 publics en secours), puis l'autre
    moteur et l'autre transport. */
 function proxyPlan(u) {
   let host = '';
