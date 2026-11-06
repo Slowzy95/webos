@@ -1867,6 +1867,11 @@ const FRAMEABLE = ['wikipedia.org', 'wiktionary.org', 'bing.com', 'google.com', 
 /* SITES LOURDS : ils plantent dans la fenêtre intégrée (iframe) — on propose
    de les ouvrir dans un VRAI onglet via le proxy (plein écran, bien plus fluide). */
 const HEAVY_SITES = /^(discord\.com|canary\.discord\.com|ptb\.discord\.com|discord\.gg)$/;
+/* v46 — SITES-PROXY : galaxy et similaires sont eux-mêmes des proxys complets.
+   Dans la fenêtre intégrée (iframe), leur propre moteur ne peut pas démarrer
+   (service worker bloqué en cadre tiers par Chrome). On les ouvre dans un
+   VRAI onglet, où tout fonctionne. Pour en ajouter : compléter la regex. */
+const PROXY_SITES = /(?:^|\.)galxy\.it\.com$|(?:^|\.)galaxy\.it\.com$|(?:^|\.)interstellar\.lol$|(?:^|\.)doge\.(?:pro|icu)$/;
 // Vrai proxy Ultraviolet (type service worker, comme les gros proxys) — hébergé sur ton GitHub, sans pub
 const WISP_PROXY = 'https://slowzy95.github.io/proxy/?url=';
 const SJ_PROXY = 'https://slowzy95.github.io/proxy/sj/go.html?url=';
@@ -2036,6 +2041,14 @@ window.addEventListener('message', (e) => {
     window.open(WISP_PROXY + encodeURIComponent(url), '_blank', 'noopener,noreferrer');
     try { toast('Ouvert dans un vrai onglet via le proxy', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (err) {}
   }
+  /* v46 — Ouvrir dans un vrai onglet EN DIRECT (sans notre proxy) : pour les
+     sites qui sont eux-mêmes des proxys (galaxy…), sinon double proxy cassé. */
+  if (e.data && e.data.wosRealDirect) {
+    let url;
+    try { url = browserAddress(e.data.wosRealDirect); } catch (err) { return; }
+    window.open(url, '_blank', 'noopener,noreferrer');
+    try { toast('Ouvert dans un vrai onglet', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (err) {}
+  }
 });
 
 function renderBrowser() {
@@ -2163,7 +2176,7 @@ function initBrowser(body, rec) {
     const f = document.createElement('iframe');
     f.className = 'absolute inset-0 w-full h-full border-0';
     f.setAttribute('referrerpolicy', 'no-referrer');
-    f.setAttribute('allow', 'fullscreen; autoplay; gamepad; clipboard-write');
+    f.setAttribute('allow', 'fullscreen; autoplay; gamepad; clipboard-write; clipboard-read; camera; microphone; encrypted-media; display-capture');
     f.setAttribute('allowfullscreen', '');
     if (url === BROWSER_HOME) f.srcdoc = browserHomeHTML();
     else f.src = url;
@@ -2236,7 +2249,7 @@ function initBrowser(body, rec) {
             <button class="btn btn-ghost !px-2 !py-1" data-pop="real" title="Ouvrir dans un vrai onglet"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
             <span class="truncate text-[11px] text-slate-400 flex-1 ml-1">${escHtml(host || title)}</span>
           </div>
-          <div class="flex-1 relative"><iframe class="absolute inset-0 w-full h-full border-0" referrerpolicy="no-referrer" allow="fullscreen; autoplay; gamepad; clipboard-write" allowfullscreen></iframe></div>
+          <div class="flex-1 relative"><iframe class="absolute inset-0 w-full h-full border-0" referrerpolicy="no-referrer" allow="fullscreen; autoplay; gamepad; clipboard-write; clipboard-read; camera; microphone; encrypted-media; display-capture" allowfullscreen></iframe></div>
         </div>`,
       init: (bodyEl) => {
         const f = bodyEl.querySelector('iframe');
@@ -2855,6 +2868,29 @@ function initBrowser(body, rec) {
     updateNav();
     if (activeTab) { activeTab.history = history; activeTab.hIndex = hIndex; }
     saveSession();
+    /* v46 — SITES-PROXY (galaxy…) : eux-mêmes des proxys complets. Dans la
+       fenêtre intégrée, leur propre moteur ne peut pas démarrer (service
+       worker bloqué en cadre tiers). On les ouvre dans un VRAI onglet. */
+    {
+      let pxHost = '';
+      try { pxHost = new URL(u).hostname.replace(/^www\./, ''); } catch (e) {}
+      if (PROXY_SITES.test(pxHost)) {
+        frame.onload = null;
+        navSeq++;
+        frame.removeAttribute('src');
+        frame.removeAttribute('srcdoc');
+        /* window.open renvoie null avec « noopener » : on ne peut pas savoir si
+           l'onglet s'est ouvert — la notice couvre les deux cas et son bouton
+           (clic = geste utilisateur) rouvre le site si le bloqueur l'a refusé. */
+        window.open(u, '_blank', 'noopener,noreferrer');
+        try { toast('Ce site est un proxy complet — ouvert dans un vrai onglet (il ne peut pas fonctionner imbriqué)', 'fa-arrow-up-right-from-square', 'text-sky-400'); } catch (e) {}
+        frame.srcdoc = browserNoticeHTML('Proxy complet — ouvert dans un vrai onglet',
+          'Ce site est lui-même un proxy : imbriqué dans la fenêtre intégrée, son propre moteur ne peut pas démarrer (service worker bloqué en cadre tiers). Il vient de s\u2019ouvrir dans un vrai onglet — vérifie tes onglets. Bloqué ? Clique sur le bouton.', u,
+          { actions: [{ label: 'Rouvrir dans un vrai onglet', msg: { wosRealDirect: u } }] });
+        setStatus('Ouvert dans un vrai onglet — un proxy ne peut pas fonctionner imbriqué');
+        return;
+      }
+    }
     const searchHost = new URL(u).hostname.replace(/^www\./, '');
     if (searchHost === 'bing.com' && new URL(u).searchParams.get('wos_reader') === '1') {
       showYT(false);
