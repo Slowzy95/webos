@@ -2910,9 +2910,12 @@ function initBrowser(body, rec) {
     const SAFE_DIRECT = /^(?:[a-z-]+\.wikipedia\.org|wikipedia\.org|www\.google\.[a-z.]+|www\.startpage\.com|duckduckgo\.com|lite\.duckduckgo\.com|html\.duckduckgo\.com|www\.bing\.com|www\.qwant\.com|qwant\.com|www\.ecosia\.[a-z.]+|search\.yahoo\.com|www\.yahoo\.com)$/;
     if (proxyEnabled() && mode === 'auto' && (!SAFE_DIRECT.test(hHost) || NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
     if (proxyEnabled() && mode === 'proxy') { wispLoad(u); return; }
-    /* v45 — Proxy désactivé : le site refuse les cadres (X-Frame-Options) et
-       aucune route proxy n'est disponible. On l'explique au lieu d'un cadre vide. */
-    if (!proxyEnabled() && !isFrameable(u)) {
+    /* v45.1 — Proxy désactivé : on charge TOUT en direct (la plupart des sites
+       s'affichent très bien sans proxy, même hors liste blanche). Seuls les
+       sites connus pour refuser les cadres (Discord & co) sont signalés
+       d'emblée ; pour les autres, la pastille « Site bloqué ? » propose de
+       réactiver le proxy si le direct ne passe pas. */
+    if (!proxyEnabled() && !skipHeavy && !isFrameable(u) && HEAVY_SITES.test(hHost)) {
       frame.onload = null;
       frame.removeAttribute('src');
       frame.removeAttribute('srcdoc');
@@ -2953,19 +2956,27 @@ function initBrowser(body, rec) {
     pill = document.createElement('button');
     pill.id = 'br-blocked-pill';
     pill.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500/95 text-slate-900 text-[12px] font-bold shadow-lg hover:bg-amber-400 transition-all';
-    pill.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Site bloqué ? Passer par le proxy';
-    pill.onclick = () => {
-      try { pill.remove(); } catch (e) {}
-      if (!proxyEnabled()) {
-        try { toast('Le proxy est désactivé — réactive-le dans Paramètres › Navigateur & proxy', 'fa-power-off', 'text-amber-400'); } catch (e) {}
-        return;
-      }
-      try {
-        const h = new URL(u).hostname.replace(/^www\./, '');
-        if (!ALWAYS_PROXY.includes(h)) { ALWAYS_PROXY.push(h); LS.setJSON('alwaysproxy', ALWAYS_PROXY); }
-      } catch (e) {}
-      wispLoad(u);
-    };
+    if (proxyEnabled()) {
+      pill.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Site bloqué ? Passer par le proxy';
+      pill.onclick = () => {
+        try { pill.remove(); } catch (e) {}
+        try {
+          const h = new URL(u).hostname.replace(/^www\./, '');
+          if (!ALWAYS_PROXY.includes(h)) { ALWAYS_PROXY.push(h); LS.setJSON('alwaysproxy', ALWAYS_PROXY); }
+        } catch (e) {}
+        wispLoad(u);
+      };
+    } else {
+      /* v45.1 — Proxy désactivé : la pastille rallume le proxy et recharge. */
+      pill.innerHTML = '<i class="fa-solid fa-power-off"></i> Site bloqué ? Réactiver le proxy';
+      pill.onclick = () => {
+        try { pill.remove(); } catch (e) {}
+        LS.set('proxy_enabled', '1');
+        try { toast('Proxy réactivé — rechargement via le proxy', 'fa-power-off', 'text-emerald-400'); } catch (e) {}
+        try { updateNav(); } catch (e) {}
+        wispLoad(u);
+      };
+    }
     body.appendChild(pill);
     setTimeout(() => { try { pill.remove(); } catch (e) {} }, 12000);
   }
