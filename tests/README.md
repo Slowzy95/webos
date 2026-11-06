@@ -1,5 +1,18 @@
 # Tests de fiabilité WebOS v34
 
+## Régressions v42
+
+Avec les dépôts `webos` et `proxy` côte à côte, servir leur dossier parent sur
+le port 3000 puis lancer `node tests/v42.mjs`. Chromium est lancé avec
+`channel: 'chromium'`. La suite vérifie les réglages choisis avant l'ouverture
+du navigateur, le mode manuel UV/Epoxy, les nouvelles ouvertures et leurs
+onglets sources, les modalités image OpenRouter et les gardes de liens réels
+des deux moteurs dans des cadres de test.
+
+Les réponses distantes sont simulées. Ce résultat ne valide ni une connexion
+Discord, ni un jeu tiers, ni une clé IA réelle, ni un échange WebSocket Wisp.
+Les modèles ne sont pas supprimés sur la seule base d'un refus d'image.
+
 Nouveau : `node tests/v34.mjs` (publication avec file d’attente, onglet détaché, bureau, titre YouTube FR/EN). Les anciens tests v33 simulent l’ancien service de partage (restful-api.dev) et doivent être adaptés au nouveau stockage TextDB.
 
 La suite couvre l’interface et l’intégration des fournisseurs avec des réponses HTTP simulées. Elle ne prouve pas qu’un compte réel a accès aux modèles, ni qu’un réseau scolaire autorise les jeux.

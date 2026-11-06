@@ -98,7 +98,7 @@ try {
   assert.match(await page.locator('#br-url').inputValue(), /test%20recherche/);
   await page.locator('#br-url').fill('https://accounts.google.com/login?token=fixture-private-token');
   await page.locator('#br-url').press('Enter');
-  await page.frameLocator('#br-frames > iframe').first().getByRole('heading', { name: 'Connexion sur le site officiel' }).waitFor();
+  await page.frameLocator('#br-frames > iframe').first().getByRole('heading', { name: 'Connexion à un compte' }).waitFor();
   const snapshot = await page.evaluate(() => localStorage.getItem('webos_browser_session_v30'));
   assert.ok(!snapshot.includes('fixture-private-token'));
   assert.ok(!snapshot.includes('accounts.google.com'));

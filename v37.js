@@ -125,9 +125,12 @@
 
   /* ---------- touche d'urgence dans TOUS les cadres (imbriqués aussi) ---------- */
   function relayKeys(win, doc) {
+    // The desktop already owns its keyboard handler, including menu dismissal.
+    if (win === window) return;
     if (doc.__wosPanic) return;
     doc.__wosPanic = true;
     var h = function (ev) {
+      if (ev.defaultPrevented) return;
       try { if (typeof panicKey !== 'undefined' && ev.key === panicKey && !(typeof capturingPanicKey !== 'undefined' && capturingPanicKey)) { ev.preventDefault(); ev.stopImmediatePropagation(); triggerPanic(); } } catch (e) {}
     };
     doc.addEventListener('keydown', h, true);

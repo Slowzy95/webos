@@ -1888,25 +1888,13 @@ const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
     ping('https://wisp-server-maiz.onrender.com/health');
   }, 10 * 60 * 1000);
 })();
-/* v41 — Préchauffage du proxy au démarrage : dès l'ouverture du WebOS, un
-   mini-cadre invisible prépare le service worker et la connexion au serveur
-   en tâche de fond. Résultat : quand tu ouvres le navigateur et cherches un
-   truc, tout part immédiatement — plus de « proxy qui se lance » visible.
-   Rien à choisir : le mode automatique gère moteur, transport et serveur,
-   et retient ce qui marche pour chaque site. */
+/* Warm only static resources. Creating a second proxy frame here changed the
+   shared BareMux transport while a user's game was already running. */
 (function prewarmProxy() {
   const boot = () => setTimeout(() => {
-    /* Ultraviolet : enregistre le service worker + configure le transport */
-    try { rescueGateway().catch(() => {}); } catch (e) {}
-    /* Scramjet : charge une page très légère via le proxy dans un cadre invisible */
-    try {
-      const ifr = document.createElement('iframe');
-      ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0;visibility:hidden';
-      ifr.src = SJ_PROXY + encodeURIComponent('https://example.com/') + '&clean=1&wisp=0&transport=libcurl';
-      document.body.appendChild(ifr);
-      /* on laisse 60 s pour tout initialiser, puis on retire le cadre */
-      setTimeout(() => { try { ifr.remove(); } catch (e) {} }, 60000);
-    } catch (e) {}
+    ['/proxy/uv/uv.bundle.js', '/proxy/sj/scramjet.all.js'].forEach(url => {
+      try { fetch(url, { cache: 'force-cache' }).catch(() => {}); } catch (e) {}
+    });
   }, 4000);
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot);
   else boot();
@@ -1934,6 +1922,7 @@ function proxyPlan(u) {
     if (UV_ONLY_SITES.test(host)) first = (remembered && remembered.engine === 'uv' && PROXY_TRANSPORTS[remembered.transport]) ? { ...remembered, wisp: 0 } : { engine: 'uv', transport: 'epoxy', wisp: 0 };
     else if (remembered && PROXY_ENGINES[remembered.engine] && PROXY_TRANSPORTS[remembered.transport]) first = { ...remembered, wisp: 0 };
   }
+  if (LS.get('proxy_auto', '1') !== '1') return [first];
   const oEng = first.engine === 'sj' ? 'uv' : 'sj';
   const oTr = first.transport === 'libcurl' ? 'epoxy' : 'libcurl';
   const plan = [
@@ -1967,7 +1956,7 @@ function isFrameable(url) {
 const INTERCEPT = '<scr' + 'ipt>(function(){' +
   'document.addEventListener("click",function(e){' +
     'var a=e.target.closest&&e.target.closest("a");' +
-    'if(a&&a.href){e.preventDefault();parent.postMessage({wosNav:a.href},"*");}' +
+    'if(a&&a.href){e.preventDefault();var n=a.target==="_blank"||e.ctrlKey||e.metaKey||e.shiftKey;var m={};m[n?"wosNewTab":"wosNav"]=a.href;parent.postMessage(m,"*");}' +
   '},true);' +
   'document.addEventListener("submit",function(e){' +
     'try{var f=e.target;e.preventDefault();' +
@@ -2002,8 +1991,13 @@ window.addEventListener('message', (e) => {
     return;
   }
   if (e.data && e.data.wosNav && browserAPI) {
-    try { browserAPI.navigate(browserAddress(e.data.wosNav), true, null, !!e.data.wosHeavy); }
+    try { browserAPI.navigateFrom(e.source, browserAddress(e.data.wosNav), !!e.data.wosHeavy); }
     catch (err) { toast(err.message, 'fa-triangle-exclamation', 'text-amber-400'); }
+  }
+  if (e.data?.wosNewTab) {
+    try { browserAPI.newTab(browserAddress(e.data.wosNewTab)); }
+    catch (err) { toast(err.message, 'fa-triangle-exclamation', 'text-amber-400'); }
+    return;
   }
   if (e.data && e.data.wosRetry) {
     try {
@@ -2312,12 +2306,11 @@ function initBrowser(body, rec) {
     ecosia:    { name: 'Ecosia', url: 'https://www.ecosia.org/search?q=' }
   };
   if (LS.get('search_route_v31', '') !== '1') {
-    LS.set('engine', 'webos');
+    if (!LS.get('engine', null)) LS.set('engine', 'webos');
     LS.set('search_route_v31', '1');
   }
   /* v35 : par défaut, DuckDuckGo via le proxy (vraies pages de résultats) */
   if (LS.get('search_route_v35', '') !== '1') {
-    LS.set('engine', 'ddg');
     LS.set('search_route_v35', '1');
   }
   /* v39.3 — Par défaut : la recherche intégrée WebOS. Elle lit maintenant le
@@ -2325,7 +2318,6 @@ function initBrowser(body, rec) {
      les moteurs complets via proxy restent choisis manuellement (loupe). */
   if (LS.get('search_route_v393', '') !== '1') {
     LS.set('search_route_v393', '1');
-    if (LS.get('engine', 'ddg') === 'ddg') LS.set('engine', 'webos');
   }
   let curEngine = LS.get('engine', 'ddg');
   if (!SEARCH_ENGINES[curEngine]) curEngine = 'ddg';
@@ -3042,7 +3034,7 @@ function initBrowser(body, rec) {
       }
     } catch (e) {}
     frame.srcdoc = browserNoticeHTML('Ce site ne répond pas via le proxy',
-      pl.length + ' combinaisons (Scramjet / Ultraviolet, libcurl / Epoxy, serveurs wisp) ont été essayées automatiquement. Le site refuse peut-être les proxys, ou le réseau bloque les serveurs Wisp. Tu peux relancer les essais ou choisir une combinaison précise.', u, { actions });
+      pl.length + ' combinaison(s) ont été essayées. En mode manuel, seul ton choix est utilisé. Le site refuse peut-être les proxys, ou le réseau bloque les serveurs Wisp. Tu peux relancer les essais ou réactiver le mode automatique dans les paramètres.', u, { actions });
     setStatus('Échec du chargement — tentatives arrêtées');
   }
   function retryProxy(u, seq, targetFrame) {
@@ -3087,7 +3079,7 @@ function initBrowser(body, rec) {
         };
         inspect(target.contentWindow);
         if (/unusual traffic|not a robot|access temporarily suspended|verify you are human|vérifiez que vous êtes|vérification de sécurité/i.test(text)) {
-          serviceNotice.querySelector('span').textContent = 'Vérification ou accès refusé. Essaie la recherche simplifiée.';
+          serviceNotice.querySelector('span').textContent = 'Ce site demande une vérification. Tu peux utiliser le bouton Site officiel sans fermer cet onglet ; le proxy ne garantit pas la compatibilité des CAPTCHA.';
           serviceNotice.hidden = false;
           setStatus('Vérification ou accès refusé : utiliser le site officiel ou changer de moteur');
         }
@@ -3333,6 +3325,12 @@ function initBrowser(body, rec) {
     navigate, openURL, newTab: u => { createTab(); if (u) navigate(u); }, accountNotice, currentUrl: () => history[hIndex],
     videoResults: () => tabs.find(t => t.id === activeTabId)?.youtube.results(),
     ownsSource: source => tabs.some(tab => tab.frame.contentWindow === source),
+    navigateFrom: (source, url, skipHeavy = false) => {
+      const tab = tabs.find(t => t.frame.contentWindow === source);
+      if (!tab) return;
+      if (tab.id !== activeTabId) setActiveTab(tab.id);
+      navigate(url, true, null, skipHeavy);
+    },
     setEngine: id => { if (SEARCH_ENGINES[id]) { curEngine = id; LS.set('engine', id); } },
     /* Le proxy Scramjet signale une navigation interne (lien cliqué dans la page) :
        on met à jour l'adresse et le titre de l'onglet sans recharger. */
@@ -3406,6 +3404,27 @@ const AI_PROVIDERS = {
   groq: { label: 'Groq', cat: 'free', models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'], endpoint: 'https://api.groq.com/openai/v1/chat/completions', vision: false, free: 'Clé sur console.groq.com — limites selon le compte et le modèle. Lancez le diagnostic pour actualiser les modèles.' },
   openrouter: { label: 'OpenRouter (modèles :free)', cat: 'free', models: ['nvidia/nemotron-3.5-super-vl:free', 'nvidia/nemotron-3.5-lightning:free', 'recursive/flint-v1.0:free', 'xingchen-agi/xing4.0-29b-a4b:free', 'liquid/lfm-2.5-2.6b:free', 'thinkingmachines/inkling-small:free'], vision: true, free: 'Clé sur openrouter.ai — limites et modalités selon le modèle. Actualisez le catalogue avec le diagnostic.' }
 };
+// Capabilities belong to models, not to the provider as a whole.
+let aiVisionCatalog = LS.getJSON('ai_vision_catalog_v42', null) || { at: 0, models: {} };
+let aiVisionPending = null;
+async function aiCanSeeImage(prov, model) {
+  if (prov !== 'openrouter') return !!AI_PROVIDERS[prov]?.vision;
+  if (!aiVisionCatalog.models || Date.now() - aiVisionCatalog.at > 86400000 ||
+      !Object.prototype.hasOwnProperty.call(aiVisionCatalog.models, model)) {
+    if (!aiVisionPending) aiVisionPending = aiFetch('https://openrouter.ai/api/v1/models').then(catalog => {
+      if (!Array.isArray(catalog.data) || !catalog.data.length) throw new Error('Catalogue des capacités indisponible');
+      const models = {};
+      catalog.data.forEach(m => {
+        if (typeof m.id === 'string') models[m.id] = Array.isArray(m.architecture?.input_modalities) &&
+          m.architecture.input_modalities.includes('image');
+      });
+      aiVisionCatalog = { at: Date.now(), models };
+      LS.setJSON('ai_vision_catalog_v42', aiVisionCatalog);
+    }).finally(() => { aiVisionPending = null; });
+    await aiVisionPending;
+  }
+  return aiVisionCatalog.models[model] === true;
+}
 Object.entries(AI_PROVIDERS).forEach(([prov, p]) => {
   if (p.nokey) return; // Canonical anonymous model, not an old alias cache.
   const cache = LS.getJSON('ai_catalog_' + prov, null);
@@ -3649,12 +3668,12 @@ function renderAI() {
       <div id="ai-diagnostics-results" role="status" class="flex-none overflow-y-auto px-4 text-xs text-slate-300" style="max-height:160px"></div>
       <div id="ai-imgbar" class="hidden flex-none px-3 pt-2 flex items-center gap-2 bg-white/3">
         <img id="ai-img-prev" class="w-12 h-12 rounded-lg object-cover border border-white/15" alt="">
-        <span class="text-[11px] text-slate-400 flex-1">Image jointe — l'IA pourra la voir et la décrire.</span>
+        <span class="text-[11px] text-slate-400 flex-1">Image jointe : nécessite un modèle compatible avec les images.</span>
         <button id="ai-img-del" class="btn btn-ghost !py-1 !px-2.5"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="flex-none p-3 border-t border-white/8 bg-white/3 flex gap-2">
         <input id="ai-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
-        <button id="ai-attach" class="btn btn-ghost !px-3" title="Joindre une image (l'IA peut la voir)"><i class="fa-solid fa-image"></i></button>
+        <button id="ai-attach" class="btn btn-ghost !px-3" title="Joindre une image (modèle compatible requis)"><i class="fa-solid fa-image"></i></button>
         <input id="ai-input" class="field flex-1" type="text" placeholder="Posez une question à l'IA..." />
         <button class="btn btn-green !px-4" id="ai-send"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
@@ -3757,7 +3776,23 @@ function initAI(body, rec) {
     let model = modelSel.value;
     /* Aucun changement silencieux du modèle sélectionné. Le service valide ses modalités. */
     const image = aiImage;
-    if (image && !p.vision) { toast('Ce modèle ne voit pas les images — utilisez Google Gemini ou OpenRouter', 'fa-triangle-exclamation', 'text-amber-400'); return; }
+    if (image) {
+      // Lock while reading the public catalog so repeated clicks cannot send twice.
+      aiChatBusy = true;
+      body.querySelector('#ai-send').disabled = true;
+      try {
+        if (!await aiCanSeeImage(requestProvider, model)) {
+          toast('Ce modèle est texte uniquement ou sa vision n’est pas confirmée. Choisissez un modèle image ; la pièce jointe est conservée.', 'fa-triangle-exclamation', 'text-amber-400');
+          return;
+        }
+      } catch (err) {
+        toast('Impossible de vérifier la vision : ' + err.message + '. Image conservée, aucun modèle supprimé.', 'fa-triangle-exclamation', 'text-amber-400');
+        return;
+      } finally {
+        aiChatBusy = false;
+        body.querySelector('#ai-send').disabled = false;
+      }
+    }
     input.value = '';
     aiHistory.push({ role: 'user', content: text || 'Décris cette image.' });
     addMsg('user', (image ? '<img src="data:' + image.mime + ';base64,' + image.data + '" class="rounded-lg max-w-[220px] mb-2"><br>' : '') + mdToHtml(text || '<i>Image jointe</i>'));
@@ -3787,6 +3822,7 @@ function initAI(body, rec) {
       if (/429|RESOURCE_EXHAUSTED/i.test(msg)) msg = 'Limite de requêtes ou de quota du fournisseur atteinte. Réessayez selon ses indications ; aucun modèle n’a été supprimé.';
       typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
+      if (image) setImage('data:' + image.mime + ';base64,' + image.data);
     } finally {
       aiChatBusy = false;
       body.querySelector('#ai-send').disabled = false;
@@ -5067,7 +5103,7 @@ function renderSettings() {
     <div class="h-full overflow-y-auto p-5 space-y-6 text-[12.5px]">
       <section>
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-globe mr-2 text-sky-400"></i>Navigateur &amp; proxy</h3>
-        <p class="text-slate-400 text-[11px] mb-3">Moteur du proxy, transport réseau et moteur de recherche. En mode automatique, le navigateur essaie tout seul les autres combinaisons si un site ne charge pas.</p>
+        <p class="text-slate-400 text-[11px] mb-3">Ces réglages s’appliquent à la prochaine navigation ou au rechargement, sans interrompre les pages ouvertes. Choisir un moteur de proxy ou un transport active le mode manuel ; réactive Automatique pour autoriser les replis.</p>
         <div class="text-[11px] text-slate-400 mb-1">Moteur du proxy</div>
         <div class="flex flex-wrap gap-2 mb-3" id="st-px-engine"></div>
         <div class="text-[11px] text-slate-400 mb-1">Transport</div>
@@ -5181,7 +5217,7 @@ function renderSettings() {
 
       <section class="pt-4 border-t border-white/8">
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-floppy-disk mr-2 text-sky-400"></i>Sauvegarde & restauration</h3>
-        <p class="text-slate-400 text-[11px] mb-3">Tout est sauvegardé automatiquement en continu (préférences, clés, apps, conversation IA, position des icônes). Exportez un fichier de secours pour changer d'ordinateur ou restaurer après un effacement.</p>
+        <p class="text-slate-400 text-[11px] mb-3">Les préférences, apps, conversations et onglets sont sauvegardés sur ce navigateur lorsque le stockage est autorisé. Les clés API restent locales et sont exclues de l’export. Les sessions des sites, dont Discord, dépendent de leurs cookies et peuvent expirer ; elles ne sont pas copiées dans la sauvegarde. Pas de synchronisation entre appareils ni d’isolation entre personnes partageant le même profil du navigateur.</p>
         <div class="flex gap-2">
           <button class="btn btn-blue flex-1" id="st-export"><i class="fa-solid fa-download"></i> Exporter ma sauvegarde</button>
           <button class="btn btn-green flex-1" id="st-import-btn"><i class="fa-solid fa-upload"></i> Importer</button>
@@ -5212,7 +5248,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v41 : proxy préchauffé dès l'ouverture — la première recherche part instantanément, rien à choisir. WebOS v40 : relais Cloudflare (gate-s95) en serveur proxy n°1 — passe les pare-feux qui bloquaient le serveur Render, ping de maintien en vie via le relais. WebOS v39 : corbeille avec restauration, recherche intégrée par défaut. WebOS v38 : le bouton muet coupe vraiment tout le son (jeux, vidéos, YouTube, cadres imbriqués), la touche de secours marche aussi en plein écran et dans les lecteurs, serveur Wisp personnalisé dans les réglages. WebOS v37 : Discord passe par Ultraviolet (le captcha ne tourne plus à l’infini). WebOS v36 : vrais fonds d’écran et vraies icônes d’applications pour chaque système, liens des sites qui restent dans le navigateur, Bloxd connecté, curseurs parasites retirés. Avant (v35) : proxy Scramjet + Ultraviolet (libcurl / Epoxy) avec repli automatique, 7 systèmes distincts (macOS, Ubuntu, Fedora, Mint, Kali, KDE, ChromeOS), recherche de fonds et de curseurs avec suggestions.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v42 : choix du moteur de recherche conservé dès la première ouverture, mode manuel explicite pour le proxy, nouvelles ouvertures séparées de la page d’origine et capacités image OpenRouter vérifiées par modèle. Le préchargement ne lance plus une seconde connexion proxy susceptible de modifier le transport d’un jeu déjà ouvert. Les sauvegardes locales existantes sont conservées. La compatibilité de Discord, des jeux et de leurs vérifications reste dépendante des services externes.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -5239,11 +5275,16 @@ function initSettings(body) {
     };
     const wispIn = body.querySelector('#st-wisp-url');
     if (wispIn) {
-      wispIn.value = localStorage.getItem('wos_wisp_custom') || '';
+      try { wispIn.value = localStorage.getItem('wos_wisp_custom') || ''; } catch (e) { wispIn.value = ''; }
       body.querySelector('#st-wisp-save').addEventListener('click', () => {
         const v = wispIn.value.trim();
         if (v && !/^wss?:\/\//i.test(v)) { toast('Adresse invalide : elle doit commencer par wss://', 'fa-triangle-exclamation', 'text-amber-400'); return; }
-        if (v) localStorage.setItem('wos_wisp_custom', v); else localStorage.removeItem('wos_wisp_custom');
+        try {
+          if (v) localStorage.setItem('wos_wisp_custom', v); else localStorage.removeItem('wos_wisp_custom');
+        } catch (e) {
+          toast('Le navigateur refuse le stockage : serveur personnalisé non enregistré.', 'fa-triangle-exclamation', 'text-amber-400');
+          return;
+        }
         LS.setJSON('proxy_ok', {});
         toast(v ? 'Serveur Wisp personnalisé enregistré' : 'Serveur Wisp personnalisé retiré', 'fa-network-wired', 'text-sky-400');
       });
@@ -5251,7 +5292,10 @@ function initSettings(body) {
     body.addEventListener('click', e => {
       const b = e.target.closest('[data-pxe],[data-pxt],[data-pxs]');
       if (!b || !engBox.contains(b) && !trBox.contains(b) && !seBox.contains(b)) return;
-      if (b.dataset.pxe || b.dataset.pxt) LS.setJSON('proxy_ok', {});
+      if (b.dataset.pxe || b.dataset.pxt) {
+        LS.setJSON('proxy_ok', {});
+        LS.set('proxy_auto', '0');
+      }
       if (b.dataset.pxe) { LS.set('proxy_engine', b.dataset.pxe); toast('Moteur du proxy : ' + PROXY_ENGINES[b.dataset.pxe], 'fa-cloud', 'text-sky-400'); }
       if (b.dataset.pxt) { LS.set('proxy_transport', b.dataset.pxt); toast('Transport : ' + PROXY_TRANSPORTS[b.dataset.pxt], 'fa-network-wired', 'text-sky-400'); }
       if (b.dataset.pxs) {
