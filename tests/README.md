@@ -1,5 +1,34 @@
 # Tests de fiabilité WebOS v34
 
+## Régressions v43
+
+Avec `webos` et `proxy` côte à côte et leur dossier parent servi sur le port
+3000, lancer `node tests/v43.mjs`. Cette suite vérifie la grille initiale, le
+glisser Ctrl+A sans suppression, le maintien de la forme des groupes, les
+collisions, les applications ajoutées/restaurées, la persistance et le mobile.
+Elle vérifie également, avec des réponses Gemini simulées, le masquage d'une
+limite explicite égale à zéro, le maintien d'un modèle temporairement limité,
+l'isolation par clé et le bouton de réaffichage. Une image reste jointe après
+l'erreur de quota.
+
+Les tests du proxy utilisent son véritable runtime UV pour résoudre les imports
+dynamiques. Ils vérifient aussi l'initialisation concurrente du transport partagé
+et les listes de transfert de `postMessage` dans un scénario contrôlé. Relancer
+`v42.mjs` et `v30.mjs` pour les réglages, les onglets, les applications et les
+sauvegardes existantes.
+
+Vérification distante distincte : l'accueil de https://bloxd.io/ s'affiche via
+UV/Epoxy après correction de `rewriteImport`, avec ses images et des modules
+JavaScript effectivement chargés. Une partie complète n'est pas validée :
+l'écran de politique de confidentialité demande une acceptation explicite.
+Des erreurs de transfert `MessagePort` restent observables dans reCAPTCHA.
+Ce résultat ne valide ni une connexion Discord ni tous les jeux ni tous les
+transports. Aucun contournement de vérification anti-robot n'est ajouté.
+
+Aucune clé Gemini réelle n'est utilisée par ces tests. Le compteur local WebOS
+n'est pas une mesure des quotas Google, qui s'appliquent au projet, comme
+l'indique la [documentation des limites Gemini](https://ai.google.dev/gemini-api/docs/rate-limits).
+
 ## Régressions v42
 
 Avec les dépôts `webos` et `proxy` côte à côte, servir leur dossier parent sur

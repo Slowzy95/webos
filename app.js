@@ -62,7 +62,7 @@ function rescueGateway() {
     _rescuePromise = new Promise((resolve, reject) => {
       const ifr = document.createElement('iframe');
       ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0';
-      ifr.src = '/proxy/uv/blank.html';
+      ifr.src = '/proxy/uv/blank.html?v=43';
       const to = setTimeout(() => reject(new Error('proxy indisponible')), 15000);
       const onMsg = (ev) => {
         if (ev.data && ev.data.wosYtProxy === 'ready') {
@@ -1937,7 +1937,7 @@ function proxyPlan(u) {
   return plan.filter(a => { const k = a.engine + a.transport + a.wisp; if (seen.has(k)) return false; seen.add(k); return true; });
 }
 function proxyFrameURL(u, a) {
-  const q = '&clean=1&wisp=' + a.wisp + '&transport=' + a.transport;
+  const q = '&clean=1&v=43&wisp=' + a.wisp + '&transport=' + a.transport;
   return (a.engine === 'sj' ? SJ_PROXY : WISP_PROXY) + encodeURIComponent(u) + q;
 }
 const PROXIES = [
@@ -2481,7 +2481,7 @@ function initBrowser(body, rec) {
       ytProxyPromise = new Promise((resolve, reject) => {
         const ifr = document.createElement('iframe');
         ifr.style.cssText = 'position:fixed;left:-9999px;width:5px;height:5px;border:0';
-        ifr.src = '/proxy/uv/blank.html';
+        ifr.src = '/proxy/uv/blank.html?v=43';
         const to = setTimeout(() => { ytProxyCleanup(); reject(new Error('proxy introuvable')); }, 12000);
         const onMsg = (ev) => {
           if (ev.source === ifr.contentWindow && ev.data && ev.data.wosYtProxy === 'ready') {
@@ -3448,11 +3448,60 @@ let aiImage = null; /* image jointe : { mime, data } */
 let aiChatBusy = false;
 let aiDiagnosticsBusy = false;
 const aiModelResults = LS.getJSON('ai_model_results_v32', {});
+const aiUnavailable = LS.getJSON('ai_unavailable_v43', {});
+const aiKeyTags = {};
+async function aiRefreshKeyTag(prov) {
+  const key = apiKeys[prov] || '';
+  if (!key) { aiKeyTags[prov] = 'no-key'; return; }
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
+  if (apiKeys[prov] !== key) return;
+  aiKeyTags[prov] = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+function aiVisibleModels(prov) {
+  const blocked = aiUnavailable[prov + ':' + (aiKeyTags[prov] || 'pending')] || {};
+  return AI_PROVIDERS[prov].models.filter(m => !blocked[m]);
+}
+function aiErrorKind(err) {
+  const violations = (err.details || []).flatMap(d => d.violations || []);
+  const zero = violations.some(v => v.quotaValue !== undefined && Number(v.quotaValue) === 0) ||
+    /\blimit\s*:\s*0\b/i.test(err.message);
+  if (err.status === 429) return zero ? 'quota-zero' : 'rate-limit';
+  if ([404, 410].includes(err.status) && /model.{0,150}(not found|not exist|not supported|not available)/i.test(err.message)) return 'missing';
+  return 'other';
+}
+let aiGoogleCatalogPending = null;
+async function aiRefreshGoogleCatalog() {
+  if (aiProvider !== 'google' || !/^AIza[A-Za-z0-9_-]{30,}$/.test(apiKeys.google || '')) return;
+  if (aiGoogleCatalogPending) return aiGoogleCatalogPending;
+  const key = apiKeys.google;
+  aiGoogleCatalogPending = (async () => {
+    let url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', models = [], pages = 0;
+    do {
+      const data = await aiFetch(url, { headers: { 'x-goog-api-key': key } });
+      models.push(...(data.models || []).filter(m => m.supportedGenerationMethods?.includes('generateContent') &&
+        !/embedding|imagen|veo|tts|live|audio/i.test(m.name)).map(m => m.name.replace(/^models\//, '')));
+      url = data.nextPageToken ? 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&pageToken=' + encodeURIComponent(data.nextPageToken) : '';
+    } while (url && ++pages < 10);
+    if (key !== apiKeys.google || !models.length) return;
+    AI_PROVIDERS.google.models = [...new Set(models)];
+    LS.setJSON('ai_catalog_google', { at: Date.now(), models: AI_PROVIDERS.google.models });
+    await aiRefreshKeyTag('google');
+    aiSyncSelectors();
+  })().catch(() => {}).finally(() => { aiGoogleCatalogPending = null; });
+  return aiGoogleCatalogPending;
+}
+function aiExplainError(err) {
+  const kind = aiErrorKind(err);
+  if (kind === 'quota-zero') return 'Ce modèle a une limite de quota égale à zéro pour cette clé/projet. Il est masqué pour ce compte. Le compteur WebOS ne mesure pas le quota Google.';
+  if (kind === 'rate-limit') return 'Limite temporaire du fournisseur (requêtes/minute, jetons ou quota du projet). Le compteur WebOS ne mesure que les requêtes faites ici ; le modèle est conservé.';
+  if (kind === 'missing') return 'Ce modèle n’existe plus ou ne prend pas en charge cette API. Il est masqué pour cette clé.';
+  return err.message || 'Erreur inconnue';
+}
 Object.entries(AI_PROVIDERS).forEach(([prov, p]) => {
   p.models = p.models.filter(m => aiModelResults[prov + ':' + m] !== 'missing');
 });
 function aiControlModels(prov) {
-  return AI_PROVIDERS[prov].models.filter(m => aiModelResults[prov + ':' + m] !== 'chat-only');
+  return aiVisibleModels(prov).filter(m => aiModelResults[prov + ':' + m] !== 'chat-only');
 }
 
 async function aiFetch(url, options = {}) {
@@ -3470,6 +3519,7 @@ async function aiFetch(url, options = {}) {
       const err = new Error('HTTP ' + res.status + ' : ' + (data.error?.message || data.message || 'Requête refusée'));
       err.status = res.status;
       err.code = data.error?.code || '';
+      err.details = data.error?.details || [];
       throw err;
     }
     return data;
@@ -3482,11 +3532,27 @@ async function aiFetch(url, options = {}) {
   }
 }
 function aiSelectedModel(prov) {
-  const p = AI_PROVIDERS[prov];
-  const selected = LS.get('ai_model_' + prov, p.models[0]);
-  return p.models.includes(selected) ? selected : p.models[0];
+  const models = aiVisibleModels(prov);
+  const selected = LS.get('ai_model_' + prov, models[0] || '');
+  return models.includes(selected) ? selected : (models[0] || '');
 }
 async function aiChatRequest(prov, model, messages, signal) {
+  if (!model) throw new Error('Aucun modèle utilisable sélectionné. Actualisez le catalogue ou réaffichez les modèles masqués.');
+  const requestKey = apiKeys[prov];
+  await aiRefreshKeyTag(prov);
+  if (requestKey !== apiKeys[prov]) throw new Error('La clé a changé pendant la préparation. Relancez le message.');
+  const scope = prov + ':' + aiKeyTags[prov];
+  try { return await aiChatRequestRaw(prov, model, messages, signal); }
+  catch (err) {
+    if (['quota-zero', 'missing'].includes(aiErrorKind(err))) {
+      (aiUnavailable[scope] ||= {})[model] = aiErrorKind(err);
+      LS.setJSON('ai_unavailable_v43', aiUnavailable);
+      aiSyncSelectors();
+    }
+    throw err;
+  }
+}
+async function aiChatRequestRaw(prov, model, messages, signal) {
   const p = AI_PROVIDERS[prov];
   const key = String(apiKeys[prov] || '').trim();
   if (!p.nokey && !key) throw new Error('Clé API requise pour ' + p.label);
@@ -3536,9 +3602,10 @@ async function aiChatRequest(prov, model, messages, signal) {
 function aiSyncSelectors() {
   document.querySelectorAll('#ai-provider, #aiw-prov').forEach(el => { el.value = aiProvider; });
   document.querySelectorAll('#ai-model, #aiw-model').forEach(el => {
-    const models = el.id === 'aiw-model' ? aiControlModels(aiProvider) : AI_PROVIDERS[aiProvider].models;
+    const models = el.id === 'aiw-model' ? aiControlModels(aiProvider) : aiVisibleModels(aiProvider);
     el.innerHTML = models.map(m => '<option value="' + escHtml(m) + '">' + escHtml(m) + '</option>').join('');
     el.value = aiSelectedModel(aiProvider);
+    el.disabled = !models.length;
   });
   aiwRefreshSetUI();
   const keyInput = document.querySelector('#ai-key');
@@ -3600,11 +3667,10 @@ async function aiRunDiagnostics(body) {
         row.style.color = actionOK ? '#86efac' : '#fde68a';
         aiBumpCount(prov);
       } catch (err) {
-        const missing = (err.status === 404 || err.status === 400) && /model.*(not.found|does not exist|decommission|not.support|invalid)|model_not_found|model_decommissioned/i.test(err.message + ' ' + err.code);
-        if (missing) { p.models = p.models.filter(m => m !== model); aiModelResults[prov + ':' + model] = 'missing'; }
-        row.textContent = model + ' : ' + err.message + (missing ? ' — retiré de la liste' : ' — conservé, indisponibilité non définitive');
+        const missing = aiErrorKind(err) === 'missing';
+        row.textContent = model + ' : ' + aiExplainError(err) + (missing ? ' — retiré de la liste' : '');
         row.style.color = '#fca5a5';
-        if ([401, 402, 403, 429].includes(err.status)) { abortReason = 'Tests restants non effectués : accès, budget ou quota refusé. Aucun autre modèle supprimé.'; break; }
+        if ([401, 402, 403].includes(err.status) || (err.status === 429 && aiErrorKind(err) !== 'quota-zero')) { abortReason = 'Tests restants non effectués : accès, budget ou quota temporaire refusé. Les modèles non testés sont conservés.'; break; }
       }
     }
     const note = document.createElement('div');
@@ -3662,6 +3728,7 @@ function renderAI() {
         <button class="btn btn-ghost !py-1.5" id="ai-clear" title="Nouvelle conversation"><i class="fa-solid fa-broom"></i></button>
         <button class="btn btn-ghost !py-1.5" id="ai-diagnostics" title="Actualise le catalogue et teste chaque modèle de conversation du fournisseur sélectionné. Consomme votre quota.">Tester les modèles (quota)</button>
         <button class="btn btn-ghost !py-1.5" id="ai-diagnostics-all" title="Teste successivement les fournisseurs dont la clé est déjà enregistrée sur cet appareil. Consomme le quota.">Tester tous mes fournisseurs</button>
+        <button class="btn btn-ghost !py-1.5" id="ai-show-unavailable" title="Réafficher les modèles masqués pour la clé actuelle, sans changer les moteurs du proxy.">Réafficher les modèles masqués</button>
         <button class="btn ${aiControlOn ? 'btn-green' : 'btn-ghost'} !py-1.5" id="ai-ctrl" title="Active ou désactive les actions de l’IA dans le WebOS uniquement. Reçoit la liste des fenêtres et contrôles, pas une capture du PC."><i class="fa-solid fa-eye"></i> Contrôle PC</button>
       </div>
       <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3 selectable"></div>
@@ -3712,14 +3779,16 @@ function initAI(body, rec) {
   const updateQuota = () => {
     const used = aiTodayCount(aiProvider);
     const lim = AI_DAILY_LIMITS[aiProvider] || 0;
-    quotaEl.innerHTML = `<i class="fa-solid fa-gauge-high"></i> ${used}${lim ? '/' + lim : ''} req. aujourd'hui`;
+    quotaEl.innerHTML = `<i class="fa-solid fa-gauge-high"></i> ${used}${lim ? '/' + lim : ''} req. WebOS aujourd'hui`;
+    quotaEl.title = 'Compteur local à cette application, pas le quota du projet chez Google/Groq/OpenRouter.';
   };
 
   const refreshProviderUI = () => {
     const p = AI_PROVIDERS[aiProvider];
-    modelSel.innerHTML = p.models.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
-    modelSel.value = LS.get('ai_model_' + aiProvider, p.models[0]);
-    if (!p.models.includes(modelSel.value)) modelSel.value = p.models[0];
+    const models = aiVisibleModels(aiProvider);
+    modelSel.innerHTML = models.length ? models.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('') : '<option value="">Aucun modèle utilisable : diagnostic ou réaffichage</option>';
+    modelSel.value = aiSelectedModel(aiProvider);
+    modelSel.disabled = !models.length;
     keyInput.value = apiKeys[aiProvider] || '';
     keyInput.parentElement.hidden = !!p.nokey;
     body.querySelector('#ai-savekey').hidden = !!p.nokey;
@@ -3728,6 +3797,7 @@ function initAI(body, rec) {
     /* Le diagnostic actualise le catalogue ; la présence dans la liste ne garantit pas l'accès du compte. */
   };
   refreshProviderUI();
+  aiRefreshGoogleCatalog();
 
   const addMsg = (role, html) => {
     const div = document.createElement('div');
@@ -3819,7 +3889,7 @@ function initAI(body, rec) {
       if (/Failed to fetch/i.test(msg)) msg = 'Connexion impossible (réseau ou CORS) — vérifiez votre connexion internet.';
       if (/high demand/i.test(msg)) msg = 'Ce modèle est saturé pour le moment. Réessayez plus tard ou choisissez un autre modèle.';
       if (/image|vision|multimodal|modalit/i.test(msg) && image) msg = 'Le modèle a refusé cette image. Choisissez un modèle compatible : aucun changement automatique n’a été effectué.';
-      if (/429|RESOURCE_EXHAUSTED/i.test(msg)) msg = 'Limite de requêtes ou de quota du fournisseur atteinte. Réessayez selon ses indications ; aucun modèle n’a été supprimé.';
+      if (aiErrorKind(err) !== 'other') msg = aiExplainError(err);
       typing.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Erreur : ${escHtml(msg)}</span>`;
       aiHistory.pop();
       if (image) setImage('data:' + image.mime + ';base64,' + image.data);
@@ -3837,9 +3907,16 @@ function initAI(body, rec) {
     const it = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
     if (it) { e.preventDefault(); const rd = new FileReader(); rd.onload = () => setImage(rd.result); rd.readAsDataURL(it.getAsFile()); }
   });
-  providerSel.addEventListener('change', () => { aiProvider = providerSel.value; LS.set('ai_provider', aiProvider); refreshProviderUI(); aiSyncSelectors(); });
+  providerSel.addEventListener('change', () => { aiProvider = providerSel.value; LS.set('ai_provider', aiProvider); refreshProviderUI(); aiSyncSelectors(); aiRefreshGoogleCatalog(); });
   modelSel.addEventListener('change', () => { LS.set('ai_model_' + aiProvider, modelSel.value); aiSyncSelectors(); });
   body.querySelector('#ai-diagnostics').addEventListener('click', () => aiRunDiagnostics(body));
+  body.querySelector('#ai-show-unavailable').addEventListener('click', async () => {
+    await aiRefreshKeyTag(aiProvider);
+    delete aiUnavailable[aiProvider + ':' + aiKeyTags[aiProvider]];
+    LS.setJSON('ai_unavailable_v43', aiUnavailable);
+    aiSyncSelectors();
+    toast('Modèles réaffichés pour cette clé. Le fournisseur doit toujours autoriser leur utilisation.');
+  });
   body.querySelector('#ai-diagnostics-all').addEventListener('click', async () => {
     if (aiDiagnosticsBusy || aiChatBusy || aiwBusy) return;
     const button = body.querySelector('#ai-diagnostics-all'), out = body.querySelector('#ai-diagnostics-results');
@@ -3888,6 +3965,8 @@ function initAI(body, rec) {
       LS.setJSON('keys', apiKeys);
       if (showToast) toast('Clé API ' + AI_PROVIDERS[aiProvider].label + ' sauvegardée localement');
     }
+    aiRefreshKeyTag(aiProvider).then(aiSyncSelectors).catch(() => {});
+    aiRefreshGoogleCatalog();
   };
   /* Enregistrement AUTOMATIQUE de la clé dès la frappe (plus besoin de cliquer sur « Clé ») */
   let keySaveTimer = null;
@@ -4323,7 +4402,7 @@ async function aiwSend() {
     }
   } catch (err) {
     typing.remove();
-    if (runId === aiwRunId && aiControlOn) aiwAddMsg('assistant', '<span style="color:#fca5a5">Erreur : ' + escHtml(String(err.message || err)) + '</span>');
+    if (runId === aiwRunId && aiControlOn) aiwAddMsg('assistant', '<span style="color:#fca5a5">Erreur : ' + escHtml(aiExplainError(err)) + '</span>');
   } finally {
     typing.remove();
     if (runId === aiwRunId) { aiwStatus.textContent = ''; aiwBusy = false; aiwInput.focus(); }
@@ -5248,7 +5327,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v42 : choix du moteur de recherche conservé dès la première ouverture, mode manuel explicite pour le proxy, nouvelles ouvertures séparées de la page d’origine et capacités image OpenRouter vérifiées par modèle. Le préchargement ne lance plus une seconde connexion proxy susceptible de modifier le transport d’un jeu déjà ouvert. Les sauvegardes locales existantes sont conservées. La compatibilité de Discord, des jeux et de leurs vérifications reste dépendante des services externes.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v43 : grille unique pour les icônes, déplacement de groupe sans dispersion ni suppression accidentelle, restauration dans une case libre. Les moteurs et transports du proxy sont conservés ; les connexions partagées ne sont plus réinitialisées pour une configuration identique. Les imports JavaScript des jeux sont résolus contre le bon module. L’IA distingue les limites temporaires des modèles indisponibles pour votre clé et permet de réafficher les modèles masqués. Le compteur WebOS reste local : il ne représente pas le quota du fournisseur. Les sauvegardes existantes sont conservées. Les connexions Discord, les parties distantes et leurs vérifications ne sont pas garanties.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
@@ -5880,26 +5959,79 @@ const snapV = (v, g) => Math.max(0, Math.round(v / g) * g);
 /* Anti-superposition : deux icônes ne peuvent jamais occuper la même case */
 function occupiedCells(excludeId) {
   const taken = new Set();
-  const pr = di.getBoundingClientRect();
+  const excluded = excludeId instanceof Set ? excludeId : new Set([excludeId]);
   di.querySelectorAll('.desk-icon').forEach(ic => {
-    if (ic.dataset.iconId === excludeId) return;
-    const r = ic.getBoundingClientRect();
-    const cx = Math.round((r.left - pr.left) / GRID_X), cy = Math.round((r.top - pr.top) / GRID_Y);
+    if (ic.hidden || excluded.has(ic.dataset.iconId)) return;
+    const cx = Math.round(ic.offsetLeft / GRID_X), cy = Math.round(ic.offsetTop / GRID_Y);
     if (cx >= 0 && cy >= 0) taken.add(cx + ',' + cy);
   });
   return taken;
 }
 function nearestFreeCell(cx, cy, taken) {
-  if (!taken.has(cx + ',' + cy)) return { x: cx, y: cy };
-  for (let ring = 1; ring < 50; ring++) {
-    for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
-      if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-      const nx = cx + dx, ny = cy + dy;
-      if (nx < 0 || ny < 0) continue;
-      if (!taken.has(nx + ',' + ny)) return { x: nx, y: ny };
-    }
+  const { columns, rows } = desktopGrid();
+  cx = Math.max(0, Math.min(columns - 1, Math.round(cx) || 0));
+  cy = Math.max(0, Math.min(rows + taken.size + 32, Math.round(cy) || 0));
+  const candidates = [];
+  const lastRow = Math.max(rows, cy + 1) + Math.ceil((taken.size + 1) / columns);
+  for (let y = 0; y <= lastRow; y++) for (let x = 0; x < columns; x++) {
+    if (!taken.has(x + ',' + y)) candidates.push({ x, y, d: ((x - cx) * GRID_X) ** 2 + ((y - cy) * GRID_Y) ** 2 });
   }
-  return { x: cx, y: cy };
+  candidates.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+  return candidates[0];
+}
+function desktopGrid() {
+  return { columns: Math.max(1, Math.floor((di.clientWidth - 92) / GRID_X) + 1),
+    rows: Math.max(1, Math.floor((di.clientHeight - 104) / GRID_Y) + 1) };
+}
+function layoutDesktopIcons({ persist = true, reset = false } = {}) {
+  const pos = getIconPos(), taken = new Set(), { columns, rows } = desktopGrid();
+  const icons = [...di.querySelectorAll('.desk-icon:not([hidden])')];
+  // Resolve saved positions first so new/restored icons cannot displace them.
+  const valid = p => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+  icons.sort((a, b) => Number(!reset && valid(pos[b.dataset.iconId])) - Number(!reset && valid(pos[a.dataset.iconId])));
+  icons.forEach(icon => {
+    const id = icon.dataset.iconId, saved = !reset && pos[id];
+    let cell;
+    if (valid(saved)) cell = nearestFreeCell(saved.x / GRID_X, saved.y / GRID_Y, taken);
+    else {
+      let n = 0;
+      do {
+        cell = n < columns * rows ? { x: Math.floor(n / rows), y: n % rows } :
+          { x: (n - columns * rows) % columns, y: rows + Math.floor((n - columns * rows) / columns) };
+        n++;
+      } while (taken.has(cell.x + ',' + cell.y));
+    }
+    taken.add(cell.x + ',' + cell.y);
+    const p = { x: cell.x * GRID_X, y: cell.y * GRID_Y };
+    icon.style.position = 'absolute'; icon.style.left = p.x + 'px'; icon.style.top = p.y + 'px';
+    if (persist) pos[id] = p;
+  });
+  if (persist) LS.setJSON('iconpos', pos);
+}
+function dropDesktopGroup(members, dx, dy) {
+  const { columns, rows } = desktopGrid();
+  const taken = occupiedCells(new Set(members.map(s => s.el.dataset.iconId)));
+  const cells = members.map(s => ({ ...s, cx: Math.round(s.x / GRID_X), cy: Math.round(s.y / GRID_Y) }));
+  const minX = Math.min(...cells.map(s => s.cx)), maxX = Math.max(...cells.map(s => s.cx));
+  const minY = Math.min(...cells.map(s => s.cy)), maxY = Math.max(...cells.map(s => s.cy));
+  const wantX = Math.round(dx / GRID_X), wantY = Math.round(dy / GRID_Y);
+  const candidates = [];
+  const lastY = Math.max(rows, maxY + wantY) + members.length + taken.size;
+  for (let y = -minY; y <= lastY; y++) for (let x = -minX; x < columns - maxX; x++) {
+    if (cells.every(s => !taken.has((s.cx + x) + ',' + (s.cy + y))))
+      candidates.push({ x, y, d: ((x - wantX) * GRID_X) ** 2 + ((y - wantY) * GRID_Y) ** 2 });
+  }
+  candidates.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+  const shift = candidates[0] || { x: 0, y: 0 }, pos = getIconPos();
+  cells.forEach(s => {
+    const cell = candidates.length ? { x: s.cx + shift.x, y: s.cy + shift.y } :
+      nearestFreeCell(s.cx + wantX, s.cy + wantY, taken);
+    taken.add(cell.x + ',' + cell.y);
+    pos[s.el.dataset.iconId] = { x: cell.x * GRID_X, y: cell.y * GRID_Y };
+    s.el.style.left = cell.x * GRID_X + 'px'; s.el.style.top = cell.y * GRID_Y + 'px';
+    s.el.style.zIndex = '';
+  });
+  LS.setJSON('iconpos', pos);
 }
 function clearSelection() { di.querySelectorAll('.desk-icon.selected').forEach(ic => ic.classList.remove('selected')); }
 function selectAllIcons() { di.querySelectorAll('.desk-icon').forEach(ic => ic.classList.add('selected')); }
@@ -5908,22 +6040,26 @@ function makeDeskDraggable(b, id) {
     if (e.button !== 0) return;
     e.preventDefault();
     /* Sélection multiple : Ctrl+clic ajoute/retire sans ouvrir l'app */
-    if (e.ctrlKey || e.metaKey) { b.classList.toggle('selected'); return; }
+    if (e.ctrlKey || e.metaKey || e.shiftKey) { b.classList.toggle('selected'); return; }
     if (!b.classList.contains('selected')) clearSelection();
     let moved = false, sx = e.clientX, sy = e.clientY;
     const pr = di.getBoundingClientRect();
     const r = b.getBoundingClientRect();
-    const ox = r.left - pr.left, oy = r.top - pr.top;
+    const ox = b.offsetLeft, oy = b.offsetTop;
     /* Groupe : toutes les icônes sélectionnées se déplacent ensemble */
     const group = [...di.querySelectorAll('.desk-icon.selected')].filter(el => el !== b)
-      .map(el => { const er = el.getBoundingClientRect(); return { el, x: er.left - pr.left, y: er.top - pr.top }; });
+      .map(el => ({ el, x: el.offsetLeft, y: el.offsetTop }));
+    const members = [{ el: b, x: ox, y: oy }, ...group];
+    const minX = Math.min(...members.map(s => s.x)), minY = Math.min(...members.map(s => s.y));
+    const maxX = Math.max(...members.map(s => s.x + s.el.offsetWidth));
     /* Toutes les AUTRES icônes (non sélectionnées) : on mémorise leur place actuelle pour les
        figer dès le premier déplacement — sinon elles « glissent » dans les cases libérées
        et leur emplacement n'est jamais sauvegardé. */
     const others = [...di.querySelectorAll('.desk-icon')].filter(el => el !== b && !group.some(g => g.el === el))
       .map(el => { const er = el.getBoundingClientRect(); return { el, x: er.left - pr.left, y: er.top - pr.top }; });
     const move = (ev) => {
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      const dx = Math.max(-minX, Math.min(ev.clientX - sx, di.clientWidth - maxX));
+      const dy = Math.max(-minY, ev.clientY - sy);
       if (!moved && Math.hypot(dx, dy) < 8) return;
       if (!moved) {
         b.style.position = 'absolute'; b.style.zIndex = 40; di.appendChild(b);
@@ -5939,11 +6075,12 @@ function makeDeskDraggable(b, id) {
       if (trashEl) {
         const tr = trashEl.getBoundingClientRect();
         const r = b.getBoundingClientRect();
-        const over = !(r.right < tr.left || r.left > tr.right || r.bottom < tr.top || r.top > tr.bottom);
+        const over = !members.some(s => ['trash', 'addapp'].includes(s.el.dataset.iconId)) &&
+          ev.clientX >= tr.left && ev.clientX <= tr.right && ev.clientY >= tr.top && ev.clientY <= tr.bottom;
         trashEl.classList.toggle('trash-hot', over && b.dataset.iconId !== 'trash' && b.dataset.iconId !== 'addapp');
       }
     };
-    const up = () => {
+    const up = (ev) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
@@ -5951,40 +6088,17 @@ function makeDeskDraggable(b, id) {
         b._dragged = true; setTimeout(() => { b._dragged = false; }, 350);
         /* v39 — Dépôt sur la corbeille : suppression au lieu du rangement */
         const trashEl = di.querySelector('.desk-icon[data-icon-id="trash"]');
-        if (trashEl) {
+        if (trashEl && ev.type !== 'pointercancel' && !members.some(s => ['trash', 'addapp'].includes(s.el.dataset.iconId))) {
           const tr = trashEl.getBoundingClientRect();
           const over = (el) => { const r = el.getBoundingClientRect(); return !(r.right < tr.left || r.left > tr.right || r.bottom < tr.top || r.top > tr.bottom); };
-          const hit = over(b) || group.some(s => over(s.el));
+          const hit = ev.clientX >= tr.left && ev.clientX <= tr.right && ev.clientY >= tr.top && ev.clientY <= tr.bottom;
           trashEl.classList.remove('trash-hot');
           if (hit) { moveToTrash(b); group.forEach(s => moveToTrash(s.el)); return; }
         }
-        const pos = getIconPos();
-        /* Aimantation à la grille + ANTI-SUPERPOSITION : chaque icône trouve la case libre la plus proche.
-           nearestFreeCell travaille en NUMÉROS DE CASE (colonne, rangée) — on convertit
-           la position en pixels vers la case, puis la case choisie en pixels. */
-        const taken = occupiedCells(id);
-        const cellIdx = (v, g) => Math.max(0, Math.round((parseFloat(v) || 0) / g));
-        let cell = nearestFreeCell(cellIdx(b.style.left, GRID_X), cellIdx(b.style.top, GRID_Y), taken);
-        taken.add(cell.x + ',' + cell.y);
-        pos[id] = { x: cell.x * GRID_X, y: cell.y * GRID_Y };
-        b.style.left = pos[id].x + 'px'; b.style.top = pos[id].y + 'px';
-        group.forEach(s => {
-          const id2 = s.el.dataset.iconId;
-          if (!id2) return;
-          const c2 = nearestFreeCell(cellIdx(s.el.style.left, GRID_X), cellIdx(s.el.style.top, GRID_Y), taken);
-          taken.add(c2.x + ',' + c2.y);
-          pos[id2] = { x: c2.x * GRID_X, y: c2.y * GRID_Y };
-          s.el.style.left = pos[id2].x + 'px'; s.el.style.top = pos[id2].y + 'px';
-        });
-        /* Fige aussi la place de toutes les autres icônes (disposition complète sauvegardée) */
-        others.forEach(s => {
-          const id2 = s.el.dataset.iconId;
-          if (!id2 || pos[id2]) return;
-          const cx = Math.max(0, Math.round(s.x / GRID_X)), cy = Math.max(0, Math.round(s.y / GRID_Y));
-          pos[id2] = { x: cx * GRID_X, y: cy * GRID_Y };
-          s.el.style.left = pos[id2].x + 'px'; s.el.style.top = pos[id2].y + 'px';
-        });
-        LS.setJSON('iconpos', pos);
+        if (trashEl) trashEl.classList.remove('trash-hot');
+        members.forEach(s => { s.el._dragged = true; setTimeout(() => { s.el._dragged = false; }, 350); });
+        dropDesktopGroup(members, ev.type === 'pointercancel' ? 0 : b.offsetLeft - ox,
+          ev.type === 'pointercancel' ? 0 : b.offsetTop - oy);
         try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
       }
     };
@@ -6034,8 +6148,8 @@ document.addEventListener('keydown', (e) => {
 });
 /* Réorganisation des icônes du bureau (menu contextuel) */
 function sortIcons() {
-  LS.setJSON('iconpos', {});
-  di.querySelectorAll('.desk-icon').forEach(ic => { ic.style.position = ''; ic.style.left = ''; ic.style.top = ''; ic.classList.remove('selected'); });
+  clearSelection();
+  layoutDesktopIcons({ reset: true });
   toast('Icônes réorganisées', 'fa-table-cells', 'text-sky-400');
 }
 function applyIconPos(b, id) {
@@ -6047,10 +6161,11 @@ function addDeskIcon(id, iconHtml, label, onClick) {
   b.className = 'desk-icon';
   b.dataset.iconId = id;
   b.innerHTML = iconHtml + `<span class="lbl">${label}</span>`;
-  b.addEventListener('click', () => { if (b._dragged) return; onClick(); });
+  b.addEventListener('click', e => { if (b._dragged || e.ctrlKey || e.metaKey || e.shiftKey) return; onClick(); });
   makeDeskDraggable(b, id);
   applyIconPos(b, id);
   di.appendChild(b);
+  layoutDesktopIcons();
   return b;
 }
 /* HTML d'icône d'application : SVG, image de logo réel ou Font Awesome */
@@ -6201,3 +6316,4 @@ function tick() {
 }
 tick(); setInterval(tick, 10000);
 renderTaskbar();
+Promise.all(Object.keys(AI_PROVIDERS).map(aiRefreshKeyTag)).then(aiSyncSelectors).catch(() => {});
