@@ -1,5 +1,34 @@
 # Tests de fiabilité WebOS v34
 
+## Régressions v44 : jeux et Discord
+
+`node tests/v44.mjs` utilise le serveur parent sur le port 3000. La suite
+vérifie les URL canoniques avec ou sans slash final, l'absence de relance
+après 22 secondes, la progression d'une application lente, les messages
+associés à une requête et un arrêt borné qui conserve le cadre.
+
+Le module réellement utilisé par UV et Scramjet est testé avec un document
+initial `about:blank`, un conteneur SPA vide, l'apparition d'un formulaire et
+un sous-cadre publicitaire en erreur. Le proxy dispose aussi d'un modèle
+de recherche par défaut lorsqu'une saisie n'est pas une URL.
+
+Test distant distinct effectué dans le WebOS intégré avec UV/Epoxy et le
+Wisp existant : le formulaire de connexion Discord apparaît sans identifiant
+saisi, et le hub Bloxd.io affiche ses cartes et images sans changer de serveur.
+Une connexion authentifiée et une partie complète restent non validées.
+Une nouvelle tentative Discord a également rencontré une réponse distante
+HTTP 429 et un démarrage lent. Le formulaire observé une fois ne garantit
+donc ni la disponibilité de Discord, ni l'absence de limitation distante.
+
+Le vieux script `lstimer.js` a été retiré du proxy : il remplaçait les
+minuteurs de 1 et 5 secondes par de faux identifiants et supprimait d'autres
+minuteurs sans distinguer leur usage. Le suivi réel de 1 seconde et la
+visibilité des boutons sont couverts par la suite v44.
+VanJS 1.5.2 est également servi localement, avec sa licence et son empreinte :
+la suite vérifie que les onglets démarrent même lorsque les CDN publics sont
+inaccessibles. Une panne CDN a été reproduite pendant le test réel et laissait
+auparavant le proxy sans aucun cadre d'application.
+
 ## Régressions v43
 
 Avec `webos` et `proxy` côte à côte et leur dossier parent servi sur le port
