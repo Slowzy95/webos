@@ -1884,6 +1884,8 @@ const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
   ping('https://gate-s95.slowzy.workers.dev/health');
   ping('https://wisp-server-maiz.onrender.com/health');
   setInterval(() => {
+    /* v45 — Inutile de réveiller les serveurs si le proxy est désactivé. */
+    if (!proxyEnabled()) return;
     ping('https://gate-s95.slowzy.workers.dev/health');
     ping('https://wisp-server-maiz.onrender.com/health');
   }, 10 * 60 * 1000);
@@ -1908,6 +1910,11 @@ function proxyPrefs() {
   const transport = LS.get('proxy_transport', 'libcurl');
   return { engine: PROXY_ENGINES[engine] ? engine : 'sj', transport: PROXY_TRANSPORTS[transport] ? transport : 'libcurl' };
 }
+/* v45 — Interrupteur principal du proxy (Paramètres › Navigateur & proxy).
+   Désactivé : tout charge en DIRECT, sans les serveurs wisp — les sites qui
+   détectent les proxys (ex. Bloxd.io « You are connected to a VPN »)
+   retrouvent la vraie connexion de l'appareil et acceptent la connexion. */
+function proxyEnabled() { return LS.get('proxy_enabled', '1') === '1'; }
 /* Liste ordonnée des tentatives pour une adresse : choix de l'utilisateur (ou
    dernière combinaison qui a marché pour ce site), puis les autres serveurs
    Wisp (relais Cloudflare, Render direct, 2 publics en secours), puis l'autre
@@ -1998,6 +2005,15 @@ window.addEventListener('message', (e) => {
   if (e.data?.wosNewTab) {
     try { browserAPI.newTab(browserAddress(e.data.wosNewTab)); }
     catch (err) { toast(err.message, 'fa-triangle-exclamation', 'text-amber-400'); }
+    return;
+  }
+  if (e.data && e.data.wosProxyOn) {
+    /* v45 — Bouton « Réactiver le proxy » : rallume l'interrupteur puis recharge. */
+    try {
+      LS.set('proxy_enabled', '1');
+      try { toast('Proxy réactivé — rechargement du site via le proxy', 'fa-power-off', 'text-emerald-400'); } catch (err) {}
+      browserAPI.navigate(browserAddress(e.data.wosProxyOn), true, null, true);
+    } catch (err) {}
     return;
   }
   if (e.data && e.data.wosRetry) {
@@ -2338,7 +2354,7 @@ function initBrowser(body, rec) {
   };
   const updateNav = () => {
     urlInput.value = history[hIndex];
-    body.querySelector('#br-mode').innerHTML = mode === 'proxy' ? '<i class="fa-solid fa-cloud text-sky-400"></i>' : mode === 'direct' ? '<i class="fa-solid fa-bolt text-amber-400"></i>' : '<i class="fa-solid fa-bolt"></i>';
+    body.querySelector('#br-mode').innerHTML = !proxyEnabled() ? '<i class="fa-solid fa-power-off text-red-400"></i>' : mode === 'proxy' ? '<i class="fa-solid fa-cloud text-sky-400"></i>' : mode === 'direct' ? '<i class="fa-solid fa-bolt text-amber-400"></i>' : '<i class="fa-solid fa-bolt"></i>';
   };
   const setStatus = (txt) => { statusEl.textContent = txt; };
   const showLoad = (v) => loadOv.classList.toggle('hidden', !v);
@@ -2853,7 +2869,7 @@ function initBrowser(body, rec) {
       showYT(false);
       serviceNotice.querySelector('span').textContent = 'Si ce moteur reste bloqué, essaie la recherche simplifiée.';
       serviceNotice.hidden = false;
-      if (mode !== 'direct') { wispLoad(u); return; }
+      if (proxyEnabled() && mode !== 'direct') { wispLoad(u); return; }
     }
     // Mode YouTube spécial : youtube.com s'affiche dans une interface intégrée
     let ytUrl = null;
@@ -2880,7 +2896,7 @@ function initBrowser(body, rec) {
        propose de les ouvrir dans un VRAI onglet via le proxy (plus fluide). */
     let hHost = '';
     try { hHost = ytUrl.hostname.replace(/^www\./, ''); } catch (e) {}
-    if (!skipHeavy && HEAVY_SITES.test(hHost)) {
+    if (!skipHeavy && proxyEnabled() && HEAVY_SITES.test(hHost)) {
       /* Discord & co : affichés DANS la fenêtre via le proxy intégré —
          tout reste dans la page, plus jamais de nouvel onglet. */
       wispLoad(u);
@@ -2892,8 +2908,23 @@ function initBrowser(body, rec) {
        le direct est donc inutile pour tout sauf les moteurs de recherche
        et sites de référence, qui restent en direct (rapide). */
     const SAFE_DIRECT = /^(?:[a-z-]+\.wikipedia\.org|wikipedia\.org|www\.google\.[a-z.]+|www\.startpage\.com|duckduckgo\.com|lite\.duckduckgo\.com|html\.duckduckgo\.com|www\.bing\.com|www\.qwant\.com|qwant\.com|www\.ecosia\.[a-z.]+|search\.yahoo\.com|www\.yahoo\.com)$/;
-    if (mode === 'auto' && (!SAFE_DIRECT.test(hHost) || NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
-    if (mode === 'proxy') { wispLoad(u); return; }
+    if (proxyEnabled() && mode === 'auto' && (!SAFE_DIRECT.test(hHost) || NET_FILTERED || ALWAYS_PROXY.includes(hHost) || !isFrameable(u))) { wispLoad(u); return; }
+    if (proxyEnabled() && mode === 'proxy') { wispLoad(u); return; }
+    /* v45 — Proxy désactivé : le site refuse les cadres (X-Frame-Options) et
+       aucune route proxy n'est disponible. On l'explique au lieu d'un cadre vide. */
+    if (!proxyEnabled() && !isFrameable(u)) {
+      frame.onload = null;
+      frame.removeAttribute('src');
+      frame.removeAttribute('srcdoc');
+      frame.srcdoc = browserNoticeHTML('Ce site ne s\u2019affiche pas sans proxy',
+        'Ce site refuse de s\u2019afficher dans un cadre et le proxy est désactivé. Réactive le proxy pour le charger, ou ouvre-le dans un vrai onglet.', u,
+        { actions: [
+            { label: 'Réactiver le proxy et réessayer', msg: { wosProxyOn: u } },
+            { label: 'Ouvrir dans un vrai onglet', msg: { wosReal: u } }
+          ] });
+      setStatus('Non affichable en direct — proxy désactivé');
+      return;
+    }
     navSeq++;
     frame.removeAttribute('srcdoc');
     frame.src = smartDirect(u);
@@ -2904,7 +2935,7 @@ function initBrowser(body, rec) {
     let directLoaded = false;
     frame.onload = () => { directLoaded = true; setStatus('Chargé en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s — Mode : Direct'); showBlockedPill(u); };
     setTimeout(() => {
-      if (!directLoaded && navSeq === directSeq && mode === 'auto') {
+      if (!directLoaded && navSeq === directSeq && mode === 'auto' && proxyEnabled()) {
         try { toast('Chargement direct impossible (réseau bridé ?) — nouvel essai via le proxy', 'fa-cloud', 'text-amber-400'); } catch (e) {}
         wispLoad(u);
       }
@@ -2925,6 +2956,10 @@ function initBrowser(body, rec) {
     pill.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Site bloqué ? Passer par le proxy';
     pill.onclick = () => {
       try { pill.remove(); } catch (e) {}
+      if (!proxyEnabled()) {
+        try { toast('Le proxy est désactivé — réactive-le dans Paramètres › Navigateur & proxy', 'fa-power-off', 'text-amber-400'); } catch (e) {}
+        return;
+      }
       try {
         const h = new URL(u).hostname.replace(/^www\./, '');
         if (!ALWAYS_PROXY.includes(h)) { ALWAYS_PROXY.push(h); LS.setJSON('alwaysproxy', ALWAYS_PROXY); }
@@ -3116,6 +3151,8 @@ function initBrowser(body, rec) {
   };
   window.addEventListener('message', onProxyMessage);
   function wispLoad(u, attempt = 0) {
+    /* v45 — Proxy désactivé : aucune route proxy, on charge en direct. */
+    if (!proxyEnabled()) { navigate(u, true); return; }
     frame.onload = null;
     navSeq++;
     if (attempt === 0) wispRetries = 0;
@@ -3269,6 +3306,7 @@ function initBrowser(body, rec) {
     } catch (e) { toast('Plein écran impossible ici — utilisez « Ouvrir dans un onglet »', 'fa-triangle-exclamation', 'text-amber-400'); }
   });
   body.querySelector('#br-mode').addEventListener('click', () => {
+    if (!proxyEnabled()) { try { toast('Proxy désactivé — réactive-le dans Paramètres › Navigateur & proxy', 'fa-power-off', 'text-amber-400'); } catch (e) {} return; }
     mode = mode === 'auto' ? 'direct' : mode === 'direct' ? 'proxy' : 'auto';
     LS.set('browser_mode', mode);
     toast('Chargement : ' + (mode === 'auto' ? 'Auto : choix du chargement intégré' : mode === 'direct' ? 'Direct : certains sites refusent les cadres' : 'Proxy intégré : les vérifications et les limites du service restent possibles'), 'fa-bolt', 'text-sky-400');
@@ -5211,6 +5249,18 @@ function renderSettings() {
     <div class="h-full overflow-y-auto p-5 space-y-6 text-[12.5px]">
       <section>
         <h3 class="font-bold text-[13px] mb-1"><i class="fa-solid fa-globe mr-2 text-sky-400"></i>Navigateur &amp; proxy</h3>
+        <div id="st-px-master-card" class="flex items-center justify-between gap-3 rounded-xl mb-3" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);padding:12px 14px">
+          <div class="flex-1">
+            <div class="font-semibold text-[12.5px]"><i class="fa-solid fa-power-off mr-1.5 text-emerald-400" id="st-px-master-icon"></i>Proxy (VPN)</div>
+            <p class="text-slate-400 text-[11px] mt-1">Activé : la navigation passe par les serveurs du proxy (contourne les blocages réseau). Désactivé : tout charge en direct avec la vraie connexion — indispensable pour les sites qui refusent les VPN, comme Bloxd.io.</p>
+          </div>
+          <label class="cursor-pointer select-none" style="flex:none" title="Activer / désactiver le proxy">
+            <input type="checkbox" id="st-px-master" style="display:none" />
+            <span id="st-px-master-track" style="display:inline-block;width:48px;height:27px;border-radius:99px;background:#334155;position:relative;transition:background .18s;vertical-align:middle">
+              <span id="st-px-master-knob" style="position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:99px;background:#fff;transition:left .18s;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>
+            </span>
+          </label>
+        </div>
         <p class="text-slate-400 text-[11px] mb-3">Ces réglages s’appliquent à la prochaine navigation ou au rechargement, sans interrompre les pages ouvertes. Choisir un moteur de proxy ou un transport active le mode manuel ; réactive Automatique pour autoriser les replis.</p>
         <div class="text-[11px] text-slate-400 mb-1">Moteur du proxy</div>
         <div class="flex flex-wrap gap-2 mb-3" id="st-px-engine"></div>
@@ -5370,6 +5420,34 @@ function initSettings(body) {
     const engBox = body.querySelector('#st-px-engine'), trBox = body.querySelector('#st-px-transport');
     const seBox = body.querySelector('#st-px-search'), autoBox = body.querySelector('#st-px-auto');
     if (!engBox) return;
+    /* v45 — Interrupteur principal du proxy (VPN) : coupé = tout en direct. */
+    const masterIn = body.querySelector('#st-px-master');
+    const masterTrack = body.querySelector('#st-px-master-track');
+    const masterKnob = body.querySelector('#st-px-master-knob');
+    const masterIcon = body.querySelector('#st-px-master-icon');
+    const renderMaster = () => {
+      const on = proxyEnabled();
+      if (masterIn) masterIn.checked = on;
+      if (masterTrack) masterTrack.style.background = on ? '#10b981' : '#334155';
+      if (masterKnob) masterKnob.style.left = on ? '24px' : '3px';
+      if (masterIcon) { masterIcon.style.color = on ? '#34d399' : '#f87171'; }
+      /* Options proxy grisées quand l'interrupteur est coupé */
+      [engBox, trBox, autoBox, body.querySelector('#st-wisp-url'), body.querySelector('#st-wisp-save')].forEach(el => {
+        if (!el) return;
+        el.style.opacity = on ? '' : '.4';
+        el.style.pointerEvents = on ? '' : 'none';
+      });
+    };
+    if (masterIn) masterIn.addEventListener('change', () => {
+      LS.set('proxy_enabled', masterIn.checked ? '1' : '0');
+      renderMaster();
+      try {
+        toast(masterIn.checked
+          ? 'Proxy activé : la navigation passera par les serveurs du proxy'
+          : 'Proxy désactivé : tout charge en direct — parfait pour Bloxd.io et les sites anti-VPN',
+          'fa-power-off', masterIn.checked ? 'text-emerald-400' : 'text-amber-400');
+      } catch (e) {}
+    });
     const SEARCH_CHOICES = { ddg: 'DuckDuckGo', brave: 'Brave', google: 'Google', ecosia: 'Ecosia', bing: 'Bing', startpage: 'Startpage', webos: 'Recherche simplifiée' };
     const chips = (box, items, current, attr) => {
       box.innerHTML = Object.entries(items).map(([id, name]) => `<button data-${attr}="${id}" class="chip ${id === current ? 'chip-on' : ''}">${name}</button>`).join('');
@@ -5380,6 +5458,7 @@ function initSettings(body) {
       chips(trBox, PROXY_TRANSPORTS, p.transport, 'pxt');
       chips(seBox, SEARCH_CHOICES, LS.get('engine', 'ddg'), 'pxs');
       autoBox.checked = LS.get('proxy_auto', '1') === '1';
+      renderMaster();
     };
     const wispIn = body.querySelector('#st-wisp-url');
     if (wispIn) {
