@@ -1900,8 +1900,8 @@ const PROXY_ENGINES = { sj: 'Scramjet', uv: 'Ultraviolet' };
   else boot();
 })();
 const PROXY_TRANSPORTS = { libcurl: 'libcurl', epoxy: 'Epoxy' };
-/* Sites qui ne fonctionnent bien qu'avec Ultraviolet (constaté en test) */
-/* sites qui exigent Ultraviolet : Bloxd (Scramjet incompatible) et Discord (le captcha hCaptcha tourne à l'infini sous Scramjet, il marche sous Ultraviolet) */
+/* Préférence du mode automatique pour ces applications. Il ne s'agit pas
+   d'une garantie de fonctionnement des jeux, connexions ou CAPTCHA. */
 const UV_ONLY_SITES = /^(bloxd\.io|discord\.com|discordapp\.com|discord\.gg|[a-z0-9-]+\.discord\.com)$/;
 function proxyPrefs() {
   const engine = LS.get('proxy_engine', 'sj');
@@ -1936,8 +1936,9 @@ function proxyPlan(u) {
   const seen = new Set();
   return plan.filter(a => { const k = a.engine + a.transport + a.wisp; if (seen.has(k)) return false; seen.add(k); return true; });
 }
-function proxyFrameURL(u, a) {
-  const q = '&clean=1&v=43&wisp=' + a.wisp + '&transport=' + a.transport;
+function proxyFrameURL(u, a, request = '') {
+  const q = '&clean=1&v=44&wisp=' + a.wisp + '&transport=' + a.transport +
+    (request ? '&request=' + encodeURIComponent(request) : '');
   return (a.engine === 'sj' ? SJ_PROXY : WISP_PROXY) + encodeURIComponent(u) + q;
 }
 const PROXIES = [
@@ -2935,7 +2936,7 @@ function initBrowser(body, rec) {
   }
 
   /* Chargement via le vrai proxy Ultraviolet (technique des gros proxys : service worker + rewriting complet, JS des sites actif) */
-  var wispWatch = null, wispCurIdx = 0, wispRetries = 0, wispCurUrl = '';
+  var wispWatch = null, wispCurIdx = 0, wispRetries = 0, wispCurUrl = '', wispCurRequest = '';
   function cancelBrowserLoad() {
     if (readerAbort) {
       readerAbort.abort();
@@ -2950,6 +2951,7 @@ function initBrowser(body, rec) {
     stopButton.hidden = true;
     if (wispWatch) clearTimeout(wispWatch);
     wispWatch = null;
+    wispCurRequest = '';
     wispRetries = 0;
     loadOv.classList.add('hidden');
   }
@@ -3048,8 +3050,30 @@ function initBrowser(body, rec) {
      l'autre serveur wisp au lieu d'attendre le minuteur de 20 s. */
   const onProxyMessage = (ev) => {
     if (ev.source !== frame.contentWindow || ev.origin !== new URL(WISP_PROXY).origin || !ev.data || !ev.data.wosProxy) return;
-    if (ev.data.url && ev.data.url !== wispCurUrl) return;
+    if (ev.data.request && ev.data.request !== wispCurRequest) return;
+    if (ev.data.url) {
+      try { if (new URL(ev.data.url).href !== new URL(wispCurUrl).href) return; }
+      catch { return; }
+    }
+    if (ev.data.wosProxy === 'progress') {
+      serviceNotice.hidden = true;
+      stopButton.hidden = false;
+      setStatus('Préparation via le proxy · ' + (Number(ev.data.elapsed) || 0) + ' s' +
+        (Number(ev.data.resources) ? ' · ' + Number(ev.data.resources) + ' fichiers référencés' : '') +
+        ' — la page est conservée');
+      return;
+    }
+    if (ev.data.wosProxy === 'stalled') {
+      if (wispWatch) clearTimeout(wispWatch);
+      wispWatch = null;
+      stopButton.hidden = true;
+      serviceNotice.querySelector('span').textContent = 'Ce site n’a pas terminé son démarrage. La page est conservée, sans nouvelle rotation automatique. Utilise Réessayer dans le cadre ou Site officiel.';
+      serviceNotice.hidden = false;
+      setStatus('Démarrage non terminé — réessai manuel, sans effacer la page');
+      return;
+    }
     if (ev.data.wosProxy === 'loaded') {
+      serviceNotice.hidden = true;
       /* On retient la combinaison qui a marché pour ce site */
       try {
         const a = proxyPlan(wispCurUrl)[wispRetries] || proxyPlan(wispCurUrl)[0];
@@ -3098,24 +3122,29 @@ function initBrowser(body, rec) {
     const plan = proxyPlan(u);
     const att = plan[Math.min(attempt, plan.length - 1)];
     wispCurIdx = att.wisp; wispCurUrl = u;
+    wispCurRequest = String(navSeq);
     if (wispWatch) { clearTimeout(wispWatch); wispWatch = null; }
     frame.removeAttribute('srcdoc');
     /* &clean=1 : masque la barre latérale du proxy (logo V2, onglets) — le site occupe tout l'écran
        &wisp=N : force un serveur wisp précis (0 ou 1) — utilisé par le minuteur de secours ci-dessous */
-    frame.src = proxyFrameURL(u, att);
+    frame.src = proxyFrameURL(u, att, wispCurRequest);
     stopButton.hidden = false;
     setStatus('Connexion au proxy intégré (' + PROXY_ENGINES[att.engine] + ' · ' + PROXY_TRANSPORTS[att.transport] + ') — essai ' + (attempt + 1) + '/' + plan.length);
     if (!attempt && !wispLoad._toastShown) { wispLoad._toastShown = true; try { toast('Proxy intégré : ' + new URL(u).hostname.replace(/^www[.]/, '') + ' via ' + PROXY_ENGINES[att.engine], 'fa-cloud', 'text-sky-400'); } catch (e) {} }
-    /* MINUTEUR DE SECOURS : si le site charge à l'infini (serveur wisp
-       lent ou bloqué — ex: Poki), on relance automatiquement le
-       chargement sur l'AUTRE serveur wisp au bout de 20 s. */
+    /* Discord loads hundreds of assets. A fixed 22-second retry discarded
+       the application before it could render. The proxy now reports actual
+       UI readiness and has its own bounded startup monitor. */
     const seq = navSeq;
     const targetFrame = frame;
     wispWatch = setTimeout(() => {
       if (navSeq !== seq) return;
       wispWatch = null;
-      retryProxy(u, seq, targetFrame);
-    }, attempt === 0 ? 22000 : 16000);
+      if (frame !== targetFrame) return;
+      serviceNotice.querySelector('span').textContent = 'Le proxy n’a pas confirmé le démarrage. La page est conservée ; réessaie manuellement ou ouvre le site officiel.';
+      serviceNotice.hidden = false;
+      stopButton.hidden = true;
+      setStatus('Délai de démarrage dépassé — page conservée, aucune relance automatique');
+    }, /(^|\.)discord\.com$/.test(new URL(u).hostname) ? 210000 : 120000);
   }
 
   async function proxyLoad(u, t0, fallback) {
@@ -5327,7 +5356,7 @@ function renderSettings() {
       </section>
 
       <section class="pt-4 border-t border-white/8 text-[11px] text-slate-500 leading-relaxed">
-        <div class="font-bold text-slate-300 mb-1">WebOS v43 : grille unique pour les icônes, déplacement de groupe sans dispersion ni suppression accidentelle, restauration dans une case libre. Les moteurs et transports du proxy sont conservés ; les connexions partagées ne sont plus réinitialisées pour une configuration identique. Les imports JavaScript des jeux sont résolus contre le bon module. L’IA distingue les limites temporaires des modèles indisponibles pour votre clé et permet de réafficher les modèles masqués. Le compteur WebOS reste local : il ne représente pas le quota du fournisseur. Les sauvegardes existantes sont conservées. Les connexions Discord, les parties distantes et leurs vérifications ne sont pas garanties.</div>
+        <div class="font-bold text-slate-300 mb-1">WebOS v44 : les applications lentes ne sont plus abandonnées après 22 secondes. Le proxy surveille l’apparition réelle de l’interface, reconnaît les URL canoniques et conserve la page si un sous-cadre publicitaire échoue. Le démarrage reste limité dans le temps, avec progression et réessai manuel. Les moteurs, transports et sauvegardes sont conservés. L’affichage du formulaire Discord ne garantit pas la connexion à un compte ni la compatibilité des vérifications ou de toutes les parties.</div>
         <div class="text-slate-400 text-[11px] mb-3">Les services externes, jeux, CAPTCHA et filtres réseau ne sont pas contrôlés par le WebOS. Le proxy dépend de serveurs tiers : leur disponibilité et la compatibilité des sites ne sont pas garanties. La recherche WebOS affiche des résultats simplifiés ; les moteurs officiels restent disponibles. Le diagnostic teste les modèles avec les clés de cet appareil et consomme le quota du fournisseur.</div>
         Bureau virtuel : navigation intégrée, 6 jeux locaux, camouflage d'onglet et fonds animés. Les données (clés API, préférences) restent dans le <b>stockage de votre navigateur</b>, ou temporairement en mémoire dans un aperçu restreint.
       </section>
