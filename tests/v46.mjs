@@ -1,16 +1,15 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 
-/* v46 — Sites-proxy (galaxy…) : ouverts dans un VRAI onglet + permissions iframe. */
+/* v46 (révisé) — Tout reste dans la fenêtre intégrée : galaxy et les sites
+   inconnus s'y chargent normalement, aucun onglet ne s'ouvre automatiquement.
+   Permissions iframe étendues vérifiées au passage. */
 const browser = await chromium.launch({ headless: true, channel: 'chromium' });
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
 const page = await ctx.newPage(), errors = [];
 page.on('pageerror', e => errors.push(e.message));
-const proxyHits = [];
-await ctx.route('https://slowzy95.github.io/proxy/**', route => {
-  proxyHits.push(route.request().url());
-  return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Fixture</title>' });
-});
+let popupOpened = false;
+page.on('popup', () => { popupOpened = true; });
 await page.goto('http://127.0.0.1:3000/webos/');
 await page.waitForTimeout(2500);
 
@@ -22,34 +21,21 @@ assert.match(allow, /clipboard-read/, 'permissions clipboard-read sur la frame')
 assert.match(allow, /encrypted-media/, 'permissions encrypted-media sur la frame');
 console.log('PASS permissions iframe étendues');
 
-/* 2) galaxy : ouvert dans un VRAI onglet direct (pas de proxy imbriqué). */
-const popupPromise = page.waitForEvent('popup', { timeout: 5000 });
+/* 2) galaxy : reste DANS la fenêtre intégrée (aucun onglet ouvert). */
 await page.locator('#br-url').fill('https://galxy.it.com/os');
 await page.locator('#br-go').click();
-const popup = await popupPromise;
-await page.waitForTimeout(1500);
-assert.equal(popup.url(), 'https://galxy.it.com/os', 'galaxy ouvert en direct dans un vrai onglet');
-const notice = await page.$eval('#br-frames iframe', el => el.getAttribute('srcdoc') || '').catch(() => '');
-assert.ok(notice.includes('vrai onglet'), 'notice explicative dans la fenêtre intégrée');
-assert.ok(notice.includes('Rouvrir dans un vrai onglet'), 'bouton de réouverture proposé');
-assert.equal(proxyHits.length, 0, 'aucune requête proxy pour galaxy (pas de double proxy)');
-console.log('PASS galaxy ouvert dans un vrai onglet direct, zéro requête proxy');
+await page.waitForTimeout(2000);
+assert.equal(popupOpened, false, 'aucun onglet ne doit s\u2019ouvrir automatiquement');
+const frameState = await page.$eval('#br-frames iframe', el => ({ src: el.getAttribute('src') || '', doc: el.getAttribute('srcdoc') || '' })).catch(() => ({ src: '', doc: '' }));
+assert.ok(frameState.src.includes('galxy.it.com') || frameState.doc.length > 0, 'galaxy reste dans la fenêtre intégrée');
+console.log('PASS galaxy reste dans la fenêtre intégrée, aucun onglet automatique');
 
-/* 3) La notice propose wosRealDirect (pas wosReal) : clic = onglet direct. */
-const noticeFrame = page.frames().find(f => f.url() === 'about:srcdoc');
-const popup2 = noticeFrame ? await Promise.all([
-  page.waitForEvent('popup', { timeout: 5000 }).catch(() => null),
-  noticeFrame.getByText('Rouvrir dans un vrai onglet').click().catch(() => null)
-]).then(([p2]) => p2) : null;
-if (popup2) {
-  await popup2.waitForLoadState('domcontentloaded').catch(() => {});
-  assert.equal(popup2.url(), 'https://galxy.it.com/os', 'réouverture directe de galaxy');
-  console.log('PASS bouton « Rouvrir » : galaxy réouvert en direct');
-} else {
-  console.log('INFO bouton « Rouvrir » non testé (popup bloqué en headless)');
-}
+/* 3) La barre d'outils garde son bouton « onglet réel » (choix manuel). */
+const newtabBtn = await page.$('#br-newtab');
+assert.ok(newtabBtn, 'bouton onglet réel présent dans la barre d\u2019outils');
+console.log('PASS bouton « onglet réel » toujours disponible (manuel)');
 
-/* 4) Un site normal (bloxd.io) n'est pas affecté : il charge comme avant. */
+/* 4) Un site normal (bloxd.io) charge comme avant. */
 await page.locator('#br-url').fill('https://bloxd.io');
 await page.locator('#br-go').click();
 await page.waitForTimeout(1500);
