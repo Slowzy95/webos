@@ -59,6 +59,17 @@ await page.waitForFunction(() => document.querySelector('#br-status')?.textConte
 await page.clock.fastForward(240000);
 assert.equal(attempts.length, discordStart, 'stalled application must keep its frame, not rotate servers');
 assert.ok(await page.locator('#br-frames > iframe').getAttribute('src').then(u => u.includes('discord.com')));
+await frame.evaluate(() => parent.postMessage({
+  wosProxy: 'progress', url: 'https://discord.com/login',
+  request: new URL(location.href).searchParams.get('request'), elapsed: 1, resources: 10
+}, '*'));
+await page.waitForFunction(() => document.querySelector('#br-service-notice').hidden);
+await frame.evaluate(() => parent.postMessage({
+  wosProxy: 'loaded', url: 'https://discord.com/login',
+  request: new URL(location.href).searchParams.get('request')
+}, '*'));
+await page.waitForFunction(() => document.querySelector('#br-status')?.textContent.includes('chargement terminé'));
+assert.ok(await page.locator('#br-service-notice').evaluate(el => el.hidden));
 console.log('PASS slow Discord, progress and bounded stalled state never replace the application');
 await ctx.close();
 

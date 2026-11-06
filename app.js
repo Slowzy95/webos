@@ -3056,6 +3056,8 @@ function initBrowser(body, rec) {
       catch { return; }
     }
     if (ev.data.wosProxy === 'progress') {
+      serviceNotice.hidden = true;
+      stopButton.hidden = false;
       setStatus('Préparation via le proxy · ' + (Number(ev.data.elapsed) || 0) + ' s' +
         (Number(ev.data.resources) ? ' · ' + Number(ev.data.resources) + ' fichiers référencés' : '') +
         ' — la page est conservée');
@@ -3071,6 +3073,7 @@ function initBrowser(body, rec) {
       return;
     }
     if (ev.data.wosProxy === 'loaded') {
+      serviceNotice.hidden = true;
       /* On retient la combinaison qui a marché pour ce site */
       try {
         const a = proxyPlan(wispCurUrl)[wispRetries] || proxyPlan(wispCurUrl)[0];
