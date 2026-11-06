@@ -63,14 +63,26 @@ await page.waitForTimeout(400);
 assert.match(await page.locator('#br-mode').innerHTML(), /fa-power-off/, 'le clic ne doit rien changer quand le proxy est coupé');
 console.log('PASS bouton de mode verrouillé proxy désactivé');
 
-/* 5) Site non affichable en direct : notice + bouton « Réactiver le proxy ». */
+/* 5) Site inconnu (reddit) avec proxy coupé : il charge en DIRECT (pas de
+   notice abusive), et la pastille « Réactiver le proxy » est proposée. */
 await page.locator('#br-url').fill('https://www.reddit.com');
 await page.locator('#br-go').click();
 await page.waitForTimeout(1200);
-const srcdoc = await page.locator('#br-frames > iframe').getAttribute('srcdoc').catch(() => '');
-assert.ok(srcdoc.includes('sans proxy'), 'notice dédiée pour un site non affichable');
-assert.ok(srcdoc.includes('Réactiver le proxy'), 'bouton de réactivation proposé');
-console.log('PASS site non affichable : notice et réactivation proposées');
+assert.equal(await page.locator('#br-frames > iframe').getAttribute('src'), 'https://www.reddit.com', 'un site inconnu doit charger en direct quand le proxy est coupé');
+const pillVisible = await page.locator('#br-blocked-pill').count();
+if (pillVisible) {
+  assert.match(await page.locator('#br-blocked-pill').textContent(), /Réactiver le proxy/, 'la pastille propose la réactivation');
+}
+console.log('PASS site inconnu : chargement en direct + pastille de réactivation');
+
+/* 5b) Site lourd (discord.com) : refuse les cadres, la notice s'affiche. */
+await page.locator('#br-url').fill('https://discord.com');
+await page.locator('#br-go').click();
+await page.waitForTimeout(1200);
+const heavyDoc = await page.locator('#br-frames > iframe').getAttribute('srcdoc').catch(() => '');
+assert.ok(heavyDoc.includes('sans proxy'), 'notice dédiée pour un site lourd non affichable');
+assert.ok(heavyDoc.includes('Réactiver le proxy'), 'bouton de réactivation proposé');
+console.log('PASS site lourd : notice et réactivation proposées');
 
 /* 6) « Réactiver le proxy » : rallume l'interrupteur et recharge via le proxy. */
 const noticeFrame = page.frames().find(f => f.url() === 'about:srcdoc');
@@ -78,7 +90,7 @@ await noticeFrame.getByText('Réactiver le proxy et réessayer').click();
 await page.waitForTimeout(1500);
 assert.equal(await page.evaluate(() => localStorage.getItem('webos_proxy_enabled')), '1', 'interrupteur rallumé');
 await page.waitForFunction(() => document.querySelector('#br-frames > iframe')?.src.includes('/proxy/'), null, { timeout: 8000 });
-assert.match(await page.locator('#br-frames > iframe').getAttribute('src'), /reddit\.com/, 'reddit rechargé via le proxy');
+assert.match(await page.locator('#br-frames > iframe').getAttribute('src'), /discord\.com/, 'discord rechargé via le proxy');
 console.log('PASS réactivation : proxy rallumé et rechargement via le proxy');
 
 /* 7) Aucune erreur de page pendant toute la suite. */
