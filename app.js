@@ -6099,7 +6099,7 @@ function makeDeskDraggable(b, id) {
         members.forEach(s => { s.el._dragged = true; setTimeout(() => { s.el._dragged = false; }, 350); });
         dropDesktopGroup(members, ev.type === 'pointercancel' ? 0 : b.offsetLeft - ox,
           ev.type === 'pointercancel' ? 0 : b.offsetTop - oy);
-        try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+        try { navigator.storage && navigator.storage.persist && navigator.storage.persist().catch(() => {}); } catch (e) {}
       }
     };
     document.addEventListener('pointermove', move);

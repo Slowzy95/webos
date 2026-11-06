@@ -6,6 +6,12 @@ import { ensureProxyTransport } from '../../proxy/scripts/transport.mjs';
 
 const browser = await chromium.launch({ headless: true, channel: 'chromium' });
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+await ctx.addInitScript(() => {
+  try {
+    if (navigator.storage) navigator.storage.persist = () =>
+      Promise.reject(new DOMException('Persistence not available in this context', 'NotSupportedError'));
+  } catch {}
+});
 await ctx.route('https://slowzy95.github.io/proxy/**', r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Fixture</title>' }));
 const page = await ctx.newPage(), errors = [];
 page.on('pageerror', e => errors.push(e.message));
