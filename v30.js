@@ -232,7 +232,6 @@
     document.querySelectorAll('#desk-icons .desk-icon').forEach(el => {
       if (APPS[el.dataset.iconId]) el.hidden = hiddenApps.has(el.dataset.iconId);
     });
-    const positions = LS.getJSON('iconpos', {});
     shortcuts.filter(s => s.desktop && !s.app).forEach(s => {
       if (s.url && CUSTOM_APPS.some(x => { try { return new URL(x.url).href === s.url; } catch (e) { return false; } })) return;
       const id = shortcutId(s);
@@ -245,40 +244,11 @@
       icon.tabIndex = 0;
       icon.setAttribute('role', 'button');
       icon.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); launch(s); } });
-      if (!positions[id]) {
-        const cell = nearestFreeCell(0, 0, occupiedCells(id));
-        icon.style.position = 'absolute';
-        icon.style.left = cell.x * GRID_X + 'px';
-        icon.style.top = cell.y * GRID_Y + 'px';
-        positions[id] = { x: cell.x * GRID_X, y: cell.y * GRID_Y };
-      }
     });
-    LS.setJSON('iconpos', positions);
     fitDesktopIcons();
   }
   function fitDesktopIcons() {
-    const area = di.getBoundingClientRect();
-    const saved = LS.getJSON('iconpos', {});
-    const columns = Math.max(1, Math.floor(area.width / GRID_X));
-    const rows = Math.max(1, Math.floor(area.height / GRID_Y));
-    const taken = new Set();
-    di.querySelectorAll('.desk-icon:not([hidden])').forEach(icon => {
-      const id = icon.dataset.iconId;
-      const r = icon.getBoundingClientRect();
-      if (!naturalPositions.has(id)) naturalPositions.set(id, { x: r.left - area.left, y: r.top - area.top });
-      const original = saved[id] || naturalPositions.get(id);
-      let x = Math.min(columns - 1, Math.max(0, Math.round(original.x / GRID_X)));
-      let y = Math.min(rows - 1, Math.max(0, Math.round(original.y / GRID_Y)));
-      if (taken.has(x + ',' + y)) {
-        let cell = 0;
-        do { x = cell % columns; y = Math.floor(cell / columns); cell++; } while (taken.has(x + ',' + y));
-      }
-      taken.add(x + ',' + y);
-      icon.style.position = 'absolute';
-      icon.style.left = x * GRID_X + 'px';
-      icon.style.top = y * GRID_Y + 'px';
-    });
-    // A responsive arrangement does not overwrite the user's saved wide layout.
+    layoutDesktopIcons({ persist: false });
   }
   window.addEventListener('resize', fitDesktopIcons);
   window.renderPinnedShortcuts = container => {
